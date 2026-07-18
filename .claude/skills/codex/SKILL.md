@@ -1,0 +1,1 @@
+/Users/alexcook/conductor/repos/prodigy-4/.claude/skills/gstack/codex/SKILL.md
