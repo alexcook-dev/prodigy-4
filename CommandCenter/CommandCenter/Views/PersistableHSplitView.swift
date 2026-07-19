@@ -324,6 +324,8 @@ private final class HostingSlot: NSView {
 
 /// Flexible split with **invisible wide dividers** so neighboring Liquid Glass
 /// cards float with a real gap (NSSplitView otherwise draws edge-to-edge).
+/// Divider rects stay clear so the window’s Liquid Glass ambient fill shows
+/// through in windowed **and** fullscreen.
 private final class WorkspaceNSSplitView: NSSplitView {
     override var intrinsicContentSize: NSSize {
         NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric)
@@ -335,6 +337,14 @@ private final class WorkspaceNSSplitView: NSSplitView {
     }
 
     override func drawDivider(in rect: NSRect) {
-        // Transparent — gap is air for glass refraction, not a gray rule.
+        // Fully transparent — ambient Liquid Glass behind the split shows through
+        // (windowed wallpaper / fullscreen frosted backdrop).
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+        layer?.isOpaque = false
     }
 }

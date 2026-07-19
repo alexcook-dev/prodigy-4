@@ -7,6 +7,8 @@ import SwiftUI
 /// - Glass is for **discrete chrome cards**, not one fused slab.
 /// - Keep gaps **tight** (Apple multi-column apps use ~6–8pt, not large voids).
 /// - Prefer `.regular` / `.regular.interactive()` for controls; nested cards share the same language as Files/Terminal.
+/// - Gap regions (between cards) must stay **Liquid Glass** in windowed **and**
+///   fullscreen — never a solid opaque fill.
 enum LiquidGlassMetrics {
     /// Outer rounded card radius for major panes (center shell).
     static let paneCorner: CGFloat = 12
@@ -92,48 +94,194 @@ extension View {
     }
 }
 
-// MARK: - Ambient window fill
+// MARK: - Ambient window fill (gaps between cards)
 
-/// Neutral ambient fill so glass has light to sample (no blue tint).
+/// Full-window Liquid Glass backdrop. Cards float on top; **gaps between cards
+/// reveal this glass** — same look in windowed and fullscreen (fullscreen has
+/// no desktop wallpaper, so a solid color would read as opaque voids).
 struct LiquidGlassAmbientBackground: View {
     var body: some View {
-        // Pure system window chrome — Light/Dark come from NSColor dynamics.
         ZStack {
-            Color(nsColor: .windowBackgroundColor)
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .opacity(0.55)
+            // System visual effect — reliable frosted fill in fullscreen spaces.
+            LiquidGlassVisualEffectBackground(
+                material: .underWindowBackground,
+                blendingMode: .withinWindow
+            )
+
+            // Liquid Glass clear lens across the whole window so interstitial
+            // space matches the glass language of the cards themselves.
+            Color.clear
+                .glassEffect(.clear, in: Rectangle())
         }
         .ignoresSafeArea()
     }
 }
 
-// MARK: - Window chrome
+/// AppKit `NSVisualEffectView` wrapper — keeps gap regions frosted when the
+/// window is fullscreen (SwiftUI materials alone often go solid black there).
+struct LiquidGlassVisualEffectBackground: NSViewRepresentable {
+    var material: NSVisualEffectView.Material = .underWindowBackground
+    var blendingMode: NSVisualEffectView.BlendingMode = .withinWindow
 
-/// Clear / full-size-content window so Liquid Glass can composite correctly.
-struct LiquidGlassWindowChrome: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .followsWindowActiveState
+        view.isEmphasized = true
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.clear.cgColor
-        DispatchQueue.main.async { Self.apply(to: view.window) }
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .followsWindowActiveState
+    }
+}
+
+// MARK: - Window chrome (transparent + fullscreen-safe)
+
+/// Configures the hosting `NSWindow` for Liquid Glass in **windowed and fullscreen**.
+/// macOS often resets opacity/background when entering fullscreen — we re-apply
+/// on enter/exit notifications so interstitial glass stays transparent.
+struct LiquidGlassWindowChrome: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = TrackingView()
+        view.wantsLayer = true
+        view.layer?.backgroundColor = NSColor.clear.cgColor
+        view.onWindowChange = { window in
+            context.coordinator.attach(to: window)
+        }
+        DispatchQueue.main.async {
+            context.coordinator.attach(to: view.window)
+        }
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async { Self.apply(to: nsView.window) }
+        DispatchQueue.main.async {
+            context.coordinator.attach(to: nsView.window)
+        }
     }
 
-    private static func apply(to window: NSWindow?) {
-        guard let window else { return }
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .visible
-        if !window.styleMask.contains(.fullSizeContentView) {
-            window.styleMask.insert(.fullSizeContentView)
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator {
+        private var window: NSWindow?
+        private var observers: [NSObjectProtocol] = []
+
+        deinit {
+            detach()
         }
-        window.contentView?.wantsLayer = true
-        window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
+
+        func attach(to window: NSWindow?) {
+            guard let window else { return }
+            if self.window === window {
+                Self.apply(to: window)
+                return
+            }
+            detach()
+            self.window = window
+            Self.apply(to: window)
+
+            let center = NotificationCenter.default
+            let names: [Notification.Name] = [
+                NSWindow.didEnterFullScreenNotification,
+                NSWindow.didExitFullScreenNotification,
+                NSWindow.didChangeOcclusionStateNotification,
+                NSWindow.didBecomeKeyNotification,
+            ]
+            for name in names {
+                observers.append(
+                    center.addObserver(forName: name, object: window, queue: .main) { [weak self] note in
+                        guard let window = note.object as? NSWindow else { return }
+                        // Fullscreen transition can run layout before the space settles.
+                        Self.apply(to: window)
+                        DispatchQueue.main.async {
+                            Self.apply(to: window)
+                        }
+                        self?.window = window
+                    }
+                )
+            }
+        }
+
+        func detach() {
+            let center = NotificationCenter.default
+            for token in observers {
+                center.removeObserver(token)
+            }
+            observers.removeAll()
+            window = nil
+        }
+
+        static func apply(to window: NSWindow) {
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.titlebarAppearsTransparent = true
+            window.titleVisibility = .visible
+            if !window.styleMask.contains(.fullSizeContentView) {
+                window.styleMask.insert(.fullSizeContentView)
+            }
+
+            // Fullscreen spaces sometimes install an opaque black backdrop view.
+            // Force every layer in the content chain clear so interstitial glass shows.
+            window.contentView?.wantsLayer = true
+            window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
+            window.contentView?.layer?.isOpaque = false
+
+            if let contentView = window.contentView {
+                clearOpaqueBackgrounds(in: contentView)
+            }
+
+            // Titlebar container can paint solid black in fullscreen.
+            if let titlebar = window.standardWindowButton(.closeButton)?.superview?.superview {
+                titlebar.wantsLayer = true
+                titlebar.layer?.backgroundColor = NSColor.clear.cgColor
+            }
+        }
+
+        private static func clearOpaqueBackgrounds(in view: NSView) {
+            view.wantsLayer = true
+            if view.layer?.backgroundColor != nil {
+                // Don't wipe NSVisualEffectView — those are intentional gap fills.
+                if !(view is NSVisualEffectView) {
+                    let isHosting = String(describing: type(of: view)).contains("Hosting")
+                    let isSplit = view is NSSplitView
+                    if isHosting || isSplit || view.subviews.isEmpty == false {
+                        // Keep structure; only force non-opaque where we own it.
+                    }
+                }
+            }
+            if view is NSSplitView {
+                view.layer?.backgroundColor = NSColor.clear.cgColor
+                view.layer?.isOpaque = false
+            }
+            for sub in view.subviews {
+                if sub is NSVisualEffectView { continue }
+                if sub is NSSplitView {
+                    sub.wantsLayer = true
+                    sub.layer?.backgroundColor = NSColor.clear.cgColor
+                    sub.layer?.isOpaque = false
+                }
+                clearOpaqueBackgrounds(in: sub)
+            }
+        }
+    }
+
+    /// Notifies the representable when the view is re-parented into a window.
+    private final class TrackingView: NSView {
+        var onWindowChange: ((NSWindow?) -> Void)?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            wantsLayer = true
+            layer?.backgroundColor = NSColor.clear.cgColor
+            onWindowChange?(window)
+        }
     }
 }

@@ -49,9 +49,16 @@ struct CommandCenterApp: App {
                     minWidth: LayoutMetrics.minWindowWidth,
                     minHeight: LayoutMetrics.minWindowHeight
                 )
-                // Ambient fill + clear window chrome so Liquid Glass has light to sample.
+                // Full-window Liquid Glass backdrop — gaps between cards sample this
+                // in windowed **and** fullscreen (solid fills go black in FS spaces).
                 .containerBackground(for: .window) {
                     LiquidGlassAmbientBackground()
+                }
+                .background {
+                    // Also paint glass inside the content hierarchy so FS transitions
+                    // that ignore containerBackground still show frosted interstitials.
+                    LiquidGlassAmbientBackground()
+                        .ignoresSafeArea()
                 }
                 .background(LiquidGlassWindowChrome())
         }
