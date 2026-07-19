@@ -28,19 +28,33 @@ fi
 
 # --- run a set of grok commands in parallel, wait, fail loudly on any error ---
 run_parallel() {
+  # Bash 3.2 (macOS /bin/bash) cannot do ${!((i+1))}; compute the index
+  # first, then use classic ${!n} positional indirect expansion.
   local -a pids=()
   local -a names=()
   local i=0
-  while [ $((i+1)) -le $# ]; do
-    local name="${!((i+1))}"
-    local cmd="${!((i+2))}"
+  local n=$#
+  while [ $((i+1)) -le "$n" ]; do
+    local name_idx=$((i+1))
+    local cmd_idx=$((i+2))
+    local name="${!name_idx}"
+    local cmd="${!cmd_idx}"
+    if [ -z "$name" ] || [ -z "$cmd" ]; then
+      echo "ERROR: run_parallel expected name/cmd pairs; got empty at indices $name_idx/$cmd_idx"
+      exit 1
+    fi
     echo "  -> launching: $name"
     eval "$cmd" > "$LOG_DIR/$name.log" 2>&1 &
     pids+=($!)
     names+=("$name")
     i=$((i+2))
   done
+  if [ ${#pids[@]} -eq 0 ]; then
+    echo "ERROR: run_parallel launched zero jobs. Refusing to continue."
+    exit 1
+  fi
   local fail=0
+  local idx
   for idx in "${!pids[@]}"; do
     if ! wait "${pids[$idx]}"; then
       echo "  !! FAILED: ${names[$idx]} — see $LOG_DIR/${names[$idx]}.log"
