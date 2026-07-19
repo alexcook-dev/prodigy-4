@@ -672,7 +672,7 @@ immediate sequence, not two separate uncoordinated passes.
     as a good general assistant, with acceptable first-token latency
 - [x] **T2 (P1)** — shell — Scaffold SwiftUI 4-pane layout (Step 1)
   - Verify: app launches with sidebar/chat/files/terminal placeholders
-- [ ] **T3 (P1)** — data — SwiftData models (Project/Agent/Thread/Message) + two
+- [x] **T3 (P1)** — data — SwiftData models (Project/Agent/Thread/Message) + two
   separate sidebar sections (Step 6)
   - Verify: create/switch Projects and Agents; persona shared, threads per-Project
 - [ ] **T4 (P1)** — provider — `ModelProvider` + persistent-process
@@ -700,14 +700,14 @@ immediate sequence, not two separate uncoordinated passes.
   - Files: `TerminalView` wrapper/subclass
   - Verify: ⌘1-⌘4 switch panes from inside a running shell; vim's Esc never
     flips the center pane
-- [ ] **T11 (P1, completes T3/Step 6)** — data — Project creation flow: folder
+- [x] **T11 (P1, completes T3/Step 6)** — data — Project creation flow: folder
   picker + "start empty" fallback, quick-chat auto-creates a real Project,
   single-thread-per-Project for V1
   - Files: Project creation UI, SwiftData Project model
   - Verify: create a Project via picker or "start empty"; first-run "quick
     chat" link produces a real backing Project; tab bar "+" opens file
     previews only, never a second thread
-- [ ] **T12 (P2)** — sidebar — Archive action + active/archived filter toggle
+- [x] **T12 (P2)** — sidebar — Archive action + active/archived filter toggle
   - Files: Project model (`archived: Bool`), sidebar view
   - Verify: archiving a Project removes it from the default view; filter
     toggle reveals archived ones

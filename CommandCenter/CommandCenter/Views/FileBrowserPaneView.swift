@@ -3,15 +3,20 @@ import SwiftUI
 /// Top-right file browser placeholder.
 /// Real FileManager tree + lazy loading is T6; preview flip is later.
 struct FileBrowserPaneView: View {
+    /// Active Project's working folder (nil when nothing selected).
+    var projectFolderPath: String? = nil
     var isFocused: Bool = false
 
-    private let rows: [(indent: Int, icon: String, name: String, selected: Bool)] = [
-        (0, "chevron.down", "src/", false),
-        (1, "diamond.fill", "hero-v3.tsx", true),
-        (1, "diamond", "nav.tsx", false),
-        (0, "chevron.right", "assets/", false),
-        (0, "chevron.right", "docs/", false),
-    ]
+    private var headerTitle: String {
+        if let projectFolderPath {
+            let home = FileManager.default.homeDirectoryForCurrentUser.path
+            let display = projectFolderPath.hasPrefix(home)
+                ? "~" + projectFolderPath.dropFirst(home.count)
+                : projectFolderPath
+            return "Files — \(display)"
+        }
+        return "Files"
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,7 +40,7 @@ struct FileBrowserPaneView: View {
 
     private var panelHeader: some View {
         HStack {
-            Text("Files — ~/Projects/website")
+            Text(headerTitle)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Theme.textSecondary)
                 .textCase(.uppercase)
@@ -58,38 +63,32 @@ struct FileBrowserPaneView: View {
     }
 
     private var fileList: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                    HStack(spacing: 6) {
-                        Image(systemName: row.icon)
-                            .font(.system(size: 10))
-                            .foregroundStyle(Theme.textSecondary)
-                            .frame(width: 14)
-
-                        Text(row.name)
-                            .font(.system(size: 12))
-                            .foregroundStyle(Theme.textRow)
-                            .lineLimit(1)
-
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.leading, CGFloat(12 + row.indent * 12))
-                    .padding(.trailing, 12)
-                    .padding(.vertical, 3)
-                    .background(row.selected ? Theme.fileSelectionFill : Color.clear)
-                    .contentShape(Rectangle())
+        Group {
+            if projectFolderPath == nil {
+                VStack {
+                    Spacer()
+                    Text("No project selected.\nFiles follow the active project's folder.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(16)
+                    Spacer()
                 }
-
-                Text("File tree is a placeholder — lazy FileManager browser is T6.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.textTertiary)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("File tree is a placeholder — lazy FileManager browser is T6.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.textTertiary)
+                            .padding(.horizontal, 12)
+                            .padding(.top, 12)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
