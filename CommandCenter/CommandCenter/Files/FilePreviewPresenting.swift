@@ -41,10 +41,9 @@ struct FilePreviewRequest: Identifiable, Hashable, Sendable {
 
 /// Connection point between the file browser and the center pane.
 ///
-/// `WorkspaceSelection` conforms today; Wave 3 chat controller can own this later.
-///
-/// **Do not invent chat-view types here** — when chat lands, make its controller
-/// conform to this protocol and pass it into `FileBrowserPaneView`.
+/// `WorkspaceSelection` conforms and flips the center tab bar into preview
+/// (Wave 3 / T5 integration of Stream B). Composer insertion for ⌘⏎ is staged
+/// on `pendingComposerInsert` and drained by `CenterPaneView`.
 @MainActor
 protocol FilePreviewPresenting: AnyObject {
     /// Open (or focus) a file preview tab and make it the active center content.
@@ -58,7 +57,5 @@ protocol FilePreviewPresenting: AnyObject {
 
     /// ⌘⏎ from a file preview: switch to chat and insert a lightweight path
     /// reference into the composer (plain text, user-editable — not auto-send).
-    ///
-    /// TODO(Wave 3 / T5): implement composer insertion once the chat composer exists.
     func discussInChat(_ request: FilePreviewRequest)
 }

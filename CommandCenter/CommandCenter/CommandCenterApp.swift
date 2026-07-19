@@ -2,7 +2,8 @@ import SwiftData
 import SwiftUI
 
 /// Personal Mac command center — shell (T2) + colors (T15) + SwiftData (T3/T11/T12)
-/// + file browser (T6) + SwiftTerm terminal (T7/T10) + Claude CLI provider (T4/T9).
+/// + file browser (T6) + SwiftTerm terminal (T7/T10) + Claude CLI provider (T4/T9)
+/// + chat UI / streaming markdown / error banners (T5/T13).
 @main
 struct CommandCenterApp: App {
     @StateObject private var focus = WorkspaceFocusController()
@@ -47,6 +48,7 @@ struct CommandCenterApp: App {
             CommandGroup(replacing: .newItem) {}
             // Pane switching — menu key-equivalents so ⌘1–⌘4 still work when
             // the AppKit TerminalView is first responder (T10 / Premise 1).
+            // ⌘2 also forces the Chat tab via chatTabActivationToken (T5 wiring).
             CommandMenu("Navigate") {
                 ForEach(WorkspacePane.allCases, id: \.self) { pane in
                     Button(pane.menuTitle) {
