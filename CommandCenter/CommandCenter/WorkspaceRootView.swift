@@ -294,7 +294,9 @@ struct WorkspaceRootView: View {
         if let path = currentProject?.folderPath {
             fileBrowser.setRoot(URL(fileURLWithPath: path, isDirectory: true))
         } else {
-            fileBrowser.setRoot(nil)
+            // No Project selected: still show a real tree rooted at ~ (PLAN.md
+            // IA revision after Wave 0). Project selection rebinds to its folder.
+            fileBrowser.setRoot(FileManager.default.homeDirectoryForCurrentUser)
         }
     }
 

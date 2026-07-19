@@ -53,11 +53,6 @@ struct CenterPaneView: View {
         return project.primaryThread
     }
 
-    /// True first-run: zero Projects ever (including hidden quick-chat).
-    private var isFirstRun: Bool {
-        allProjects.isEmpty
-    }
-
     private var isStreamingHere: Bool {
         guard let project = selectedProject, let thread = activeThread else { return false }
         return chat.isStreaming(projectID: project.id, threadID: thread.id)
@@ -69,20 +64,14 @@ struct CenterPaneView: View {
     }
 
     var body: some View {
-        Group {
-            if isFirstRun {
-                FirstRunView(
-                    onCreateProject: onCreateProject,
-                    onQuickChat: onQuickChat
-                )
-            } else {
-                VStack(spacing: 0) {
-                    tabBar
-                    contentBody
-                    if case .chat = selection.activeSurface {
-                        composerBar
-                    }
-                }
+        // Always show live chat chrome (tabs + body + composer). Never gate on
+        // FirstRunView / "Good evening" — live feedback after Wave 0: center pane
+        // defaults to an empty composer even with zero Projects (PLAN.md IA revision).
+        VStack(spacing: 0) {
+            tabBar
+            contentBody
+            if case .chat = selection.activeSurface {
+                composerBar
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -90,12 +79,8 @@ struct CenterPaneView: View {
         // T16: cap chat reading width on large displays (~900–1000px).
         .frame(maxWidth: LayoutMetrics.maxReadingWidth)
         .frame(maxWidth: .infinity) // stay centered in the pane
-        .overlay {
-            if isFocused {
-                RoundedRectangle(cornerRadius: 0)
-                    .strokeBorder(Theme.focusRing, lineWidth: 2)
-            }
-        }
+        // No persistent full-pane focus ring — that reads as a permanent border.
+        // Focus is shown on the composer text field instead (see composerBar).
         // ⌘⏎ discuss-in-chat: selection stages plain-text reference → composer.
         .onChange(of: selection.pendingComposerInsert) { _, value in
             guard let value else { return }
@@ -218,11 +203,8 @@ struct CenterPaneView: View {
 
     private var chatBody: some View {
         Group {
-            // T14: never show a Project-picker when Projects exist.
-            if selectedProject == nil {
-                // True first-run is handled by FirstRunView; keep empty otherwise.
-                emptyThreadState
-            } else if let thread = activeThread {
+            // Always empty-chat or message list — never a gated greeting/CTA.
+            if let thread = activeThread {
                 let messages = thread.sortedMessages
                 if messages.isEmpty && !isStreamingHere && errorHere == nil {
                     emptyThreadState
@@ -236,46 +218,26 @@ struct CenterPaneView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var noProjectSelected: some View {
-        VStack(spacing: 10) {
-            Text("Select a Project")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(Theme.textPrimary)
-            Text("Choose one from the sidebar, or create a new Project to start chatting.")
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.textSecondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 360)
-            Button(action: onCreateProject) {
-                Text("New Project")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Theme.accentText)
-            }
-            .buttonStyle(.plain)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
     private var emptyThreadState: some View {
         VStack(alignment: .leading, spacing: 14) {
             if let project = selectedProject {
                 Text(project.folderPath)
                     .font(.system(size: 12).monospaced())
                     .foregroundStyle(Theme.textSecondary)
+            }
 
-                Text(
-                    selectedAgent == nil
-                        ? "No messages yet. Ask anything about this project."
-                        : "New conversation with \(selectedAgent!.name) in \(project.name)."
-                )
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.textPrimary)
+            Text(
+                selectedAgent == nil
+                    ? "No messages yet. Ask anything about this project."
+                    : "New conversation with \(selectedAgent!.name)\(selectedProject.map { " in \($0.name)" } ?? "")."
+            )
+            .font(.system(size: 13))
+            .foregroundStyle(Theme.textPrimary)
 
-                // D4: only generic chips — no folder-aware chips (those need tools).
-                HStack(spacing: 8) {
-                    suggestionChip("Plan today")
-                    suggestionChip("Something else")
-                }
+            // D4: only generic chips — no folder-aware chips (those need tools).
+            HStack(spacing: 8) {
+                suggestionChip("Plan today")
+                suggestionChip("Something else")
             }
         }
         .padding(.horizontal, 24)
@@ -303,7 +265,7 @@ struct CenterPaneView: View {
                 )
         }
         .buttonStyle(.plain)
-        .disabled(chat.isBusy || selectedProject == nil)
+        .disabled(chat.isBusy)
     }
 
     private func messageScroll(messages: [Message]) -> some View {
@@ -493,7 +455,6 @@ struct CenterPaneView: View {
                         // Return sends; shift-return is newline via TextField axis.
                         sendCurrentMessage()
                     }
-                    .disabled(selectedProject == nil)
 
                 if chat.isBusy && isStreamingHere {
                     // Busy indicator on the right of the field while streaming.
@@ -509,7 +470,11 @@ struct CenterPaneView: View {
                     .fill(Theme.elevatedSurface)
                     .overlay(
                         RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .strokeBorder(Theme.borderStructural, lineWidth: 1)
+                            // Focus ring on the composer control only (not the whole pane).
+                            .strokeBorder(
+                                composerFocused ? Theme.focusRing : Theme.borderStructural,
+                                lineWidth: composerFocused ? 2 : 1
+                            )
                     )
             )
             .overlay(alignment: .trailing) {
@@ -556,9 +521,7 @@ struct CenterPaneView: View {
     }
 
     private var canSend: Bool {
-        selectedProject != nil
-            && activeThread != nil
-            && !chat.composerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !chat.composerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !chat.isBusy
     }
 
@@ -632,7 +595,27 @@ struct CenterPaneView: View {
     // MARK: - Actions
 
     private func sendCurrentMessage() {
-        guard let project = selectedProject, let thread = activeThread else { return }
+        guard canSend else { return }
+        // First message with no Project: auto-create a hidden quick-chat Project
+        // so the center pane is never a creation gate (PLAN.md IA revision).
+        let project: WorkspaceProject
+        let thread: ChatThread
+        if let existing = selectedProject, let existingThread = activeThread {
+            project = existing
+            thread = existingThread
+        } else {
+            do {
+                let created = try ProjectFactory.createQuickChat(in: modelContext)
+                try modelContext.save()
+                selection.selectProject(created)
+                guard let primary = created.primaryThread else { return }
+                project = created
+                thread = primary
+            } catch {
+                onCreateProject()
+                return
+            }
+        }
         // Focused project → not background (T9 hasUnviewedActivity stays off).
         chat.send(
             project: project,

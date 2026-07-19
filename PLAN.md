@@ -477,6 +477,25 @@ First screen, in order of attention:
      until the user clicks in
 ```
 
+**Revised after seeing Wave 0 running (2026-07-19, live feedback):**
+- **No persistent blue border/outline on the center pane.** The earlier wireframe
+  convention ("blue outline = focused pane") reads as a permanent validation/error
+  frame around empty content once actually built — cut it. Keyboard-focus state
+  doesn't need a static full-pane border; if focus needs to be visible at all,
+  it belongs on the specific control that has it (e.g. the composer's text field),
+  not a 2px rule around the whole pane.
+- **Center pane always defaults to a live chat composer — never a gated
+  greeting/CTA screen.** This replaces wf-2's "Good evening" hero as the actual
+  default: even on true first-run (zero Projects ever), the center pane shows a
+  ready, empty chat you can type into immediately. Project creation still works
+  via the sidebar's "+ New Project" — it's just no longer something the center
+  pane blocks on. (This does not need a picker or setup step first.)
+- **Files panel defaults to the user's home folder, not a "no project selected"
+  placeholder.** When no Project is active, the top-right file tree still shows
+  something real and useful (rooted at `~`), rather than an empty state. Once a
+  Project is selected, the tree switches to that Project's working folder as
+  originally specified.
+
 Constraint worship — if only 3 things are visible on open: (1) the active
 conversation, (2) which Project it belongs to, (3) that Files/Terminal exist
 and are scoped to that Project. Everything else (agents list, kbd hints,
