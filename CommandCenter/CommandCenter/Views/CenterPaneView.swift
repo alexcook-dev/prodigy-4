@@ -62,6 +62,9 @@ struct CenterPaneView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.centerBackground)
+        // T16: cap chat reading width on large displays (~900–1000px).
+        .frame(maxWidth: LayoutMetrics.maxReadingWidth)
+        .frame(maxWidth: .infinity) // stay centered in the pane
         .overlay {
             if isFocused {
                 RoundedRectangle(cornerRadius: 0)

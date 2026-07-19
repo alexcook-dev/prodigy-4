@@ -3,8 +3,8 @@ import SwiftUI
 
 /// Root 4-pane shell: sidebar | center chat/preview | right files/terminal.
 ///
-/// Integrates Wave 1-data (SwiftData), Wave 1-files (lazy file browser), and
-/// Wave 1-terminal (SwiftTerm + ⌘1–⌘4 passthrough via WorkspaceFocusController).
+/// Wave 1 combined: SwiftData (data), lazy files, SwiftTerm, and T16 window
+/// behavior (persisted NSSplitView dividers + narrow right-column drawer).
 struct WorkspaceRootView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var focus: WorkspaceFocusController
@@ -13,47 +13,62 @@ struct WorkspaceRootView: View {
     @State private var showProjectSheet = false
     @StateObject private var fileBrowser = FileBrowserModel()
 
+    /// Overlay drawer for Files/Terminal when the window is below the collapse breakpoint.
+    @State private var isRightColumnDrawerPresented = false
+    /// Live window content width — drives the narrow-width collapse.
+    @State private var windowWidth: CGFloat = LayoutMetrics.defaultWindowWidth
+
     @Query(sort: \WorkspaceProject.lastActiveAt, order: .reverse)
     private var allProjects: [WorkspaceProject]
 
+    private var isNarrow: Bool {
+        windowWidth < LayoutMetrics.rightColumnCollapseBreakpoint
+    }
+
     var body: some View {
-        HSplitView {
-            SidebarView(
-                selection: selection,
-                isFocused: focus.focusedPane == .sidebar
-            )
-            .frame(minWidth: 180, idealWidth: LayoutMetrics.sidebarWidth, maxWidth: 320)
-            .layoutPriority(0)
-            .contentShape(Rectangle())
-            .onTapGesture { focus.focus(.sidebar) }
+        ZStack(alignment: .trailing) {
+            mainSplit
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            CenterPaneView(
-                selection: selection,
-                fileRootURL: fileBrowser.rootURL,
-                isFocused: focus.focusedPane == .chat,
-                onCreateProject: { showProjectSheet = true },
-                onQuickChat: startQuickChat
-            )
-            .frame(minWidth: 360)
-            .layoutPriority(1)
-            .contentShape(Rectangle())
-            .onTapGesture { focus.focus(.chat) }
-
-            RightColumnView(
-                fileBrowser: fileBrowser,
-                previewPresenter: selection,
-                project: currentProject,
-                filesFocused: focus.focusedPane == .files,
-                terminalFocused: focus.focusedPane == .terminal,
-                onFocusFiles: { focus.focus(.files) },
-                onFocusTerminal: { focus.focus(.terminal) },
-                onPaneShortcut: { focus.focus($0) }
-            )
-            .frame(minWidth: 220, idealWidth: LayoutMetrics.rightColumnWidth, maxWidth: 480)
-            .layoutPriority(0)
+            if isNarrow && isRightColumnDrawerPresented {
+                rightColumnDrawer
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
         }
         .background(Theme.appBackground)
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .preference(key: WindowWidthPreferenceKey.self, value: geo.size.width)
+            }
+        )
+        .onPreferenceChange(WindowWidthPreferenceKey.self) { width in
+            windowWidth = width
+        }
+        .onChange(of: isNarrow) { _, narrow in
+            if !narrow { isRightColumnDrawerPresented = false }
+        }
+        .animation(.easeInOut(duration: 0.18), value: isRightColumnDrawerPresented)
         .preferredColorScheme(nil)
+        .toolbar {
+            if isNarrow {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        isRightColumnDrawerPresented.toggle()
+                    } label: {
+                        Label(
+                            isRightColumnDrawerPresented
+                                ? "Hide Files & Terminal"
+                                : "Show Files & Terminal",
+                            systemImage: isRightColumnDrawerPresented
+                                ? "sidebar.trailing"
+                                : "rectangle.righthalf.inset.filled"
+                        )
+                    }
+                    .help("Toggle Files & Terminal panel")
+                }
+            }
+        }
         .focusable()
         .onKeyPress(keys: [.init("1"), .init("2"), .init("3"), .init("4")]) { press in
             guard press.modifiers.contains(.command) else { return .ignored }
@@ -62,8 +77,12 @@ struct WorkspaceRootView: View {
             case "2":
                 focus.focus(.chat)
                 selection.showChat()
-            case "3": focus.focus(.files)
-            case "4": focus.focus(.terminal)
+            case "3":
+                focus.focus(.files)
+                openRightColumnIfCollapsed()
+            case "4":
+                focus.focus(.terminal)
+                openRightColumnIfCollapsed()
             default: return .ignored
             }
             return .handled
@@ -84,6 +103,123 @@ struct WorkspaceRootView: View {
             rebindFileRoot()
         }
     }
+
+    // MARK: - Main split
+
+    private var mainSplit: some View {
+        Group {
+            if isNarrow {
+                PersistableHSplitView(
+                    autosaveName: "CommandCenter.MainSplit.Narrow",
+                    panes: [
+                        .init(
+                            minWidth: LayoutMetrics.sidebarMinWidth,
+                            idealWidth: LayoutMetrics.sidebarWidth,
+                            maxWidth: LayoutMetrics.sidebarMaxWidth,
+                            holdingPriority: .defaultHigh
+                        ) {
+                            sidebarPane
+                        },
+                        .init(
+                            minWidth: LayoutMetrics.centerMinWidth,
+                            holdingPriority: .defaultLow
+                        ) {
+                            centerPane
+                        },
+                    ]
+                )
+            } else {
+                PersistableHSplitView(
+                    autosaveName: "CommandCenter.MainSplit.Wide",
+                    panes: [
+                        .init(
+                            minWidth: LayoutMetrics.sidebarMinWidth,
+                            idealWidth: LayoutMetrics.sidebarWidth,
+                            maxWidth: LayoutMetrics.sidebarMaxWidth,
+                            holdingPriority: .defaultHigh
+                        ) {
+                            sidebarPane
+                        },
+                        .init(
+                            minWidth: LayoutMetrics.centerMinWidth,
+                            holdingPriority: .defaultLow
+                        ) {
+                            centerPane
+                        },
+                        .init(
+                            minWidth: LayoutMetrics.rightColumnMinWidth,
+                            idealWidth: LayoutMetrics.rightColumnWidth,
+                            maxWidth: LayoutMetrics.rightColumnMaxWidth,
+                            holdingPriority: .defaultHigh
+                        ) {
+                            rightColumn
+                        },
+                    ]
+                )
+            }
+        }
+    }
+
+    private var sidebarPane: some View {
+        SidebarView(
+            selection: selection,
+            isFocused: focus.focusedPane == .sidebar
+        )
+        .contentShape(Rectangle())
+        .onTapGesture { focus.focus(.sidebar) }
+    }
+
+    private var centerPane: some View {
+        CenterPaneView(
+            selection: selection,
+            fileRootURL: fileBrowser.rootURL,
+            isFocused: focus.focusedPane == .chat,
+            onCreateProject: { showProjectSheet = true },
+            onQuickChat: startQuickChat
+        )
+        .contentShape(Rectangle())
+        .onTapGesture { focus.focus(.chat) }
+    }
+
+    private var rightColumn: some View {
+        RightColumnView(
+            fileBrowser: fileBrowser,
+            previewPresenter: selection,
+            project: currentProject,
+            filesFocused: focus.focusedPane == .files,
+            terminalFocused: focus.focusedPane == .terminal,
+            onFocusFiles: { focus.focus(.files) },
+            onFocusTerminal: { focus.focus(.terminal) },
+            onPaneShortcut: { focus.focus($0) }
+        )
+    }
+
+    private var rightColumnDrawer: some View {
+        HStack(spacing: 0) {
+            Color.black.opacity(0.18)
+                .contentShape(Rectangle())
+                .onTapGesture { isRightColumnDrawerPresented = false }
+
+            rightColumn
+                .frame(width: LayoutMetrics.rightColumnDrawerWidth)
+                .background(Theme.appBackground)
+                .overlay(alignment: .leading) {
+                    Rectangle()
+                        .fill(Theme.borderStructural)
+                        .frame(width: 1)
+                }
+                .shadow(color: .black.opacity(0.25), radius: 12, x: -4, y: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func openRightColumnIfCollapsed() {
+        if isNarrow {
+            isRightColumnDrawerPresented = true
+        }
+    }
+
+    // MARK: - Data
 
     private var currentProject: WorkspaceProject? {
         guard let id = selection.selectedProjectID else { return nil }
@@ -180,6 +316,15 @@ private struct RightColumnView: View {
             .onTapGesture(perform: onFocusTerminal)
         }
         .background(Theme.appBackground)
+    }
+}
+
+// MARK: - Window width preference
+
+private struct WindowWidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = LayoutMetrics.defaultWindowWidth
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 

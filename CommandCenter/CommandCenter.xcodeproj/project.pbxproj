@@ -34,6 +34,7 @@ A2B10001B10001B10001B002 /* KeyPassthroughTerminalView.swift in Sources */ = {is
 A2B10001B10001B10001B003 /* TerminalSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B10001F10001F10001F003 /* TerminalSessionController.swift */; };
 A2B10001B10001B10001B004 /* TerminalViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B10001F10001F10001F004 /* TerminalViewRepresentable.swift */; };
 A2B10001B10001B10001B010 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A2B10001P10001P10001P001 /* SwiftTerm */; };
+A3C10001B10001B10001B001 /* PersistableHSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3C10001F10001F10001F001 /* PersistableHSplitView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -66,6 +67,7 @@ A2B10001F10001F10001F001 /* WorkspaceFocusController.swift */ = {isa = PBXFileRe
 A2B10001F10001F10001F002 /* KeyPassthroughTerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPassthroughTerminalView.swift; sourceTree = "<group>"; };
 A2B10001F10001F10001F003 /* TerminalSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSessionController.swift; sourceTree = "<group>"; };
 A2B10001F10001F10001F004 /* TerminalViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalViewRepresentable.swift; sourceTree = "<group>"; };
+A3C10001F10001F10001F001 /* PersistableHSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistableHSplitView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -164,6 +166,7 @@ A1000000000000000000000A /* Theme */ = {
 				4C95E5098497418BB85ECD72 /* CenterPaneView.swift */,
 				D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */,
 				10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */,
+				A3C10001F10001F10001F001 /* PersistableHSplitView.swift */,
 				B20000000000000000000007 /* ProjectCreationSheet.swift */,
 				B20000000000000000000008 /* AgentCreationSheet.swift */,
 				B20000000000000000000009 /* FirstRunView.swift */,
@@ -279,6 +282,7 @@ A1000000000000000000000A /* Theme */ = {
 				A2B10001B10001B10001B002 /* KeyPassthroughTerminalView.swift in Sources */,
 				A2B10001B10001B10001B003 /* TerminalSessionController.swift in Sources */,
 				A2B10001B10001B10001B004 /* TerminalViewRepresentable.swift in Sources */,
+				A3C10001B10001B10001B001 /* PersistableHSplitView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

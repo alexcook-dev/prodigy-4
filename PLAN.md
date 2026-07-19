@@ -726,7 +726,7 @@ immediate sequence, not two separate uncoordinated passes.
   - Files: color asset catalog / `Color` extensions, all views (no raw hex)
   - Verify: toggling system Light/Dark updates the app without a relaunch;
     body and hint text clear 4.5:1 on every recorded surface
-- [ ] **T16 (P2)** — window — Narrow-width collapse (right column → overlay
+- [x] **T16 (P2)** — window — Narrow-width collapse (right column → overlay
   below breakpoint), draggable `NSSplitView` dividers, max reading width
   - Files: root layout view
   - Verify: tile the window to ~650px → right column collapses to an overlay,
