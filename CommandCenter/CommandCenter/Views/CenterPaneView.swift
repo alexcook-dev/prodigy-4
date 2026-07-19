@@ -1,15 +1,26 @@
 import SwiftUI
 
 /// Center pane: chat thread (default) or file preview tabs.
-/// Chat streaming, provider wiring, and real preview are later waves — shell only.
+///
+/// Chat streaming / provider wiring land in later waves (T5). File preview tabs
+/// are real now (T6); the interim host is `FilePreviewSession`.
+///
+/// TODO(Wave 3 / T5): Replace `FilePreviewSession` with the real chat controller
+/// that owns this tab bar, streaming body, and composer. Keep the tab model
+/// (chat + file-preview tabs only — never a second chat thread per T11).
 struct CenterPaneView: View {
+    @ObservedObject var previewSession: FilePreviewSession
+    /// Browser root — used only for relative paths in the preview chrome.
+    var fileRootURL: URL? = nil
     var isFocused: Bool = true
 
     var body: some View {
         VStack(spacing: 0) {
             tabBar
-            chatPlaceholder
-            composerPlaceholder
+            contentBody
+            if previewSession.activeSurface == .chat {
+                composerPlaceholder
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.centerBackground)
@@ -25,10 +36,26 @@ struct CenterPaneView: View {
 
     private var tabBar: some View {
         HStack(spacing: 4) {
-            CenterTab(title: "Chat — Kickoff", isActive: true, showsClose: false)
-            CenterTab(title: "hero-v3.tsx", isActive: false, showsClose: true)
+            // Always-present chat tab (⌘2 target).
+            CenterTab(
+                title: "Chat — Kickoff",
+                isActive: previewSession.activeSurface == .chat,
+                onSelect: { previewSession.activateChatTab() }
+            )
+
+            ForEach(previewSession.openPreviews) { preview in
+                CenterTab(
+                    title: preview.fileName,
+                    isActive: previewSession.isPreviewActive(preview.url),
+                    onSelect: { previewSession.presentFilePreview(preview) },
+                    onClose: { previewSession.dismissFilePreview(id: preview.url) }
+                )
+            }
+
             Button {
-                // T5/T11: "+" opens file-preview tabs only, never a second chat thread.
+                // T11: "+" opens file-preview tabs only, never a second chat thread.
+                // Without a file-picker wiring yet, this is a no-op shell affordance;
+                // selecting a file in the Files panel opens a preview tab.
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 11, weight: .medium))
@@ -61,7 +88,34 @@ struct CenterPaneView: View {
         }
     }
 
-    // MARK: - Chat body (placeholder)
+    // MARK: - Content
+
+    @ViewBuilder
+    private var contentBody: some View {
+        switch previewSession.activeSurface {
+        case .chat:
+            chatPlaceholder
+        case .filePreview(let url):
+            if let request = previewSession.openPreviews.first(where: { $0.url == url }) {
+                FilePreviewView(
+                    request: request,
+                    rootURL: fileRootURL,
+                    onClose: {
+                        // Esc / close: dismiss this preview and return to chat.
+                        previewSession.dismissFilePreview(id: url)
+                    },
+                    onDiscussInChat: {
+                        // Stub: switches to chat; composer insertion is Wave 3.
+                        previewSession.discussInChat(request)
+                    }
+                )
+            } else {
+                chatPlaceholder
+            }
+        }
+    }
+
+    // MARK: - Chat body (placeholder until T5)
 
     private var chatPlaceholder: some View {
         ScrollView {
@@ -240,20 +294,31 @@ struct CenterPaneView: View {
     }
 }
 
+// MARK: - Tab chrome
+
+/// Tab chrome: whole tab is tappable; optional close is a separate control
+/// (not nested Buttons — nested Buttons break hit-testing on macOS).
 private struct CenterTab: View {
     let title: String
     let isActive: Bool
-    let showsClose: Bool
+    var onSelect: () -> Void
+    var onClose: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 6) {
             Text(title)
                 .font(.system(size: 12, weight: isActive ? .medium : .regular))
                 .foregroundStyle(isActive ? Theme.textPrimary : Theme.textSecondary)
-            if showsClose {
+                .onTapGesture(perform: onSelect)
+
+            if let onClose {
                 Image(systemName: "xmark")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(Theme.textTertiary)
+                    .padding(2)
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onClose)
+                    .help("Close preview")
             }
         }
         .padding(.horizontal, 14)
@@ -288,11 +353,13 @@ private struct CenterTab: View {
                 }
             }
         )
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onSelect)
     }
 }
 
 #Preview {
-    CenterPaneView()
+    CenterPaneView(previewSession: FilePreviewSession())
         .frame(width: 640, height: 700)
         .preferredColorScheme(.dark)
 }

@@ -14,6 +14,11 @@
 		C78F465372BB48858CBB93BB /* CenterPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C95E5098497418BB85ECD72 /* CenterPaneView.swift */; };
 		BA4708242C804BB080B814FA /* FileBrowserPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */; };
 		D4EF1582486D4AA198A4AC0F /* TerminalPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */; };
+		F6A10001B001000000000001 /* FileNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000001 /* FileNode.swift */; };
+		F6A10001B001000000000002 /* FileTreeLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000002 /* FileTreeLoader.swift */; };
+		F6A10001B001000000000003 /* FileBrowserModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000003 /* FileBrowserModel.swift */; };
+		F6A10001B001000000000004 /* FilePreviewPresenting.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000004 /* FilePreviewPresenting.swift */; };
+		F6A10001B001000000000005 /* FilePreviewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000005 /* FilePreviewContent.swift */; };
 		9CABA087C40747098D92B104 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A021B5B6387B4939800EC0EB /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -27,6 +32,11 @@
 		4C95E5098497418BB85ECD72 /* CenterPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CenterPaneView.swift; sourceTree = "<group>"; };
 		D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserPaneView.swift; sourceTree = "<group>"; };
 		10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPaneView.swift; sourceTree = "<group>"; };
+		F6A10001F001000000000001 /* FileNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNode.swift; sourceTree = "<group>"; };
+		F6A10001F001000000000002 /* FileTreeLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreeLoader.swift; sourceTree = "<group>"; };
+		F6A10001F001000000000003 /* FileBrowserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserModel.swift; sourceTree = "<group>"; };
+		F6A10001F001000000000004 /* FilePreviewPresenting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewPresenting.swift; sourceTree = "<group>"; };
+		F6A10001F001000000000005 /* FilePreviewContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewContent.swift; sourceTree = "<group>"; };
 		A021B5B6387B4939800EC0EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000006 /* CommandCenter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CommandCenter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -59,9 +69,22 @@
 				BA8EE63358214777ABB6659C /* CommandCenter.entitlements */,
 				A021B5B6387B4939800EC0EB /* Assets.xcassets */,
 				A1000000000000000000000A /* Theme */,
+				F6A10001G001000000000001 /* Files */,
 				A10000000000000000000009 /* Views */,
 			);
 			path = CommandCenter;
+			sourceTree = "<group>";
+		};
+		F6A10001G001000000000001 /* Files */ = {
+			isa = PBXGroup;
+			children = (
+				F6A10001F001000000000001 /* FileNode.swift */,
+				F6A10001F001000000000002 /* FileTreeLoader.swift */,
+				F6A10001F001000000000003 /* FileBrowserModel.swift */,
+				F6A10001F001000000000004 /* FilePreviewPresenting.swift */,
+				F6A10001F001000000000005 /* FilePreviewContent.swift */,
+			);
+			path = Files;
 			sourceTree = "<group>";
 		};
 		A1000000000000000000000A /* Theme */ = {
@@ -167,6 +190,11 @@
 				C78F465372BB48858CBB93BB /* CenterPaneView.swift in Sources */,
 				BA4708242C804BB080B814FA /* FileBrowserPaneView.swift in Sources */,
 				D4EF1582486D4AA198A4AC0F /* TerminalPaneView.swift in Sources */,
+				F6A10001B001000000000001 /* FileNode.swift in Sources */,
+				F6A10001B001000000000002 /* FileTreeLoader.swift in Sources */,
+				F6A10001B001000000000003 /* FileBrowserModel.swift in Sources */,
+				F6A10001B001000000000004 /* FilePreviewPresenting.swift in Sources */,
+				F6A10001B001000000000005 /* FilePreviewContent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
