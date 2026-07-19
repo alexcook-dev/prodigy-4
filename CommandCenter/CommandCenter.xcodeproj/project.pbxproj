@@ -29,6 +29,11 @@ F6A10001B001000000000002 /* FileTreeLoader.swift in Sources */ = {isa = PBXBuild
 F6A10001B001000000000003 /* FileBrowserModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000003 /* FileBrowserModel.swift */; };
 F6A10001B001000000000004 /* FilePreviewPresenting.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000004 /* FilePreviewPresenting.swift */; };
 F6A10001B001000000000005 /* FilePreviewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000005 /* FilePreviewContent.swift */; };
+A2B10001B10001B10001B001 /* WorkspaceFocusController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B10001F10001F10001F001 /* WorkspaceFocusController.swift */; };
+A2B10001B10001B10001B002 /* KeyPassthroughTerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B10001F10001F10001F002 /* KeyPassthroughTerminalView.swift */; };
+A2B10001B10001B10001B003 /* TerminalSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B10001F10001F10001F003 /* TerminalSessionController.swift */; };
+A2B10001B10001B10001B004 /* TerminalViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B10001F10001F10001F004 /* TerminalViewRepresentable.swift */; };
+A2B10001B10001B10001B010 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A2B10001P10001P10001P001 /* SwiftTerm */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -57,6 +62,10 @@ F6A10001F001000000000002 /* FileTreeLoader.swift */ = {isa = PBXFileReference; l
 F6A10001F001000000000003 /* FileBrowserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserModel.swift; sourceTree = "<group>"; };
 F6A10001F001000000000004 /* FilePreviewPresenting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewPresenting.swift; sourceTree = "<group>"; };
 F6A10001F001000000000005 /* FilePreviewContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewContent.swift; sourceTree = "<group>"; };
+A2B10001F10001F10001F001 /* WorkspaceFocusController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceFocusController.swift; sourceTree = "<group>"; };
+A2B10001F10001F10001F002 /* KeyPassthroughTerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPassthroughTerminalView.swift; sourceTree = "<group>"; };
+A2B10001F10001F10001F003 /* TerminalSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSessionController.swift; sourceTree = "<group>"; };
+A2B10001F10001F10001F004 /* TerminalViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalViewRepresentable.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,6 +73,7 @@ F6A10001F001000000000005 /* FilePreviewContent.swift */ = {isa = PBXFileReferenc
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A2B10001B10001B10001B010 /* SwiftTerm in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -89,6 +99,8 @@ F6A10001F001000000000005 /* FilePreviewContent.swift */ = {isa = PBXFileReferenc
 				B30000000000000000000001 /* Models */,
 				B30000000000000000000002 /* Services */,
 				F6A10001G001000000000001 /* Files */,
+				A2B10001G10001G10001G001 /* Terminal */,
+				A2B10001F10001F10001F001 /* WorkspaceFocusController.swift */,
 				A1000000000000000000000A /* Theme */,
 				A10000000000000000000009 /* Views */,
 			);
@@ -127,6 +139,16 @@ F6A10001F001000000000005 /* FilePreviewContent.swift */,
 path = Files;
 sourceTree = "<group>";
 };
+A2B10001G10001G10001G001 /* Terminal */ = {
+			isa = PBXGroup;
+			children = (
+				A2B10001F10001F10001F002 /* KeyPassthroughTerminalView.swift */,
+				A2B10001F10001F10001F003 /* TerminalSessionController.swift */,
+				A2B10001F10001F10001F004 /* TerminalViewRepresentable.swift */,
+			);
+			path = Terminal;
+			sourceTree = "<group>";
+		};
 A1000000000000000000000A /* Theme */ = {
 			isa = PBXGroup;
 			children = (
@@ -173,6 +195,9 @@ A1000000000000000000000A /* Theme */ = {
 			dependencies = (
 			);
 			name = CommandCenter;
+			packageProductDependencies = (
+				A2B10001P10001P10001P001 /* SwiftTerm */,
+			);
 			productName = CommandCenter;
 			productReference = A10000000000000000000006 /* CommandCenter.app */;
 			productType = "com.apple.product-type.application";
@@ -201,6 +226,9 @@ A1000000000000000000000A /* Theme */ = {
 				Base,
 			);
 			mainGroup = A10000000000000000000007;
+			packageReferences = (
+				A2B10001R10001R10001R001 /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+			);
 			productRefGroup = A1000000000000000000000B /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -247,6 +275,10 @@ A1000000000000000000000A /* Theme */ = {
 				F6A10001B001000000000003 /* FileBrowserModel.swift in Sources */,
 				F6A10001B001000000000004 /* FilePreviewPresenting.swift in Sources */,
 				F6A10001B001000000000005 /* FilePreviewContent.swift in Sources */,
+				A2B10001B10001B10001B001 /* WorkspaceFocusController.swift in Sources */,
+				A2B10001B10001B10001B002 /* KeyPassthroughTerminalView.swift in Sources */,
+				A2B10001B10001B10001B003 /* TerminalSessionController.swift in Sources */,
+				A2B10001B10001B10001B004 /* TerminalViewRepresentable.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -371,6 +403,25 @@ A1000000000000000000000A /* Theme */ = {
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A2B10001R10001R10001R001 /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.15.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A2B10001P10001P10001P001 /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A2B10001R10001R10001R001 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A10000000000000000000001 /* Project object */;
 }

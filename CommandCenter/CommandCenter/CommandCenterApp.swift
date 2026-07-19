@@ -1,10 +1,12 @@
 import SwiftData
 import SwiftUI
 
-/// Personal Mac command center — shell (T2) + semantic colors (T15)
-/// + SwiftData models / Projects+Agents (T3) + creation (T11) + archive (T12).
+/// Personal Mac command center — shell (T2) + colors (T15) + SwiftData (T3/T11/T12)
+/// + file browser (T6) + SwiftTerm terminal (T7/T10).
 @main
 struct CommandCenterApp: App {
+    @StateObject private var focus = WorkspaceFocusController()
+
     /// Shared schema for Projects, Agents, Threads, Messages.
     private var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -20,10 +22,7 @@ struct CommandCenterApp: App {
         do {
             return try ModelContainer(for: schema, configurations: [configuration])
         } catch {
-            // Fallback: in-memory so a corrupt store never bricks launch.
-            // User can recover via "Reset local data" later (PLAN interaction states).
             let memory = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-            // If even memory fails, crash with a clear message — nothing else to do.
             return try! ModelContainer(for: schema, configurations: [memory])
         }
     }()
@@ -31,6 +30,7 @@ struct CommandCenterApp: App {
     var body: some Scene {
         WindowGroup {
             WorkspaceRootView()
+                .environmentObject(focus)
                 .frame(
                     minWidth: LayoutMetrics.minWindowWidth,
                     minHeight: LayoutMetrics.minWindowHeight
@@ -45,6 +45,19 @@ struct CommandCenterApp: App {
         // Xcode project (CODE_SIGN_IDENTITY="-", ENABLE_APP_SANDBOX=NO).
         .commands {
             CommandGroup(replacing: .newItem) {}
+            // Pane switching — menu key-equivalents so ⌘1–⌘4 still work when
+            // the AppKit TerminalView is first responder (T10 / Premise 1).
+            CommandMenu("Navigate") {
+                ForEach(WorkspacePane.allCases, id: \.self) { pane in
+                    Button(pane.menuTitle) {
+                        focus.focus(pane)
+                    }
+                    .keyboardShortcut(
+                        KeyEquivalent(pane.shortcutDigit),
+                        modifiers: .command
+                    )
+                }
+            }
         }
     }
 }
