@@ -68,9 +68,6 @@ struct CenterPaneView: View {
         // Empty == same layout with zero messages (no marketing empty state).
         VStack(spacing: 0) {
             tabBar
-                .padding(.horizontal, 10)
-                .padding(.top, 10)
-                .padding(.bottom, 6)
 
             contentBody
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -149,10 +146,23 @@ struct CenterPaneView: View {
 
             Spacer()
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        // Floating glass strip for tabs (chrome only — not a full-pane fill).
-        .liquidGlassClearBar(cornerRadius: LiquidGlassMetrics.controlCorner)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        // Top panel: native bar material (titlebar/toolbar language), not accent blue.
+        .background {
+            UnevenRoundedRectangle(
+                topLeadingRadius: LiquidGlassMetrics.paneCorner - 2,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: LiquidGlassMetrics.paneCorner - 2,
+                style: .continuous
+            )
+            .fill(.bar)
+        }
+        .overlay(alignment: .bottom) {
+            Divider()
+                .opacity(0.55)
+        }
     }
 
     private var chatTabTitle: String {

@@ -8,18 +8,19 @@ import SwiftUI
 /// - Keep gaps **tight** (Apple multi-column apps use ~6–8pt, not large voids).
 /// - Prefer `.regular` / `.regular.interactive()` for controls; nested cards share the same language as Files/Terminal.
 enum LiquidGlassMetrics {
-    /// Outer rounded card radius for major panes (sidebar column / center).
-    static let paneCorner: CGFloat = 14
-    /// Nested cards (Projects, Agents, Files, Terminal).
-    static let nestedCorner: CGFloat = 12
+    /// Outer rounded card radius for major panes (center shell).
+    static let paneCorner: CGFloat = 12
+    /// Nested cards (Projects, Agents, Files, Terminal, Settings).
+    static let nestedCorner: CGFloat = 10
     /// Composer field / dense controls.
     static let controlCorner: CGFloat = 10
-    /// Gap between floating glass cards (also NSSplitView divider thickness).
-    static let interPaneGap: CGFloat = 6
-    /// Inset from the window edge.
-    static let windowInset: CGFloat = 6
+    /// **Single spacing token** used between every glass card in the app
+    /// (sidebar stack, right column, main split gap, window padding rhythm).
+    static let interPaneGap: CGFloat = 8
+    /// Inset from the window edge — matches inter-card gap for even rhythm.
+    static let windowInset: CGFloat = 8
     /// Inset of a glass card inside a split slot.
-    static let slotInset: CGFloat = 1
+    static let slotInset: CGFloat = 0
 }
 
 // MARK: - View modifiers

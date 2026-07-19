@@ -43,6 +43,8 @@ A3C10001B10001B10001B001 /* PersistableHSplitView.swift in Sources */ = {isa = P
 		C5E10001B10001B10001B003 /* ChatErrorBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E10001F10001F10001F003 /* ChatErrorBanner.swift */; };
 G7A10001B10001B10001B001 /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = G7A10001F10001F10001F001 /* LiquidGlass.swift */; };
 G7A10001B10001B10001B002 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = G7A10001F10001F10001F002 /* Typography.swift */; };
+H8A10001B001 /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = H8A10001F001 /* AppAppearance.swift */; };
+H8A10001B002 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = H8A10001F002 /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -84,6 +86,8 @@ A3C10001F10001F10001F001 /* PersistableHSplitView.swift */ = {isa = PBXFileRefer
 		C5E10001F10001F10001F003 /* ChatErrorBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatErrorBanner.swift; sourceTree = "<group>"; };
 G7A10001F10001F10001F001 /* LiquidGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlass.swift; sourceTree = "<group>"; };
 G7A10001F10001F10001F002 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
+H8A10001F001 /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
+H8A10001F002 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -141,6 +145,7 @@ G7A10001F10001F10001F002 /* Typography.swift */ = {isa = PBXFileReference; lastK
 			children = (
 				B20000000000000000000005 /* ProjectFactory.swift */,
 				B20000000000000000000006 /* WorkspaceSelection.swift */,
+				H8A10001F001 /* AppAppearance.swift */,
 				C4D10001F10001F10001F001 /* ModelProvider.swift */,
 				C4D10001F10001F10001F002 /* ClaudeCLIEventParser.swift */,
 				C4D10001F10001F10001F003 /* ClaudeCLIProvider.swift */,
@@ -189,6 +194,7 @@ A1000000000000000000000A /* Theme */ = {
 				C5E10001F10001F10001F002 /* StreamingMarkdownView.swift */,
 				C5E10001F10001F10001F003 /* ChatErrorBanner.swift */,
 				D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */,
+				H8A10001F002 /* SettingsView.swift */,
 				10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */,
 				A3C10001F10001F10001F001 /* PersistableHSplitView.swift */,
 				B20000000000000000000007 /* ProjectCreationSheet.swift */,
@@ -286,6 +292,8 @@ A1000000000000000000000A /* Theme */ = {
 				C8F7C0CA028B4B099881C5AA /* Theme.swift in Sources */,
 				G7A10001B10001B10001B001 /* LiquidGlass.swift in Sources */,
 				G7A10001B10001B10001B002 /* Typography.swift in Sources */,
+				H8A10001B002 /* SettingsView.swift in Sources */,
+				H8A10001B001 /* AppAppearance.swift in Sources */,
 				D63C17A1E4B24D11903BC0E9 /* SidebarView.swift in Sources */,
 				C78F465372BB48858CBB93BB /* CenterPaneView.swift in Sources */,
 				BA4708242C804BB080B814FA /* FileBrowserPaneView.swift in Sources */,

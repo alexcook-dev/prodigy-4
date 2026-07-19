@@ -1,6 +1,10 @@
 import SwiftData
 import SwiftUI
 
+extension Notification.Name {
+    static let prodigyOpenSettings = Notification.Name("prodigy.openSettings")
+}
+
 /// Personal Mac command center — shell (T2) + colors (T15) + SwiftData (T3/T11/T12)
 /// + file browser (T6) + SwiftTerm terminal (T7/T10) + Claude CLI provider (T4/T9)
 /// + chat UI / streaming markdown / error banners (T5/T13)
@@ -8,6 +12,11 @@ import SwiftUI
 @main
 struct CommandCenterApp: App {
     @StateObject private var focus = WorkspaceFocusController()
+    @AppStorage(AppStorageKey.appearance) private var appearanceRaw = AppAppearance.system.rawValue
+
+    private var preferredScheme: ColorScheme? {
+        (AppAppearance(rawValue: appearanceRaw) ?? .system).colorScheme
+    }
 
     /// Shared schema for Projects, Agents, Threads, Messages.
     private var sharedModelContainer: ModelContainer = {
@@ -35,6 +44,7 @@ struct CommandCenterApp: App {
                 .environmentObject(focus)
                 // San Francisco (system font) for the whole app — Apple HIG default.
                 .font(AppTypography.body)
+                .preferredColorScheme(preferredScheme)
                 .frame(
                     minWidth: LayoutMetrics.minWindowWidth,
                     minHeight: LayoutMetrics.minWindowHeight
@@ -56,9 +66,14 @@ struct CommandCenterApp: App {
         // Xcode project (CODE_SIGN_IDENTITY="-", ENABLE_APP_SANDBOX=NO).
         .commands {
             CommandGroup(replacing: .newItem) {}
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") {
+                    NotificationCenter.default.post(name: .prodigyOpenSettings, object: nil)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
             // Pane switching — menu key-equivalents so ⌘1–⌘4 still work when
             // the AppKit TerminalView is first responder (T10 / Premise 1).
-            // ⌘2 also forces the Chat tab via chatTabActivationToken (T5 wiring).
             CommandMenu("Navigate") {
                 ForEach(WorkspacePane.allCases, id: \.self) { pane in
                     Button(pane.menuTitle) {

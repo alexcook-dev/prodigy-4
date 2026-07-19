@@ -1,9 +1,8 @@
 import SwiftData
 import SwiftUI
 
-/// Left sidebar: two independent sections — Projects (top) and Agents (bottom).
-/// Not nested; separate headings and independent data sources. Shared row chrome
-/// only (`SidebarRowView`) — pure code reuse, not a visual merge.
+/// Left sidebar: independent glass cards for Projects, Agents, and Settings —
+/// same card language as Files / Terminal (no dividing line, only uniform gap).
 ///
 /// T3: SwiftData-backed lists. T11: creation sheets. T12: archive filter + action.
 /// T17: status-dot a11y labels + keyboard-reachable Archive.
@@ -19,6 +18,7 @@ struct SidebarView: View {
     @State private var showArchived = false
     @State private var showProjectSheet = false
     @State private var showAgentSheet = false
+    @State private var showSettings = false
     @State private var renameTarget: WorkspaceProject?
     @State private var renameText = ""
 
@@ -36,25 +36,18 @@ struct SidebarView: View {
     }
 
     var body: some View {
-        // Two separate glass cards (Projects / Agents), stacked like Files /
-        // Terminal on the right — draggable split between them, not one slab.
+        // Uniform gap between every card — same token as Files/Terminal/center.
         VStack(spacing: LiquidGlassMetrics.interPaneGap) {
-            VSplitView {
-                projectsSection
-                    .frame(minHeight: 88, idealHeight: 220)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .liquidGlassNested()
-                    .layoutPriority(1)
+            projectsSection
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .liquidGlassNested()
 
-                agentsSection
-                    .frame(minHeight: 88, idealHeight: 160)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .liquidGlassNested()
-                    .layoutPriority(1)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            agentsSection
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .liquidGlassNested()
 
-            keyboardHints
+            settingsCard
+                .liquidGlassNested()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.clear)
@@ -68,6 +61,12 @@ struct SidebarView: View {
                 let project = currentProject
                 selection.selectAgent(agent, in: project, context: modelContext)
             }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .prodigyOpenSettings)) { _ in
+            showSettings = true
         }
         .sheet(item: $renameTarget) { project in
             RenameProjectSheet(
@@ -86,6 +85,40 @@ struct SidebarView: View {
                 renameTarget = nil
             }
         }
+    }
+
+    // MARK: - Settings card (own glass box)
+
+    private var settingsCard: some View {
+        Button {
+            showSettings = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "gearshape.fill")
+                    .font(AppTypography.callout)
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(width: 18)
+                    .accessibilityHidden(true)
+
+                Text("Settings")
+                    .font(AppTypography.callout)
+                    .foregroundStyle(Theme.textPrimary)
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(AppTypography.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.textTertiary)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Settings")
+        .accessibilityHint("Opens appearance and app preferences")
     }
 
     // MARK: - Projects
@@ -351,16 +384,6 @@ struct SidebarView: View {
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    private var keyboardHints: some View {
-        Text("⌘1 Sidebar · ⌘2 Chat · ⌘3 Files · ⌘4 Term")
-            .font(AppTypography.caption2)
-            .foregroundStyle(Theme.textTertiary)
-            .padding(.horizontal, 4)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityLabel(
-                "Pane shortcuts: Command 1 Sidebar, Command 2 Chat, Command 3 Files, Command 4 Terminal"
-            )
-    }
 }
 
 // MARK: - Rename sheet
