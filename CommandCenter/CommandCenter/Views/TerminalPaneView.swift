@@ -19,11 +19,13 @@ struct TerminalPaneView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.terminalBackground)
+        // Terminal buffer stays slightly tinted for contrast; chrome is glass.
+        .background(Theme.terminalBackground.opacity(0.55))
         .overlay {
             if isFocused {
-                RoundedRectangle(cornerRadius: 0)
-                    .strokeBorder(Theme.focusRing, lineWidth: 2)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(Theme.focusRing.opacity(0.45), lineWidth: 1)
+                    .padding(2)
             }
         }
         .onAppear {
@@ -98,16 +100,11 @@ struct TerminalPaneView: View {
                 session.requestRestart()
             } label: {
                 Text("Restart shell ⏎")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Theme.accentText)
+                    .font(.system(size: 11, weight: .semibold))
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .strokeBorder(Theme.controlBorder, lineWidth: 1)
-                    )
+                    .padding(.vertical, 4)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glass)
             // No global Return shortcut — that would steal Enter from chat/composer
             // while the process-ended bar is visible. Click (or later pane-local
             // binding) restarts; label keeps the ⏎ affordance from the wireframe.

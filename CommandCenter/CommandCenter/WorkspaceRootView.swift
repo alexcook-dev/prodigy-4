@@ -30,13 +30,15 @@ struct WorkspaceRootView: View {
         ZStack(alignment: .trailing) {
             mainSplit
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(LiquidGlassMetrics.windowInset)
 
             if isNarrow && isRightColumnDrawerPresented {
                 rightColumnDrawer
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
-        .background(Theme.appBackground)
+        // Transparent root so pane glass can refract the window ambient / wallpaper.
+        .background(Color.clear)
         .background(
             GeometryReader { geo in
                 Color.clear
@@ -192,6 +194,7 @@ struct WorkspaceRootView: View {
         )
         .contentShape(Rectangle())
         .onTapGesture { focus.focus(.sidebar) }
+        .liquidGlassPane()
     }
 
     private var centerPane: some View {
@@ -205,6 +208,7 @@ struct WorkspaceRootView: View {
         )
         .contentShape(Rectangle())
         .onTapGesture { focus.focus(.chat) }
+        .liquidGlassPane()
     }
 
     private var rightColumn: some View {
@@ -218,23 +222,19 @@ struct WorkspaceRootView: View {
             onFocusTerminal: { focus.focus(.terminal) },
             onPaneShortcut: { focus.focus($0) }
         )
+        .liquidGlassPane()
     }
 
     private var rightColumnDrawer: some View {
         HStack(spacing: 0) {
-            Color.black.opacity(0.18)
+            Color.black.opacity(0.12)
                 .contentShape(Rectangle())
                 .onTapGesture { isRightColumnDrawerPresented = false }
 
             rightColumn
                 .frame(width: LayoutMetrics.rightColumnDrawerWidth)
-                .background(Theme.appBackground)
-                .overlay(alignment: .leading) {
-                    Rectangle()
-                        .fill(Theme.borderStructural)
-                        .frame(width: 1)
-                }
-                .shadow(color: .black.opacity(0.25), radius: 12, x: -4, y: 0)
+                .padding(.vertical, LiquidGlassMetrics.windowInset)
+                .padding(.trailing, LiquidGlassMetrics.windowInset)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

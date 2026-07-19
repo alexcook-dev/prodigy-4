@@ -19,16 +19,17 @@ struct FileBrowserPaneView: View {
             treeBody
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.appBackground)
+        .background(Color.clear)
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(Theme.deepest)
+                .fill(Theme.borderHairline.opacity(0.55))
                 .frame(height: 1)
         }
         .overlay {
             if isFocused {
-                RoundedRectangle(cornerRadius: 0)
-                    .strokeBorder(Theme.focusRing, lineWidth: 2)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(Theme.focusRing.opacity(0.45), lineWidth: 1)
+                    .padding(2)
             }
         }
     }

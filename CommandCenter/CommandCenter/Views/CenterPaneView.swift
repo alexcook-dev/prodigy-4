@@ -74,12 +74,13 @@ struct CenterPaneView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.centerBackground)
+        // Liquid Glass pane chrome is applied by WorkspaceRootView; keep the
+        // reading surface transparent so messages float over the glass.
+        .background(Color.clear)
         // T16: cap chat reading width on large displays (~900–1000px).
         .frame(maxWidth: LayoutMetrics.maxReadingWidth)
         .frame(maxWidth: .infinity) // stay centered in the pane
-        // No persistent full-pane focus ring — that reads as a permanent border.
-        // Focus is shown on the composer text field instead (see composerBar).
+        // Focus is shown on the composer text field (see composerBar).
         // ⌘⏎ discuss-in-chat: selection stages plain-text reference → composer.
         .onChange(of: selection.pendingComposerInsert) { _, value in
             guard let value else { return }
@@ -138,18 +139,8 @@ struct CenterPaneView: View {
                     .foregroundStyle(Theme.textSecondary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(
-                        UnevenRoundedRectangle(
-                            topLeadingRadius: 7,
-                            bottomLeadingRadius: 0,
-                            bottomTrailingRadius: 0,
-                            topTrailingRadius: 7,
-                            style: .continuous
-                        )
-                        .fill(Theme.appBackground)
-                    )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glass)
             .help("Open file preview (never a second chat thread)")
 
             Spacer()
@@ -405,18 +396,14 @@ struct CenterPaneView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(Theme.elevatedSurface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            // Focus ring on the composer control only (not the whole pane).
-                            .strokeBorder(
-                                composerFocused ? Theme.focusRing : Theme.borderStructural,
-                                lineWidth: composerFocused ? 2 : 1
-                            )
+            .liquidGlassControl(cornerRadius: LiquidGlassMetrics.controlCorner)
+            .overlay {
+                RoundedRectangle(cornerRadius: LiquidGlassMetrics.controlCorner, style: .continuous)
+                    .strokeBorder(
+                        composerFocused ? Theme.focusRing.opacity(0.7) : Color.clear,
+                        lineWidth: composerFocused ? 1.5 : 0
                     )
-            )
+            }
             .overlay(alignment: .trailing) {
                 if chat.composerText.isEmpty {
                     Text("⏎ send · ⇧⏎ newline")
@@ -436,12 +423,11 @@ struct CenterPaneView: View {
                     sendCurrentMessage()
                 } label: {
                     Text("Send")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(
-                            canSend ? Theme.accentText : Theme.textTertiary
-                        )
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glassProminent)
                 .disabled(!canSend)
                 .keyboardShortcut(.return, modifiers: .command)
             }
@@ -450,11 +436,6 @@ struct CenterPaneView: View {
         .padding(.horizontal, 16)
         .padding(.top, 10)
         .padding(.bottom, 12)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(Theme.borderHairline)
-                .frame(height: 1)
-        }
         .onAppear {
             if isFocused { composerFocused = true }
         }
@@ -521,15 +502,8 @@ struct CenterPaneView: View {
         Text(title)
             .foregroundStyle(Theme.textSecondary)
             .padding(.horizontal, 10)
-            .padding(.vertical, 2)
-            .background(
-                Capsule()
-                    .fill(Theme.chipBackground)
-                    .overlay(
-                        Capsule()
-                            .strokeBorder(Theme.borderStructural, lineWidth: 1)
-                    )
-            )
+            .padding(.vertical, 4)
+            .liquidGlassCapsule()
     }
 
     // MARK: - Actions
@@ -631,35 +605,9 @@ private struct CenterTab: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 6)
-            .background(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 7,
-                    bottomLeadingRadius: 0,
-                    bottomTrailingRadius: 0,
-                    topTrailingRadius: 7,
-                    style: .continuous
-                )
-                .fill(isActive ? Theme.centerBackground : Theme.appBackground)
-                .overlay(alignment: .bottom) {
-                    if isActive {
-                        Rectangle()
-                            .fill(Theme.centerBackground)
-                            .frame(height: 2)
-                            .offset(y: 1)
-                    }
-                }
-                .overlay {
-                    if isActive {
-                        UnevenRoundedRectangle(
-                            topLeadingRadius: 7,
-                            bottomLeadingRadius: 0,
-                            bottomTrailingRadius: 0,
-                            topTrailingRadius: 7,
-                            style: .continuous
-                        )
-                        .strokeBorder(Theme.borderHairline, lineWidth: 1)
-                    }
-                }
+            .glassEffect(
+                isActive ? .regular.interactive() : .clear,
+                in: Capsule(style: .continuous)
             )
         }
         .buttonStyle(.plain)

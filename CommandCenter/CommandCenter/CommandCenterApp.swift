@@ -37,6 +37,10 @@ struct CommandCenterApp: App {
                     minWidth: LayoutMetrics.minWindowWidth,
                     minHeight: LayoutMetrics.minWindowHeight
                 )
+                // Let Liquid Glass refract the desktop / ambient window fill.
+                .containerBackground(for: .window) {
+                    LiquidGlassAmbientBackground()
+                }
         }
         .defaultSize(
             width: LayoutMetrics.defaultWindowWidth,

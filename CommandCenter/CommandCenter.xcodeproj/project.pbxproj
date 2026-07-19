@@ -41,6 +41,7 @@ A3C10001B10001B10001B001 /* PersistableHSplitView.swift in Sources */ = {isa = P
 		C5E10001B10001B10001B001 /* ChatController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E10001F10001F10001F001 /* ChatController.swift */; };
 		C5E10001B10001B10001B002 /* StreamingMarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E10001F10001F10001F002 /* StreamingMarkdownView.swift */; };
 		C5E10001B10001B10001B003 /* ChatErrorBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E10001F10001F10001F003 /* ChatErrorBanner.swift */; };
+G7A10001B10001B10001B001 /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = G7A10001F10001F10001F001 /* LiquidGlass.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -80,6 +81,7 @@ A3C10001F10001F10001F001 /* PersistableHSplitView.swift */ = {isa = PBXFileRefer
 		C5E10001F10001F10001F001 /* ChatController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatController.swift; sourceTree = "<group>"; };
 		C5E10001F10001F10001F002 /* StreamingMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingMarkdownView.swift; sourceTree = "<group>"; };
 		C5E10001F10001F10001F003 /* ChatErrorBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatErrorBanner.swift; sourceTree = "<group>"; };
+G7A10001F10001F10001F001 /* LiquidGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlass.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -171,6 +173,7 @@ A1000000000000000000000A /* Theme */ = {
 			isa = PBXGroup;
 			children = (
 				6B1F0FE56081425E82499147 /* Theme.swift */,
+				G7A10001F10001F10001F001 /* LiquidGlass.swift */,
 			);
 			path = Theme;
 			sourceTree = "<group>";
@@ -278,6 +281,7 @@ A1000000000000000000000A /* Theme */ = {
 				5E84C167C022430BA3858ABE /* CommandCenterApp.swift in Sources */,
 				28AF3D8C142A41F9A9E8B7D6 /* WorkspaceRootView.swift in Sources */,
 				C8F7C0CA028B4B099881C5AA /* Theme.swift in Sources */,
+				G7A10001B10001B10001B001 /* LiquidGlass.swift in Sources */,
 				D63C17A1E4B24D11903BC0E9 /* SidebarView.swift in Sources */,
 				C78F465372BB48858CBB93BB /* CenterPaneView.swift in Sources */,
 				BA4708242C804BB080B814FA /* FileBrowserPaneView.swift in Sources */,
@@ -323,7 +327,7 @@ A1000000000000000000000A /* Theme */ = {
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_TESTABILITY = YES;
 				GCC_DYNAMIC_NO_PIC = NO;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
@@ -339,7 +343,7 @@ A1000000000000000000000A /* Theme */ = {
 				CLANG_ENABLE_OBJC_ARC = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
@@ -367,7 +371,7 @@ A1000000000000000000000A /* Theme */ = {
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.alexcook.CommandCenter;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -399,7 +403,7 @@ A1000000000000000000000A /* Theme */ = {
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.alexcook.CommandCenter;
 				PRODUCT_NAME = "$(TARGET_NAME)";

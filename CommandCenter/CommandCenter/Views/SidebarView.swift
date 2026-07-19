@@ -44,17 +44,15 @@ struct SidebarView: View {
             keyboardHints
         }
         .padding(.vertical, 8)
+        .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Theme.sidebarBackground)
-        .overlay(alignment: .trailing) {
-            Rectangle()
-                .fill(Theme.deepest)
-                .frame(width: 1)
-        }
+        // Liquid Glass supplies the pane fill (see WorkspaceRootView.liquidGlassPane).
+        .background(Color.clear)
         .overlay {
             if isFocused {
-                RoundedRectangle(cornerRadius: 0)
-                    .strokeBorder(Theme.focusRing, lineWidth: 2)
+                RoundedRectangle(cornerRadius: LiquidGlassMetrics.paneCorner, style: .continuous)
+                    .strokeBorder(Theme.focusRing.opacity(0.55), lineWidth: 1.5)
+                    .padding(1)
             }
         }
         .sheet(isPresented: $showProjectSheet) {
