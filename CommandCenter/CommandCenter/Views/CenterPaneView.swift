@@ -397,13 +397,6 @@ struct CenterPaneView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .liquidGlassControl(cornerRadius: LiquidGlassMetrics.controlCorner)
-            .overlay {
-                RoundedRectangle(cornerRadius: LiquidGlassMetrics.controlCorner, style: .continuous)
-                    .strokeBorder(
-                        composerFocused ? Theme.focusRing.opacity(0.7) : Color.clear,
-                        lineWidth: composerFocused ? 1.5 : 0
-                    )
-            }
             .overlay(alignment: .trailing) {
                 if chat.composerText.isEmpty {
                     Text("⏎ send · ⇧⏎ newline")

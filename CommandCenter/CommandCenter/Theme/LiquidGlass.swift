@@ -66,10 +66,10 @@ struct LiquidGlassAmbientBackground: View {
             // Base — near-clear so wallpaper can participate when the window is translucent.
             Color.clear
 
-            // Gentle radial washes (system accent + cool neutral) behind the panes.
+            // Neutral-only washes — no blue/cyan tint on glass boxes.
             RadialGradient(
                 colors: [
-                    Color.accentColor.opacity(colorScheme == .dark ? 0.28 : 0.18),
+                    Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.08),
                     Color.clear,
                 ],
                 center: .topLeading,
@@ -78,7 +78,7 @@ struct LiquidGlassAmbientBackground: View {
             )
             RadialGradient(
                 colors: [
-                    Color.cyan.opacity(colorScheme == .dark ? 0.14 : 0.10),
+                    Color.primary.opacity(colorScheme == .dark ? 0.10 : 0.05),
                     Color.clear,
                 ],
                 center: .bottomTrailing,
@@ -87,8 +87,8 @@ struct LiquidGlassAmbientBackground: View {
             )
             LinearGradient(
                 colors: [
-                    Color.primary.opacity(colorScheme == .dark ? 0.18 : 0.06),
-                    Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.03),
+                    Color.primary.opacity(colorScheme == .dark ? 0.14 : 0.05),
+                    Color.primary.opacity(colorScheme == .dark ? 0.06 : 0.02),
                 ],
                 startPoint: .top,
                 endPoint: .bottom

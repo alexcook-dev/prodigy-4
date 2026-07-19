@@ -25,13 +25,6 @@ struct FileBrowserPaneView: View {
                 .fill(Theme.borderHairline.opacity(0.55))
                 .frame(height: 1)
         }
-        .overlay {
-            if isFocused {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(Theme.focusRing.opacity(0.45), lineWidth: 1)
-                    .padding(2)
-            }
-        }
     }
 
     // MARK: - Header

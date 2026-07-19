@@ -21,13 +21,6 @@ struct TerminalPaneView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Terminal buffer stays slightly tinted for contrast; chrome is glass.
         .background(Theme.terminalBackground.opacity(0.55))
-        .overlay {
-            if isFocused {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(Theme.focusRing.opacity(0.45), lineWidth: 1)
-                    .padding(2)
-            }
-        }
         .onAppear {
             // Clicking the pane focuses the terminal for typing.
         }

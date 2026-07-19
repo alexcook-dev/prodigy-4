@@ -48,13 +48,6 @@ struct SidebarView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         // Liquid Glass supplies the pane fill (see WorkspaceRootView.liquidGlassPane).
         .background(Color.clear)
-        .overlay {
-            if isFocused {
-                RoundedRectangle(cornerRadius: LiquidGlassMetrics.paneCorner, style: .continuous)
-                    .strokeBorder(Theme.focusRing.opacity(0.55), lineWidth: 1.5)
-                    .padding(1)
-            }
-        }
         .sheet(isPresented: $showProjectSheet) {
             ProjectCreationSheet { project in
                 selection.selectProject(project)
@@ -520,11 +513,7 @@ struct ProjectArchiveButton: View {
                 .contentShape(Rectangle())
                 .background(
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(isFocused ? Theme.selectionFill.opacity(0.55) : Color.clear)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .strokeBorder(isFocused ? Theme.focusRing : Color.clear, lineWidth: 2)
+                        .fill(isFocused ? Theme.selectionFill : Color.clear)
                 )
         }
         .buttonStyle(.plain)
