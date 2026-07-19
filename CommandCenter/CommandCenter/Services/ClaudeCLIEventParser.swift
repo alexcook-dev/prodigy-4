@@ -1,0 +1,179 @@
+import Foundation
+
+// MARK: - Stream-JSON line parser
+
+/// Parses one NDJSON line from the Claude CLI `--output-format stream-json`
+/// pipe. Confined here so version drift in event shapes breaks one file
+/// (PLAN.md hardening note).
+enum ClaudeCLIEventParser {
+    /// Result of parsing a single stdout line.
+    enum Parsed: Equatable {
+        case ignore
+        case sessionInit(sessionID: String, model: String?, capabilities: [String])
+        case thinking
+        case textDelta(String)
+        case rateLimit(utilization: Double?, resetsAt: Date?, status: String?)
+        case apiRetry(category: ProviderErrorCategory, message: String?, resetsAt: Date?)
+        case result(text: String, sessionID: String?, isError: Bool, modelLabel: String?)
+        case assistantTextSnapshot(String)
+    }
+
+    static func parse(line: String) -> Parsed {
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let data = trimmed.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return .ignore
+        }
+
+        let type = obj["type"] as? String
+
+        switch type {
+        case "system":
+            return parseSystem(obj)
+        case "stream_event":
+            return parseStreamEvent(obj)
+        case "rate_limit_event":
+            return parseRateLimit(obj)
+        case "result":
+            return parseResult(obj)
+        case "assistant":
+            return parseAssistant(obj)
+        default:
+            return .ignore
+        }
+    }
+
+    // MARK: system
+
+    private static func parseSystem(_ obj: [String: Any]) -> Parsed {
+        let subtype = obj["subtype"] as? String
+        switch subtype {
+        case "init":
+            let sessionID = (obj["session_id"] as? String) ?? ""
+            let model = obj["model"] as? String
+            let caps = (obj["capabilities"] as? [String]) ?? []
+            guard !sessionID.isEmpty else { return .ignore }
+            return .sessionInit(sessionID: sessionID, model: model, capabilities: caps)
+
+        case "api_retry":
+            // Typed categories: authentication_failed, billing_error, rate_limit, overloaded, …
+            let categoryRaw =
+                (obj["error_category"] as? String)
+                ?? (obj["category"] as? String)
+                ?? (obj["error"] as? [String: Any]).flatMap { $0["type"] as? String }
+                ?? (obj["error"] as? String)
+            let category = ProviderErrorCategory.fromCLICategory(categoryRaw)
+            let message =
+                (obj["message"] as? String)
+                ?? (obj["error"] as? [String: Any]).flatMap { $0["message"] as? String }
+            let resetsAt = parseTimestamp(
+                obj["resetsAt"] ?? obj["resets_at"]
+                    ?? (obj["rate_limit_info"] as? [String: Any])?["resetsAt"]
+            )
+            return .apiRetry(category: category, message: message, resetsAt: resetsAt)
+
+        case "status":
+            // requesting / etc. — not surfaced as stream events for V1
+            return .ignore
+
+        case "thinking_tokens":
+            return .thinking
+
+        default:
+            return .ignore
+        }
+    }
+
+    // MARK: stream_event
+
+    private static func parseStreamEvent(_ obj: [String: Any]) -> Parsed {
+        guard let event = obj["event"] as? [String: Any] else { return .ignore }
+        let eventType = event["type"] as? String
+
+        switch eventType {
+        case "content_block_start":
+            if let block = event["content_block"] as? [String: Any],
+               (block["type"] as? String) == "thinking" {
+                return .thinking
+            }
+            return .ignore
+
+        case "content_block_delta":
+            guard let delta = event["delta"] as? [String: Any] else { return .ignore }
+            let deltaType = delta["type"] as? String
+            if deltaType == "text_delta", let text = delta["text"] as? String, !text.isEmpty {
+                return .textDelta(text)
+            }
+            if deltaType == "thinking_delta" {
+                return .thinking
+            }
+            return .ignore
+
+        default:
+            return .ignore
+        }
+    }
+
+    // MARK: rate_limit_event
+
+    private static func parseRateLimit(_ obj: [String: Any]) -> Parsed {
+        let info = obj["rate_limit_info"] as? [String: Any]
+        let utilization = info?["utilization"] as? Double
+        let status = info?["status"] as? String
+        let resetsAt = parseTimestamp(info?["resetsAt"])
+        return .rateLimit(utilization: utilization, resetsAt: resetsAt, status: status)
+    }
+
+    // MARK: result
+
+    private static func parseResult(_ obj: [String: Any]) -> Parsed {
+        let text = (obj["result"] as? String) ?? ""
+        let sessionID = obj["session_id"] as? String
+        let isError = (obj["is_error"] as? Bool) ?? false
+        // Prefer modelUsage keys; fall back to nothing — session init already carried model.
+        var modelLabel: String?
+        if let usage = obj["modelUsage"] as? [String: Any] {
+            // Pick the non-haiku helper model if present, else first key.
+            let keys = usage.keys.sorted()
+            modelLabel = keys.first { !$0.contains("haiku") } ?? keys.first
+        }
+        return .result(text: text, sessionID: sessionID, isError: isError, modelLabel: modelLabel)
+    }
+
+    // MARK: assistant (full message snapshots — useful if partials are off)
+
+    private static func parseAssistant(_ obj: [String: Any]) -> Parsed {
+        guard let message = obj["message"] as? [String: Any],
+              let content = message["content"] as? [[String: Any]]
+        else { return .ignore }
+
+        var texts: [String] = []
+        for block in content {
+            if (block["type"] as? String) == "text", let t = block["text"] as? String {
+                texts.append(t)
+            }
+        }
+        let joined = texts.joined()
+        return joined.isEmpty ? .ignore : .assistantTextSnapshot(joined)
+    }
+
+    // MARK: helpers
+
+    /// Accepts unix seconds (Int/Double) or ISO-ish strings.
+    private static func parseTimestamp(_ value: Any?) -> Date? {
+        if let n = value as? TimeInterval {
+            // Heuristic: ms vs s
+            return Date(timeIntervalSince1970: n > 1_000_000_000_000 ? n / 1000 : n)
+        }
+        if let n = value as? Int {
+            let d = Double(n)
+            return Date(timeIntervalSince1970: d > 1_000_000_000_000 ? d / 1000 : d)
+        }
+        if let s = value as? String, let d = Double(s) {
+            return Date(timeIntervalSince1970: d > 1_000_000_000_000 ? d / 1000 : d)
+        }
+        return nil
+    }
+}
