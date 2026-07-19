@@ -35,6 +35,9 @@ A2B10001B10001B10001B003 /* TerminalSessionController.swift in Sources */ = {isa
 A2B10001B10001B10001B004 /* TerminalViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B10001F10001F10001F004 /* TerminalViewRepresentable.swift */; };
 A2B10001B10001B10001B010 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A2B10001P10001P10001P001 /* SwiftTerm */; };
 A3C10001B10001B10001B001 /* PersistableHSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3C10001F10001F10001F001 /* PersistableHSplitView.swift */; };
+		C4D10001B10001B10001B001 /* ModelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4D10001F10001F10001F001 /* ModelProvider.swift */; };
+		C4D10001B10001B10001B002 /* ClaudeCLIEventParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4D10001F10001F10001F002 /* ClaudeCLIEventParser.swift */; };
+		C4D10001B10001B10001B003 /* ClaudeCLIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4D10001F10001F10001F003 /* ClaudeCLIProvider.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -68,6 +71,9 @@ A2B10001F10001F10001F002 /* KeyPassthroughTerminalView.swift */ = {isa = PBXFile
 A2B10001F10001F10001F003 /* TerminalSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSessionController.swift; sourceTree = "<group>"; };
 A2B10001F10001F10001F004 /* TerminalViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalViewRepresentable.swift; sourceTree = "<group>"; };
 A3C10001F10001F10001F001 /* PersistableHSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistableHSplitView.swift; sourceTree = "<group>"; };
+		C4D10001F10001F10001F001 /* ModelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelProvider.swift; sourceTree = "<group>"; };
+		C4D10001F10001F10001F002 /* ClaudeCLIEventParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCLIEventParser.swift; sourceTree = "<group>"; };
+		C4D10001F10001F10001F003 /* ClaudeCLIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCLIProvider.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -125,6 +131,9 @@ A3C10001F10001F10001F001 /* PersistableHSplitView.swift */ = {isa = PBXFileRefer
 			children = (
 				B20000000000000000000005 /* ProjectFactory.swift */,
 				B20000000000000000000006 /* WorkspaceSelection.swift */,
+				C4D10001F10001F10001F001 /* ModelProvider.swift */,
+				C4D10001F10001F10001F002 /* ClaudeCLIEventParser.swift */,
+				C4D10001F10001F10001F003 /* ClaudeCLIProvider.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -283,6 +292,9 @@ A1000000000000000000000A /* Theme */ = {
 				A2B10001B10001B10001B003 /* TerminalSessionController.swift in Sources */,
 				A2B10001B10001B10001B004 /* TerminalViewRepresentable.swift in Sources */,
 				A3C10001B10001B10001B001 /* PersistableHSplitView.swift in Sources */,
+				C4D10001B10001B10001B001 /* ModelProvider.swift in Sources */,
+				C4D10001B10001B10001B002 /* ClaudeCLIEventParser.swift in Sources */,
+				C4D10001B10001B10001B003 /* ClaudeCLIProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

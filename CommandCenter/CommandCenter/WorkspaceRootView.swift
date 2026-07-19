@@ -95,12 +95,27 @@ struct WorkspaceRootView: View {
         .onAppear {
             restoreSelectionIfNeeded()
             rebindFileRoot()
+            // T9: keep the LRU pool's "focused" slot aligned with the sidebar.
+            ClaudeCLIProvider.shared.setFocusedProject(selection.selectedProjectID)
         }
         .onChange(of: allProjects.count) { _, _ in
             restoreSelectionIfNeeded()
         }
-        .onChange(of: selection.selectedProjectID) { _, _ in
+        .onChange(of: selection.selectedProjectID) { _, newID in
             rebindFileRoot()
+            ClaudeCLIProvider.shared.setFocusedProject(newID)
+        }
+        // T9: background reply finished → green unread-activity status-dot.
+        .onReceive(
+            NotificationCenter.default.publisher(for: .claudeCLIBackgroundReplyCompleted)
+        ) { note in
+            guard let projectID = note.userInfo?["projectID"] as? UUID else { return }
+            // Focused Project already clears the flag on selection; only light
+            // the dot for Projects the user isn't currently viewing.
+            if selection.selectedProjectID == projectID { return }
+            if let project = allProjects.first(where: { $0.id == projectID }) {
+                project.hasUnviewedActivity = true
+            }
         }
     }
 

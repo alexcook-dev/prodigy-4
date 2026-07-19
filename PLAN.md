@@ -675,7 +675,7 @@ immediate sequence, not two separate uncoordinated passes.
 - [x] **T3 (P1)** — data — SwiftData models (Project/Agent/Thread/Message) + two
   separate sidebar sections (Step 6)
   - Verify: create/switch Projects and Agents; persona shared, threads per-Project
-- [ ] **T4 (P1)** — provider — `ModelProvider` + persistent-process
+- [x] **T4 (P1)** — provider — `ModelProvider` + persistent-process
   `ClaudeCLIProvider` (Step 2)
   - Verify: streamed reply lands in chat; kill CLI mid-stream → visible error;
     resume-failure rehydrates from SwiftData
@@ -688,7 +688,7 @@ immediate sequence, not two separate uncoordinated passes.
   process-ended state (Step 5)
   - Verify: vim opens/resizes correctly; killed shell shows recoverable state
 - [ ] **T8 (P3, deferred)** — usage — rate-window consumption display (Step 10)
-- [ ] **T9 (P1, extends T4)** — provider — Background CLI-process lifecycle
+- [x] **T9 (P1, extends T4)** — provider — Background CLI-process lifecycle
   across Project switches: LRU-capped (3) persistent processes, idle teardown,
   spawn-per-turn fallback beyond the cap
   - Files: `ClaudeCLIProvider`, Project model
