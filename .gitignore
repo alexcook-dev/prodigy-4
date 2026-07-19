@@ -1,0 +1,11 @@
+# gstack local session/artifact state — not part of the app
+.gstack/
+
+# run-all-waves.sh log output
+.grok-wave-logs/
+
+# macOS / Xcode
+.DS_Store
+*.xcuserstate
+xcuserdata/
+DerivedData/

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { box-sizing: border-box; margin: 0; }
+html,body { height:100%; background:#2a2a2c; font-family:-apple-system,"SF Pro Text",sans-serif; color:#e8e8ea; font-size:13px; }
+.app { display:grid; grid-template-columns:224px 1fr 320px; grid-template-rows:38px 1fr; height:100vh; }
+.titlebar { grid-column:1/-1; background:#323234; border-bottom:1px solid #1d1d1f; display:flex; align-items:center; padding:0 12px; gap:14px; }
+.dots{display:flex;gap:7px}.dot{width:12px;height:12px;border-radius:50%}.d1{background:#ff5f57}.d2{background:#febc2e}.d3{background:#28c840}
+.tb-title{font-size:12px;color:#98989d;font-weight:500}
+.tb-right{margin-left:auto;display:flex;gap:8px;font-size:11px;color:#7c7c80}
+.tb-btn{border:1px solid #48484a;border-radius:5px;padding:2px 8px}
+.sidebar{background:rgba(50,50,54,.94);border-right:1px solid #1d1d1f;padding:8px 0;display:flex;flex-direction:column;font-size:13px}
+.sec{padding:6px 0}.sec+.sec{border-top:1px solid #3a3a3c;margin-top:6px}
+.sech{font-size:11px;font-weight:600;color:#98989d;text-transform:uppercase;letter-spacing:.05em;padding:4px 16px;display:flex;justify-content:space-between}
+.sech .plus{color:#0a84ff;font-size:13px}
+.row{display:flex;align-items:center;gap:8px;padding:5px 16px;margin:0 8px;border-radius:6px;color:#d5d5d7}
+.row.sel{background:#0a84ff;color:#fff}
+.sf{width:15px;text-align:center;opacity:.8}
+.st{width:6px;height:6px;border-radius:50%;margin-left:auto}.busy{background:#febc2e}.done{background:#28c840}
+.kbd-hint{margin-top:auto;padding:8px 16px;font-size:10px;color:#636366}
+kbd{background:#3a3a3c;border-radius:3px;padding:0 4px;font-size:10px}
+.center{display:flex;flex-direction:column;background:#232325;min-width:0;outline:2px solid #0a84ff;outline-offset:-2px}
+.ctabs{display:flex;gap:4px;padding:8px 12px 0;border-bottom:1px solid #303032;align-items:flex-end}
+.ctab{font-size:12px;padding:6px 14px;border-radius:7px 7px 0 0;color:#98989d;background:#2a2a2c}
+.ctab.on{background:#232325;color:#fff;border:1px solid #303032;border-bottom-color:#232325;margin-bottom:-1px;font-weight:500}
+.chat{flex:1;overflow:auto;padding:20px 24px;display:flex;flex-direction:column;gap:18px}
+.msg-u{align-self:flex-end;max-width:70%;background:#0a84ff22;border:1px solid #0a84ff44;border-radius:12px 12px 4px 12px;padding:9px 13px;line-height:1.45}
+.msg-a{max-width:92%;line-height:1.55}
+.msg-a .from{font-size:11px;color:#8e8e93;margin-bottom:4px;font-weight:500}
+.stream{display:flex;align-items:center;gap:10px;color:#98989d;font-size:12px}
+.pulse{width:8px;height:8px;border-radius:50%;background:#0a84ff;animation:p 1s infinite}
+@keyframes p{50%{opacity:.3}}
+.stopbtn{border:1px solid #48484a;border-radius:5px;padding:2px 10px;font-size:11px;color:#d5d5d7}
+.composer{border-top:1px solid #303032;padding:10px 16px 12px}
+.cinput{background:#2c2c2e;border:1px solid #3a3a3c;border-radius:9px;padding:10px 12px;color:#8e8e93;min-height:38px}
+.cctl{display:flex;gap:8px;margin-top:8px;font-size:11px;color:#98989d;align-items:center}
+.pill{border:1px solid #3a3a3c;border-radius:11px;padding:2px 10px;background:#2c2c2e}
+.right{display:flex;flex-direction:column;background:#2a2a2c}
+.panel{display:flex;flex-direction:column;min-height:0}
+.pfiles{flex:1;border-bottom:1px solid #1d1d1f}
+.pterm{flex:1;background:#1b1b1d}
+.ph{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#98989d;padding:8px 12px;border-bottom:1px solid #303032;display:flex;justify-content:space-between;align-items:center}
+.ph .coll{color:#636366;font-size:12px}
+.frow{font-size:12px;padding:3px 12px;color:#c7c7cb;display:flex;gap:6px}
+.frow .ic{width:14px;text-align:center;opacity:.7}
+.frow.sel2{background:#0a84ff33}
+.divider-v{position:absolute;left:224px;top:38px;bottom:0;width:5px;cursor:col-resize}
+.term{flex:1;font-family:"SF Mono",Menlo,monospace;font-size:11.5px;color:#98d998;padding:10px 12px;line-height:1.5}
+.term .p{color:#6ca8f0}
+.note{position:absolute;font-size:10px;color:#e5b567;background:#3a2f18;border:1px dashed #6b552a;padding:2px 6px;border-radius:4px;z-index:9}
+</style></head><body>
+<div class="app">
+  <div class="titlebar">
+    <div class="dots"><div class="dot d1"></div><div class="dot d2"></div><div class="dot d3"></div></div>
+    <span class="tb-title">Website Redesign — Command Center</span>
+    <div class="tb-right"><span class="tb-btn">⬒ Files</span><span class="tb-btn">⬓ Terminal</span></div>
+  </div>
+  <div class="sidebar">
+    <div class="sec">
+      <div class="sech">Projects <span class="plus">＋</span></div>
+      <div class="row sel"><span class="sf">▣</span> Website Redesign <span class="st busy"></span></div>
+      <div class="row"><span class="sf">▢</span> Q3 Planning</div>
+      <div class="row"><span class="sf">▢</span> Tax Prep 2026 <span class="st done"></span></div>
+    </div>
+    <div class="sec">
+      <div class="sech">Agents <span class="plus">＋</span></div>
+      <div class="row"><span class="sf">◈</span> Research Assistant</div>
+      <div class="row"><span class="sf">◈</span> Writing Editor</div>
+    </div>
+    <div class="kbd-hint">Panes: <kbd>⌘1</kbd> Sidebar <kbd>⌘2</kbd> Chat <kbd>⌘3</kbd> Files <kbd>⌘4</kbd> Term</div>
+  </div>
+  <div class="center">
+    <div class="ctabs">
+      <div class="ctab on">Chat — Kickoff</div>
+      <div class="ctab">hero-v3.tsx ×</div>
+      <div class="ctab" style="padding:6px 10px">＋</div>
+    </div>
+    <div class="chat">
+      <div class="msg-u">Summarize where we landed on the hero section yesterday.</div>
+      <div class="msg-a"><div class="from">Claude · Sonnet · High effort</div>
+      Yesterday you settled three things: the headline drops the subhead entirely, the CTA moves above the fold, and the hero image swaps to the darker variant. The open question was whether the announcement banner stays — your designer wanted it gone, you wanted one more week of data.</div>
+      <div class="msg-u">Draft a Slack message to Dana asking for that data.</div>
+      <div class="msg-a"><div class="from">Claude · Sonnet · High effort</div>
+        <div class="stream"><span class="pulse"></span> Streaming… <span class="stopbtn">⎋ Stop</span></div>
+      </div>
+    </div>
+    <div class="composer">
+      <div class="cinput">Message Website Redesign…  <span style="float:right;color:#636366">⏎ send · ⇧⏎ newline</span></div>
+      <div class="cctl"><span class="pill">Claude · Sonnet</span><span class="pill">Effort: High</span><span style="margin-left:auto">Window: 34% used</span></div>
+    </div>
+  </div>
+  <div class="right">
+    <div class="panel pfiles">
+      <div class="ph">Files — ~/Projects/website <span class="coll">⌃</span></div>
+      <div class="frow"><span class="ic">▾</span> src/</div>
+      <div class="frow sel2" style="padding-left:24px"><span class="ic">◆</span> hero-v3.tsx</div>
+      <div class="frow" style="padding-left:24px"><span class="ic">◇</span> nav.tsx</div>
+      <div class="frow"><span class="ic">▸</span> assets/</div>
+      <div class="frow"><span class="ic">▸</span> docs/</div>
+    </div>
+    <div class="panel pterm">
+      <div class="ph">Terminal — zsh <span class="coll">⌃</span></div>
+      <div class="term"><div><span class="p">~/Projects/website $</span> npm run dev</div><div>ready on :3000</div><div><span class="p">~/Projects/website $</span> ▊</div></div>
+    </div>
+  </div>
+</div>
+<div class="note" style="top:44px;left:560px">blue outline = focused pane (⌘2)</div>
+<div class="note" style="top:100px;right:330px">center tabs: chat + file previews, × to close</div>
+</body></html>
