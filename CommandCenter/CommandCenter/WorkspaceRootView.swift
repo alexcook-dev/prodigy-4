@@ -187,6 +187,7 @@ struct WorkspaceRootView: View {
     private var sidebarPane: some View {
         SidebarView(
             selection: selection,
+            chat: chat,
             isFocused: focus.focusedPane == .sidebar
         )
         .contentShape(Rectangle())
