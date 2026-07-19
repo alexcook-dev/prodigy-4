@@ -94,14 +94,14 @@ struct WorkspaceRootView: View {
             }
         }
         .onAppear {
-            restoreSelectionIfNeeded()
+            performLaunchResumeIfNeeded()
             rebindFileRoot()
             // T9: keep the LRU pool's "focused" slot aligned with the sidebar.
             ClaudeCLIProvider.shared.setFocusedProject(selection.selectedProjectID)
             chat.focusedProjectID = selection.selectedProjectID
         }
         .onChange(of: allProjects.count) { _, _ in
-            restoreSelectionIfNeeded()
+            performLaunchResumeIfNeeded()
         }
         .onChange(of: selection.selectedProjectID) { _, newID in
             rebindFileRoot()
@@ -251,15 +251,41 @@ struct WorkspaceRootView: View {
         return allProjects.first { $0.id == id }
     }
 
-    private func restoreSelectionIfNeeded() {
-        if let id = selection.selectedProjectID,
-           allProjects.contains(where: { $0.id == id }) {
+    /// T14 / D6: auto-select last-active Project/thread; true first-run leaves
+    /// selection empty so FirstRunView (wf-2) is shown — never a picker.
+    private func performLaunchResumeIfNeeded() {
+        guard !allProjects.isEmpty else {
+            ClaudeCLIProvider.shared.setFocusedProject(nil)
             return
         }
-        if let recent = allProjects.first(where: { !$0.archived && !$0.isHiddenFromSidebar })
-            ?? allProjects.first(where: { !$0.archived }) {
-            selection.selectProject(recent)
+
+        if selection.didPerformLaunchResume,
+           let id = selection.selectedProjectID,
+           allProjects.contains(where: { $0.id == id }) {
+            ClaudeCLIProvider.shared.setFocusedProject(id)
+            return
+        }
+
+        if let id = selection.selectedProjectID,
+           let project = allProjects.first(where: { $0.id == id }) {
+            let thread = WorkspaceSelection.mostRecentThread(in: project)
+            if let thread, let agent = thread.agent, selection.selectedAgentID == nil {
+                selection.selectedAgentID = agent.id
+            }
+            selection.prepareSessionResume(project: project, thread: thread)
+            selection.markLaunchResumeComplete()
+            selection.showChat()
+            focus.focus(.chat)
+            return
+        }
+
+        if let restored = selection.resumeLastActive(from: allProjects) {
             try? modelContext.save()
+            selection.prepareSessionResume(
+                project: restored.project,
+                thread: restored.thread
+            )
+            focus.focus(.chat)
         }
     }
 

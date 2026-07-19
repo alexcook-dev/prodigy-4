@@ -97,6 +97,46 @@ final class ClaudeCLIProvider: ModelProvider, @unchecked Sendable {
         lock.unlock()
     }
 
+    /// T14 launch resume: best-effort warm of a Project's persistent CLI process
+    /// via the D5.3 session-resume path (`--resume` + rehydrate-on-failure).
+    ///
+    /// Called after auto-selecting the last-active Project on app launch so the
+    /// next user turn doesn't pay cold-start. No-op when there is no `sessionID`
+    /// yet (empty/new thread). Failures are swallowed — the first real turn
+    /// retries the same path.
+    func prepareLaunchResume(
+        projectID: UUID,
+        workingDirectory: String,
+        sessionID: String?,
+        systemPrompt: String = ClaudeCLIDefaults.generalAssistantSystemPrompt,
+        model: String? = nil,
+        effort: String? = nil
+    ) {
+        setFocusedProject(projectID)
+        guard let sessionID, !sessionID.isEmpty else { return }
+
+        // `obtainPersistentSession` + `startPersistent` block on the I/O queue;
+        // never run that on the main actor.
+        ioQueue.async { [weak self] in
+            guard let self else { return }
+            let request = ModelTurnRequest(
+                projectID: projectID,
+                threadID: projectID,
+                workingDirectory: workingDirectory,
+                userMessage: "",
+                systemPrompt: systemPrompt,
+                sessionID: sessionID,
+                model: model,
+                effort: effort
+            )
+            do {
+                _ = try self.obtainPersistentSession(for: request)
+            } catch {
+                // Best-effort: first real turn re-enters D5.3 resume/rehydrate.
+            }
+        }
+    }
+
     func teardown(projectID: UUID) {
         lock.lock()
         let session = sessions.removeValue(forKey: projectID)

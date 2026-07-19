@@ -42,6 +42,12 @@ final class WorkspaceSelection: FilePreviewPresenting {
     var activeSurface: CenterSurface = .chat
     /// Open file-preview tabs only — never extra chat threads (T11).
     var filePreviewTabs: [FilePreviewTab] = []
+    /// Set once launch auto-resume (T14) has run for this session.
+    private(set) var didPerformLaunchResume = false
+
+    func markLaunchResumeComplete() {
+        didPerformLaunchResume = true
+    }
     /// Staged by ⌘⏎ "Discuss in chat"; `CenterPaneView` drains into the composer.
     var pendingComposerInsert: String?
 
@@ -60,9 +66,75 @@ final class WorkspaceSelection: FilePreviewPresenting {
         // Agent selection does not clear Project — persona is cross-project.
         // Conversation history is still scoped to the active Project.
         if let project {
+            project.lastActiveAt = .now
             _ = AgentFactory.thread(for: agent, in: project, context: context)
         }
         activeSurface = .chat
+    }
+
+
+    // MARK: - Launch resume (T14 / design review D6)
+
+    /// Auto-select the most-recently-active Project and its most recent thread.
+    @discardableResult
+    func resumeLastActive(
+        from projects: [WorkspaceProject]
+    ) -> (project: WorkspaceProject, thread: ChatThread?)? {
+        guard !projects.isEmpty else {
+            selectedProjectID = nil
+            selectedAgentID = nil
+            return nil
+        }
+        let project = projects.first(where: { !$0.archived }) ?? projects[0]
+        let thread = Self.mostRecentThread(in: project)
+        selectProject(project)
+        if let thread, let agent = thread.agent {
+            selectedAgentID = agent.id
+            agent.lastActiveAt = .now
+            agent.hasUnviewedActivity = false
+        }
+        showChat()
+        didPerformLaunchResume = true
+        return (project, thread)
+    }
+
+    static func mostRecentThread(in project: WorkspaceProject) -> ChatThread? {
+        if let newest = project.threads.max(by: { lhs, rhs in
+            if lhs.updatedAt != rhs.updatedAt {
+                return lhs.updatedAt < rhs.updatedAt
+            }
+            return (lhs.agent != nil) && (rhs.agent == nil)
+        }) {
+            return newest
+        }
+        return project.primaryThread
+    }
+
+    /// Warm the Claude CLI process for a restored thread via D5.3 `--resume`.
+    func prepareSessionResume(
+        project: WorkspaceProject,
+        thread: ChatThread?,
+        provider: ClaudeCLIProvider = .shared
+    ) {
+        guard let thread else {
+            provider.setFocusedProject(project.id)
+            return
+        }
+        let systemPrompt: String
+        if let agent = thread.agent {
+            let persona = agent.systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+            systemPrompt = persona.isEmpty
+                ? ClaudeCLIDefaults.generalAssistantSystemPrompt
+                : persona
+        } else {
+            systemPrompt = ClaudeCLIDefaults.generalAssistantSystemPrompt
+        }
+        provider.prepareLaunchResume(
+            projectID: project.id,
+            workingDirectory: project.folderPath,
+            sessionID: thread.cliSessionID,
+            systemPrompt: systemPrompt
+        )
     }
 
     /// Tab bar "+" — file previews only. Never creates a second chat thread.

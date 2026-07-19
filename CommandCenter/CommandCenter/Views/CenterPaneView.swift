@@ -28,9 +28,15 @@ struct CenterPaneView: View {
     @FocusState private var composerFocused: Bool
     @State private var scrollAnchor = UUID()
 
+    /// Explicit selection, or most-recent Project while launch resume applies
+    /// (avoids a one-frame "Select a Project" flash — T14 skips any picker).
     private var selectedProject: WorkspaceProject? {
-        guard let id = selection.selectedProjectID else { return nil }
-        return allProjects.first { $0.id == id }
+        if let id = selection.selectedProjectID,
+           let match = allProjects.first(where: { $0.id == id }) {
+            return match
+        }
+        guard !allProjects.isEmpty else { return nil }
+        return allProjects.first(where: { !$0.archived }) ?? allProjects.first
     }
 
     private var selectedAgent: Agent? {
@@ -212,8 +218,10 @@ struct CenterPaneView: View {
 
     private var chatBody: some View {
         Group {
+            // T14: never show a Project-picker when Projects exist.
             if selectedProject == nil {
-                noProjectSelected
+                // True first-run is handled by FirstRunView; keep empty otherwise.
+                emptyThreadState
             } else if let thread = activeThread {
                 let messages = thread.sortedMessages
                 if messages.isEmpty && !isStreamingHere && errorHere == nil {
