@@ -32,7 +32,7 @@ struct FilePreviewTab: Hashable, Identifiable {
 
 /// Shared selection state for sidebar + center pane.
 /// Held by `WorkspaceRootView` and passed down as bindings / environment.
-/// Also hosts file-preview presentation for the file browser (T6).
+/// Also hosts file-preview presentation for the file browser (T6 + Wave 3 wiring).
 @MainActor
 @Observable
 final class WorkspaceSelection: FilePreviewPresenting {
@@ -42,6 +42,8 @@ final class WorkspaceSelection: FilePreviewPresenting {
     var activeSurface: CenterSurface = .chat
     /// Open file-preview tabs only — never extra chat threads (T11).
     var filePreviewTabs: [FilePreviewTab] = []
+    /// Staged by ⌘⏎ "Discuss in chat"; `CenterPaneView` drains into the composer.
+    var pendingComposerInsert: String?
 
     func selectProject(_ project: WorkspaceProject) {
         selectedProjectID = project.id
@@ -81,12 +83,14 @@ final class WorkspaceSelection: FilePreviewPresenting {
         }
     }
 
+    /// Unconditional "go to Chat tab" (⌘2). Preview tabs stay open in the background.
     func showChat() {
         activeSurface = .chat
     }
 
     // MARK: FilePreviewPresenting (file browser → center pane)
 
+    /// File-tree selection flips the center pane into preview mode (Next Step 4).
     func presentFilePreview(_ request: FilePreviewRequest) {
         openFilePreview(fileName: request.fileName, filePath: request.url.path)
     }
@@ -101,10 +105,23 @@ final class WorkspaceSelection: FilePreviewPresenting {
         showChat()
     }
 
+    /// ⌘⏎ from a file preview: switch to chat and stage a lightweight path
+    /// reference for the composer (plain text, user-editable — not auto-send).
     func discussInChat(_ request: FilePreviewRequest) {
-        // Switch to chat so the gesture feels right even before the composer exists.
         activateChatTab()
-        // TODO(Wave 3 / T5): insert a plain-text reference into the composer.
-        _ = request
+        pendingComposerInsert = Self.composerReference(for: request)
+    }
+
+    /// Plain-text file reference: path, plus `:line` / `:start-end` when known.
+    static func composerReference(for request: FilePreviewRequest) -> String {
+        var path = request.url.path
+        if let range = request.lineRange {
+            if range.lowerBound == range.upperBound {
+                path += ":\(range.lowerBound)"
+            } else {
+                path += ":\(range.lowerBound)-\(range.upperBound)"
+            }
+        }
+        return "Regarding `\(path)`:"
     }
 }

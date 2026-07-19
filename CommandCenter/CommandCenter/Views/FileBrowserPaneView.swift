@@ -274,9 +274,7 @@ struct FileBrowserPaneView: View {
     private func openPreview(for node: FileNode) {
         guard !node.isDirectory else { return }
         let request = FilePreviewRequest(url: node.url)
-        // Connection point: presenter is FilePreviewSession today; chat controller
-        // will conform to FilePreviewPresenting in Wave 3 (T5) and flip the real
-        // center tab bar. Do not call into chat types from here.
+        // Wave 3 wiring: WorkspaceSelection flips the center pane to a preview tab.
         previewPresenter?.presentFilePreview(request)
     }
 }

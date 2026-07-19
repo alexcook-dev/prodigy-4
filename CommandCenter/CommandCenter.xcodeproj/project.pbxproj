@@ -38,6 +38,9 @@ A3C10001B10001B10001B001 /* PersistableHSplitView.swift in Sources */ = {isa = P
 		C4D10001B10001B10001B001 /* ModelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4D10001F10001F10001F001 /* ModelProvider.swift */; };
 		C4D10001B10001B10001B002 /* ClaudeCLIEventParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4D10001F10001F10001F002 /* ClaudeCLIEventParser.swift */; };
 		C4D10001B10001B10001B003 /* ClaudeCLIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4D10001F10001F10001F003 /* ClaudeCLIProvider.swift */; };
+		C5E10001B10001B10001B001 /* ChatController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E10001F10001F10001F001 /* ChatController.swift */; };
+		C5E10001B10001B10001B002 /* StreamingMarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E10001F10001F10001F002 /* StreamingMarkdownView.swift */; };
+		C5E10001B10001B10001B003 /* ChatErrorBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E10001F10001F10001F003 /* ChatErrorBanner.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,6 +77,9 @@ A3C10001F10001F10001F001 /* PersistableHSplitView.swift */ = {isa = PBXFileRefer
 		C4D10001F10001F10001F001 /* ModelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelProvider.swift; sourceTree = "<group>"; };
 		C4D10001F10001F10001F002 /* ClaudeCLIEventParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCLIEventParser.swift; sourceTree = "<group>"; };
 		C4D10001F10001F10001F003 /* ClaudeCLIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCLIProvider.swift; sourceTree = "<group>"; };
+		C5E10001F10001F10001F001 /* ChatController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatController.swift; sourceTree = "<group>"; };
+		C5E10001F10001F10001F002 /* StreamingMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingMarkdownView.swift; sourceTree = "<group>"; };
+		C5E10001F10001F10001F003 /* ChatErrorBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatErrorBanner.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -134,6 +140,7 @@ A3C10001F10001F10001F001 /* PersistableHSplitView.swift */ = {isa = PBXFileRefer
 				C4D10001F10001F10001F001 /* ModelProvider.swift */,
 				C4D10001F10001F10001F002 /* ClaudeCLIEventParser.swift */,
 				C4D10001F10001F10001F003 /* ClaudeCLIProvider.swift */,
+				C5E10001F10001F10001F001 /* ChatController.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -173,6 +180,8 @@ A1000000000000000000000A /* Theme */ = {
 			children = (
 				D1E5DDECCF274A27AA970D45 /* SidebarView.swift */,
 				4C95E5098497418BB85ECD72 /* CenterPaneView.swift */,
+				C5E10001F10001F10001F002 /* StreamingMarkdownView.swift */,
+				C5E10001F10001F10001F003 /* ChatErrorBanner.swift */,
 				D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */,
 				10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */,
 				A3C10001F10001F10001F001 /* PersistableHSplitView.swift */,
@@ -295,6 +304,9 @@ A1000000000000000000000A /* Theme */ = {
 				C4D10001B10001B10001B001 /* ModelProvider.swift in Sources */,
 				C4D10001B10001B10001B002 /* ClaudeCLIEventParser.swift in Sources */,
 				C4D10001B10001B10001B003 /* ClaudeCLIProvider.swift in Sources */,
+				C5E10001B10001B10001B001 /* ChatController.swift in Sources */,
+				C5E10001B10001B10001B002 /* StreamingMarkdownView.swift in Sources */,
+				C5E10001B10001B10001B003 /* ChatErrorBanner.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -10,6 +10,7 @@ struct WorkspaceRootView: View {
     @EnvironmentObject private var focus: WorkspaceFocusController
 
     @State private var selection = WorkspaceSelection()
+    @State private var chat = ChatController()
     @State private var showProjectSheet = false
     @StateObject private var fileBrowser = FileBrowserModel()
 
@@ -97,6 +98,7 @@ struct WorkspaceRootView: View {
             rebindFileRoot()
             // T9: keep the LRU pool's "focused" slot aligned with the sidebar.
             ClaudeCLIProvider.shared.setFocusedProject(selection.selectedProjectID)
+            chat.focusedProjectID = selection.selectedProjectID
         }
         .onChange(of: allProjects.count) { _, _ in
             restoreSelectionIfNeeded()
@@ -104,6 +106,13 @@ struct WorkspaceRootView: View {
         .onChange(of: selection.selectedProjectID) { _, newID in
             rebindFileRoot()
             ClaudeCLIProvider.shared.setFocusedProject(newID)
+            chat.focusedProjectID = newID
+        }
+        // ⌘2 / Navigate → Chat: always flip the center surface to the Chat tab
+        // (PLAN.md Responsive & Accessibility). Works even when the AppKit
+        // TerminalView is first responder (menu key-equivalent path).
+        .onChange(of: focus.chatTabActivationToken) { _, _ in
+            selection.showChat()
         }
         // T9: background reply finished → green unread-activity status-dot.
         .onReceive(
@@ -187,6 +196,7 @@ struct WorkspaceRootView: View {
     private var centerPane: some View {
         CenterPaneView(
             selection: selection,
+            chat: chat,
             fileRootURL: fileBrowser.rootURL,
             isFocused: focus.focusedPane == .chat,
             onCreateProject: { showProjectSheet = true },

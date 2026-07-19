@@ -679,7 +679,7 @@ immediate sequence, not two separate uncoordinated passes.
   `ClaudeCLIProvider` (Step 2)
   - Verify: streamed reply lands in chat; kill CLI mid-stream → visible error;
     resume-failure rehydrates from SwiftData
-- [ ] **T5 (P1)** — chat UI — streaming markdown rendering + model/effort picker
+- [x] **T5 (P1)** — chat UI — streaming markdown rendering + model/effort picker
   (Step 3)
   - Verify: markdown renders incrementally; picker changes apply next turn
 - [x] **T6 (P2)** — files — lazy per-directory tree + preview flip (Step 4)
@@ -711,7 +711,7 @@ immediate sequence, not two separate uncoordinated passes.
   - Files: Project model (`archived: Bool`), sidebar view
   - Verify: archiving a Project removes it from the default view; filter
     toggle reveals archived ones
-- [ ] **T13 (P2)** — chat — Category-specific error banner: one shape, dynamic
+- [x] **T13 (P2)** — chat — Category-specific error banner: one shape, dynamic
   text/CTA per `api_retry` category
   - Files: chat error-state view, `ClaudeCLIProvider` error mapping
   - Verify: each of the 5 categories (auth/billing/rate-limit/overloaded/
