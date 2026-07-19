@@ -347,4 +347,74 @@ private final class WorkspaceNSSplitView: NSSplitView {
         layer?.backgroundColor = NSColor.clear.cgColor
         layer?.isOpaque = false
     }
+
+    override func resetCursorRects() {
+        discardCursorRects()
+        // Always show horizontal resize cursor on every divider gap.
+        let thickness = dividerThickness
+        guard thickness > 0, !arrangedSubviews.isEmpty else { return }
+        var x: CGFloat = 0
+        for (index, sub) in arrangedSubviews.enumerated() {
+            x += sub.frame.width
+            if index < arrangedSubviews.count - 1 {
+                let rect = NSRect(x: x, y: 0, width: thickness, height: bounds.height)
+                addCursorRect(rect, cursor: .resizeLeftRight)
+                // Tooltip so hover always explains the edge is movable.
+                // (NSView toolTip is one string; set on the split — refined below.)
+                x += thickness
+            }
+        }
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        // Ensure cursor rects refresh when layout changes.
+        window?.invalidateCursorRects(for: self)
+        // Per-divider tooltips via tracking areas owned by the split.
+        trackingAreas
+            .filter { ($0.userInfo?["prodigyDivider"] as? Bool) == true }
+            .forEach { removeTrackingArea($0) }
+
+        let thickness = dividerThickness
+        guard thickness > 0, !arrangedSubviews.isEmpty else { return }
+        var x: CGFloat = 0
+        for (index, sub) in arrangedSubviews.enumerated() {
+            x += sub.frame.width
+            if index < arrangedSubviews.count - 1 {
+                let rect = NSRect(x: x, y: 0, width: thickness, height: bounds.height)
+                let area = NSTrackingArea(
+                    rect: rect,
+                    options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+                    owner: self,
+                    userInfo: ["prodigyDivider": true]
+                )
+                addTrackingArea(area)
+                x += thickness
+            }
+        }
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        if event.trackingArea?.userInfo?["prodigyDivider"] as? Bool == true {
+            toolTip = "Drag to resize panes"
+            NSCursor.resizeLeftRight.set()
+        }
+        super.mouseEntered(with: event)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        if event.trackingArea?.userInfo?["prodigyDivider"] as? Bool == true {
+            toolTip = nil
+            NSCursor.arrow.set()
+        }
+        super.mouseExited(with: event)
+    }
+
+    override func layout() {
+        super.layout()
+        window?.invalidateCursorRects(for: self)
+        needsUpdateConstraints = true
+        // Rebuild tracking areas after layout so tooltips track divider positions.
+        updateTrackingAreas()
+    }
 }

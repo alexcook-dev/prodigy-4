@@ -45,6 +45,7 @@ G7A10001B10001B10001B001 /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFil
 G7A10001B10001B10001B002 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = G7A10001F10001F10001F002 /* Typography.swift */; };
 H8A10001B001 /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = H8A10001F001 /* AppAppearance.swift */; };
 H8A10001B002 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = H8A10001F002 /* SettingsView.swift */; };
+H9A10001B003 /* ResizableSplitStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = H9A10001F003 /* ResizableSplitStack.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -88,6 +89,7 @@ G7A10001F10001F10001F001 /* LiquidGlass.swift */ = {isa = PBXFileReference; last
 G7A10001F10001F10001F002 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 H8A10001F001 /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
 H8A10001F002 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+H9A10001F003 /* ResizableSplitStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResizableSplitStack.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -195,6 +197,7 @@ A1000000000000000000000A /* Theme */ = {
 				C5E10001F10001F10001F003 /* ChatErrorBanner.swift */,
 				D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */,
 				H8A10001F002 /* SettingsView.swift */,
+				H9A10001F003 /* ResizableSplitStack.swift */,
 				10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */,
 				A3C10001F10001F10001F001 /* PersistableHSplitView.swift */,
 				B20000000000000000000007 /* ProjectCreationSheet.swift */,
@@ -294,6 +297,7 @@ A1000000000000000000000A /* Theme */ = {
 				G7A10001B10001B10001B002 /* Typography.swift in Sources */,
 				H8A10001B002 /* SettingsView.swift in Sources */,
 				H8A10001B001 /* AppAppearance.swift in Sources */,
+				H9A10001B003 /* ResizableSplitStack.swift in Sources */,
 				D63C17A1E4B24D11903BC0E9 /* SidebarView.swift in Sources */,
 				C78F465372BB48858CBB93BB /* CenterPaneView.swift in Sources */,
 				BA4708242C804BB080B814FA /* FileBrowserPaneView.swift in Sources */,

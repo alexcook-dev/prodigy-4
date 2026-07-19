@@ -21,6 +21,8 @@ struct SidebarView: View {
     @State private var showSettings = false
     @State private var renameTarget: WorkspaceProject?
     @State private var renameText = ""
+    /// Top (Projects) fraction of free height between Projects + Agents.
+    @AppStorage("prodigy.sidebar.projectsFraction") private var projectsFraction = 0.55
 
     @Query(sort: \WorkspaceProject.lastActiveAt, order: .reverse)
     private var allProjects: [WorkspaceProject]
@@ -36,17 +38,30 @@ struct SidebarView: View {
     }
 
     var body: some View {
-        // Uniform gap between every card — same token as Files/Terminal/center.
+        // Projects + Agents: two glass cards with a **gap handle** (no line).
+        // Settings sits below in its own card. Uniform spacing everywhere.
         VStack(spacing: LiquidGlassMetrics.interPaneGap) {
-            projectsSection
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .liquidGlassNested()
-
-            agentsSection
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .liquidGlassNested()
+            ResizableVStack(
+                topFraction: $projectsFraction,
+                minTop: LayoutMetrics.nestedPaneMinHeight,
+                minBottom: LayoutMetrics.nestedPaneMinHeight,
+                maxTopFraction: LayoutMetrics.nestedPaneMaxFraction,
+                maxBottomFraction: LayoutMetrics.nestedPaneMaxFraction,
+                gap: LiquidGlassMetrics.interPaneGap,
+                tooltip: "Drag to resize Projects and Agents"
+            ) {
+                projectsSection
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .liquidGlassNested()
+            } bottom: {
+                agentsSection
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .liquidGlassNested()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             settingsCard
+                .frame(height: LayoutMetrics.settingsCardHeight)
                 .liquidGlassNested()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

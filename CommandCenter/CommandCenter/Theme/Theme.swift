@@ -145,4 +145,15 @@ enum LayoutMetrics {
     /// PLAN.md: "No hard minimum window size."
     static let minWindowWidth: CGFloat = 480
     static let minWindowHeight: CGFloat = 360
+
+    // MARK: - Nested resizable cards (Projects/Agents, Files/Terminal)
+
+    /// Neither nested pane may shrink below this height (prevents overlap/collapse).
+    static let nestedPaneMinHeight: CGFloat = 96
+
+    /// Cap either nested pane at this fraction of free height (keeps both usable).
+    static let nestedPaneMaxFraction: Double = 0.78
+
+    /// Settings card fixed height (not part of the resizable pair).
+    static let settingsCardHeight: CGFloat = 44
 }

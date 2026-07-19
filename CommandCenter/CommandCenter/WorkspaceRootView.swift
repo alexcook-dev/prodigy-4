@@ -359,9 +359,20 @@ private struct RightColumnView: View {
     let onFocusTerminal: () -> Void
     let onPaneShortcut: (WorkspacePane) -> Void
 
+    /// Top (Files) fraction of free height between Files + Terminal.
+    @AppStorage("prodigy.rightColumn.filesFraction") private var filesFraction = 0.5
+
     var body: some View {
-        // Two stacked glass cards (not one opaque VSplitView slab).
-        VStack(spacing: LiquidGlassMetrics.interPaneGap) {
+        // Two stacked glass cards with a gap handle (min/max, hover tooltip).
+        ResizableVStack(
+            topFraction: $filesFraction,
+            minTop: LayoutMetrics.nestedPaneMinHeight,
+            minBottom: LayoutMetrics.nestedPaneMinHeight,
+            maxTopFraction: LayoutMetrics.nestedPaneMaxFraction,
+            maxBottomFraction: LayoutMetrics.nestedPaneMaxFraction,
+            gap: LiquidGlassMetrics.interPaneGap,
+            tooltip: "Drag to resize Files and Terminal"
+        ) {
             FileBrowserPaneView(
                 model: fileBrowser,
                 previewPresenter: previewPresenter,
@@ -371,7 +382,7 @@ private struct RightColumnView: View {
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusFiles)
             .liquidGlassNested()
-
+        } bottom: {
             TerminalPaneView(
                 isFocused: terminalFocused,
                 onPaneShortcut: onPaneShortcut
