@@ -64,9 +64,8 @@ struct CenterPaneView: View {
     }
 
     var body: some View {
-        // Always show live chat chrome (tabs + body + composer). Never gate on
-        // FirstRunView / "Good evening" — live feedback after Wave 0: center pane
-        // defaults to an empty composer even with zero Projects (PLAN.md IA revision).
+        // Ordinary chat panel: tab bar + scrollable thread + bottom composer.
+        // Empty == same layout with zero messages (no marketing empty state).
         VStack(spacing: 0) {
             tabBar
             contentBody
@@ -201,71 +200,12 @@ struct CenterPaneView: View {
         }
     }
 
+    /// Same structure whether empty or populated: scrollable thread + (via
+    /// body) composer pinned below. Zero messages = blank scroll area only —
+    /// no greeting, logo, CTA, or tip cards (PLAN.md IA / chat-panel norm).
     private var chatBody: some View {
-        Group {
-            // Always empty-chat or message list — never a gated greeting/CTA.
-            if let thread = activeThread {
-                let messages = thread.sortedMessages
-                if messages.isEmpty && !isStreamingHere && errorHere == nil {
-                    emptyThreadState
-                } else {
-                    messageScroll(messages: messages)
-                }
-            } else {
-                emptyThreadState
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var emptyThreadState: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            if let project = selectedProject {
-                Text(project.folderPath)
-                    .font(.system(size: 12).monospaced())
-                    .foregroundStyle(Theme.textSecondary)
-            }
-
-            Text(
-                selectedAgent == nil
-                    ? "No messages yet. Ask anything about this project."
-                    : "New conversation with \(selectedAgent!.name)\(selectedProject.map { " in \($0.name)" } ?? "")."
-            )
-            .font(.system(size: 13))
-            .foregroundStyle(Theme.textPrimary)
-
-            // D4: only generic chips — no folder-aware chips (those need tools).
-            HStack(spacing: 8) {
-                suggestionChip("Plan today")
-                suggestionChip("Something else")
-            }
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    private func suggestionChip(_ title: String) -> some View {
-        Button {
-            chat.applySuggestion(title)
-            sendCurrentMessage()
-        } label: {
-            Text(title)
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.textSecondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .fill(Theme.chipBackground)
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(Theme.borderStructural, lineWidth: 1)
-                        )
-                )
-        }
-        .buttonStyle(.plain)
-        .disabled(chat.isBusy)
+        messageScroll(messages: activeThread?.sortedMessages ?? [])
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func messageScroll(messages: [Message]) -> some View {
