@@ -1,102 +1,105 @@
+import AppKit
 import SwiftUI
 
-/// Semantic color tokens for the workspace shell.
+/// Semantic color tokens mapped to **Apple system colors**.
 ///
-/// All values live in the asset catalog as adaptive Light/Dark color sets.
-/// Views must use these tokens only — never raw hex, never ad-hoc Color(red:…).
+/// Light and Dark automatically follow the system (or the user’s Prodigy
+/// appearance setting) via `NSColor` dynamic providers — no custom Light/Dark
+/// hex pairs. Matches standard macOS apps (Mail, Notes, Finder lists).
 ///
-/// Dark values follow PLAN.md Visual System; Light values are the Step 1
-/// derivation (D7 / T15) so system appearance switches without relaunch.
+/// Views should use these tokens (or SwiftUI `Color.primary` / `.secondary`)
+/// rather than hard-coded RGB.
 enum Theme {
     // MARK: - Surfaces
 
     /// App chrome / outer window background.
-    static let appBackground = Color("AppBackground")
+    static let appBackground = Color(nsColor: .windowBackgroundColor)
 
-    /// Dominant center chat/preview surface.
-    static let centerBackground = Color("CenterBackground")
+    /// Dominant center chat/preview surface (document/text well).
+    static let centerBackground = Color(nsColor: .textBackgroundColor)
 
-    /// Deepest surface / window border edge.
-    static let deepest = Color("Deepest")
+    /// Deepest edge / hairline companion.
+    static let deepest = Color(nsColor: .separatorColor)
 
-    /// Left sidebar fill.
-    static let sidebarBackground = Color("SidebarBackground")
+    /// Sidebar / list chrome.
+    static let sidebarBackground = Color(nsColor: .controlBackgroundColor)
 
-    /// Elevated controls (composer field, tip cards, chips).
-    static let elevatedSurface = Color("ElevatedSurface")
+    /// Elevated controls (fields, chips, sheets).
+    static let elevatedSurface = Color(nsColor: .controlBackgroundColor)
 
-    /// Terminal panel background (stays dark in both appearances).
-    static let terminalBackground = Color("TerminalBackground")
+    /// Terminal panel background (system text well — adapts in Light/Dark).
+    static let terminalBackground = Color(nsColor: .textBackgroundColor)
 
     // MARK: - Text
 
-    /// Body / primary labels. Clears 4.5:1 on center and app surfaces.
-    static let textPrimary = Color("TextPrimary")
+    /// Body / primary labels.
+    static let textPrimary = Color(nsColor: .labelColor)
 
-    /// Secondary captions, section headers, legends. Clears 4.5:1.
-    static let textSecondary = Color("TextSecondary")
+    /// Secondary captions, section headers.
+    static let textSecondary = Color(nsColor: .secondaryLabelColor)
 
-    /// Decorative only (kbd chrome, collapse chevrons). Not for functional captions.
-    static let textTertiary = Color("TextTertiary")
+    /// Tertiary / decorative chrome.
+    static let textTertiary = Color(nsColor: .tertiaryLabelColor)
 
-    /// Default sidebar / list row label (unselected).
-    static let textRow = Color("TextRow")
+    /// Default list row label (unselected).
+    static let textRow = Color(nsColor: .labelColor)
 
-    /// Text drawn on accent fills (selected row, primary CTA).
-    static let textOnAccent = Color("TextOnAccent")
+    /// Text drawn on accent / selected fills.
+    static let textOnAccent = Color(nsColor: .alternateSelectedControlTextColor)
 
     // MARK: - Accent
 
-    /// Non-text UI accent: selection fill, focus ring, primary CTA, borders.
-    static let accent = Color("Accent")
+    /// System control accent (user’s accent color from System Settings).
+    static let accent = Color(nsColor: .controlAccentColor)
 
-    /// Text/link accent — contrast-safe variant, never use `accent` for body text.
-    static let accentText = Color("AccentText")
+    /// Links / accent text — system accent (adapts for contrast).
+    static let accentText = Color(nsColor: .controlAccentColor)
 
-    /// Focus outline around the active pane.
-    static let focusRing = Color("FocusRing")
+    /// Keyboard focus indicator.
+    static let focusRing = Color(nsColor: .keyboardFocusIndicatorColor)
 
     // MARK: - Status
 
-    /// Actively streaming tokens (focused or background).
-    static let statusBusy = Color("StatusBusy")
+    /// Actively streaming tokens.
+    static let statusBusy = Color(nsColor: .systemOrange)
 
-    /// Unread completed activity (clears when the thread is next opened).
-    static let statusDone = Color("StatusDone")
+    /// Unread completed activity.
+    static let statusDone = Color(nsColor: .systemGreen)
 
     // MARK: - Error
 
-    static let errorBackground = Color("ErrorBackground")
-    static let errorBorder = Color("ErrorBorder")
-    static let errorText = Color("ErrorText")
+    static let errorBackground = Color(nsColor: .systemRed).opacity(0.12)
+    static let errorBorder = Color(nsColor: .systemRed).opacity(0.45)
+    static let errorText = Color(nsColor: .systemRed)
 
     // MARK: - Borders
 
-    /// Structural section dividers.
-    static let borderStructural = Color("BorderStructural")
-
-    /// Hairline panel separators.
-    static let borderHairline = Color("BorderHairline")
-
-    /// Secondary control outlines (Stop, pills).
-    static let controlBorder = Color("ControlBorder")
+    static let borderStructural = Color(nsColor: .separatorColor)
+    static let borderHairline = Color(nsColor: .separatorColor)
+    static let controlBorder = Color(nsColor: .separatorColor)
 
     // MARK: - Selection / messages
 
-    static let selectionFill = Color("SelectionFill")
-    static let fileSelectionFill = Color("FileSelectionFill")
-    static let userMessageFill = Color("UserMessageFill")
-    static let userMessageBorder = Color("UserMessageBorder")
+    /// Selected list row / control (system blue or user accent).
+    static let selectionFill = Color(nsColor: .selectedContentBackgroundColor)
+
+    /// File tree selection.
+    static let fileSelectionFill = Color(nsColor: .selectedContentBackgroundColor)
+
+    /// User chat bubble fill — subtle system fill (not a custom brand color).
+    static let userMessageFill = Color(nsColor: .quaternaryLabelColor).opacity(0.35)
+
+    static let userMessageBorder = Color(nsColor: .separatorColor)
 
     // MARK: - Terminal
 
-    static let terminalText = Color("TerminalText")
-    static let terminalPrompt = Color("TerminalPrompt")
+    static let terminalText = Color(nsColor: .textColor)
+    static let terminalPrompt = Color(nsColor: .controlAccentColor)
 
     // MARK: - Chrome
 
-    static let chipBackground = Color("ChipBackground")
-    static let kbdBackground = Color("KbdBackground")
+    static let chipBackground = Color(nsColor: .quaternaryLabelColor).opacity(0.25)
+    static let kbdBackground = Color(nsColor: .quaternaryLabelColor).opacity(0.20)
 }
 
 // MARK: - Layout constants (from wireframe proportions + T16 window behavior)

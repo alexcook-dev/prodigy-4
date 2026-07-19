@@ -96,36 +96,13 @@ extension View {
 
 /// Neutral ambient fill so glass has light to sample (no blue tint).
 struct LiquidGlassAmbientBackground: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     var body: some View {
+        // Pure system window chrome — Light/Dark come from NSColor dynamics.
         ZStack {
-            (colorScheme == .dark
-                ? Color(nsColor: .windowBackgroundColor).opacity(0.40)
-                : Color(nsColor: .windowBackgroundColor).opacity(0.50))
-
-            EllipticalGradient(
-                colors: [
-                    Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.06),
-                    Color.clear,
-                ],
-                center: .topLeading,
-                startRadiusFraction: 0.05,
-                endRadiusFraction: 0.85
-            )
-            EllipticalGradient(
-                colors: [
-                    Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.04),
-                    Color.clear,
-                ],
-                center: .bottomTrailing,
-                startRadiusFraction: 0.0,
-                endRadiusFraction: 0.75
-            )
-
+            Color(nsColor: .windowBackgroundColor)
             Rectangle()
                 .fill(.ultraThinMaterial)
-                .opacity(colorScheme == .dark ? 0.50 : 0.35)
+                .opacity(0.55)
         }
         .ignoresSafeArea()
     }
