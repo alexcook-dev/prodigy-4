@@ -4,6 +4,9 @@
 # run-all-waves.sh log output
 .grok-wave-logs/
 
+# T1 CLI spike runtime cwd (recreated on each run)
+spikes/t1-cli-chat/.workdir/
+
 # macOS / Xcode
 .DS_Store
 *.xcuserstate

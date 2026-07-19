@@ -665,7 +665,7 @@ Each task derives from a specific plan/review finding. Checkbox as you ship.
 Cross-references (T9 "extends T4") mean: same subsystem, do together or in
 immediate sequence, not two separate uncoordinated passes.
 
-- [ ] **T1 (P1)** — provider — Prototype one real conversation through the scoped
+- [x] **T1 (P1)** — provider — Prototype one real conversation through the scoped
   CLI pipe before any UI
   - Files: throwaway script or minimal target; judge chat quality vs claude.ai
   - Verify: a scoped chat (system-prompt replace, tools off, config scoped) reads
