@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { box-sizing: border-box; margin: 0; }
+html,body { height:100%; background:#2a2a2c; font-family:-apple-system,"SF Pro Text",sans-serif; color:#e8e8ea; font-size:13px; }
+.app { display:grid; grid-template-columns:224px 1fr 320px; grid-template-rows:38px 1fr; height:100vh; }
+.titlebar { grid-column:1/-1; background:#323234; border-bottom:1px solid #1d1d1f; display:flex; align-items:center; padding:0 12px; gap:14px; }
+.dots{display:flex;gap:7px}.dot{width:12px;height:12px;border-radius:50%}.d1{background:#ff5f57}.d2{background:#febc2e}.d3{background:#28c840}
+.tb-title{font-size:12px;color:#98989d;font-weight:500}
+.sidebar{background:rgba(50,50,54,.94);border-right:1px solid #1d1d1f;padding:8px 0;font-size:13px}
+.sech{font-size:11px;font-weight:600;color:#98989d;text-transform:uppercase;letter-spacing:.05em;padding:4px 16px;display:flex;justify-content:space-between}
+.sech .plus{color:#0a84ff;font-size:13px}
+.sec{padding:6px 0}.sec+.sec{border-top:1px solid #3a3a3c;margin-top:6px}
+.empty-side{padding:6px 16px;font-size:12px;color:#8e8e93;line-height:1.5}
+.mkbtn{display:inline-block;margin-top:6px;border:1px solid #0a84ff;color:#0a84ff;border-radius:6px;padding:3px 10px;font-size:12px}
+.center{display:flex;flex-direction:column;background:#232325;align-items:center;justify-content:center;gap:14px;text-align:center;padding:40px}
+.hero-ic{font-size:40px;opacity:.9}
+h1{font-size:22px;font-weight:600;letter-spacing:-.01em}
+.sub{color:#98989d;font-size:14px;max-width:420px;line-height:1.5}
+.cta{background:#0a84ff;color:#fff;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:500;margin-top:6px}
+.cta2{color:#0a84ff;font-size:13px}
+.tips{margin-top:18px;display:flex;gap:12px;font-size:12px;color:#8e8e93}
+.tip{background:#2c2c2e;border:1px solid #3a3a3c;border-radius:8px;padding:10px 14px;width:170px;text-align:left;line-height:1.45}
+.tip b{color:#d5d5d7;display:block;margin-bottom:3px;font-weight:600}
+kbd{background:#3a3a3c;border-radius:3px;padding:0 4px;font-size:10px}
+.right{display:flex;flex-direction:column;background:#2a2a2c}
+.panel{flex:1;display:flex;flex-direction:column}
+.pfiles{border-bottom:1px solid #1d1d1f}
+.ph{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#98989d;padding:8px 12px;border-bottom:1px solid #303032}
+.pempty{flex:1;display:flex;align-items:center;justify-content:center;color:#8e8e93;font-size:12px;text-align:center;padding:16px;line-height:1.5}
+.pterm{background:#1b1b1d}
+.term{flex:1;font-family:"SF Mono",Menlo,monospace;font-size:11.5px;color:#98d998;padding:10px 12px}
+.term .p{color:#6ca8f0}
+</style></head><body>
+<div class="app">
+  <div class="titlebar">
+    <div class="dots"><div class="dot d1"></div><div class="dot d2"></div><div class="dot d3"></div></div>
+    <span class="tb-title">Command Center</span>
+  </div>
+  <div class="sidebar">
+    <div class="sec">
+      <div class="sech">Projects <span class="plus">＋</span></div>
+      <div class="empty-side">Group chats and files by what you're working on.<br><span class="mkbtn">＋ New Project</span></div>
+    </div>
+    <div class="sec">
+      <div class="sech">Agents <span class="plus">＋</span></div>
+      <div class="empty-side">Reusable personas — an editor, a researcher, a planner.<br><span class="mkbtn">＋ New Agent</span></div>
+    </div>
+  </div>
+  <div class="center">
+    <div class="hero-ic">◎</div>
+    <h1>Good morning, Alex</h1>
+    <div class="sub">One place for the day's work: chat in the middle, your files and terminal on the right, projects on the left. Start by making a project — or just say something.</div>
+    <div class="cta">Create your first Project</div>
+    <div class="cta2">or start a quick chat ⏎</div>
+    <div class="tips">
+      <div class="tip"><b>Chat is the center</b>Everything routes through the conversation. <kbd>⌘2</kbd> gets you back here.</div>
+      <div class="tip"><b>Projects remember</b>Each project keeps its own chats and working folder.</div>
+      <div class="tip"><b>Agents are personas</b>Saved system prompts you can call from any project.</div>
+    </div>
+  </div>
+  <div class="right">
+    <div class="panel pfiles">
+      <div class="ph">Files</div>
+      <div class="pempty">No project selected.<br>Files follow the active project's folder.</div>
+    </div>
+    <div class="panel pterm">
+      <div class="ph">Terminal — zsh</div>
+      <div class="term"><div><span class="p">~ $</span> ▊</div></div>
+    </div>
+  </div>
+</div>
+</body></html>

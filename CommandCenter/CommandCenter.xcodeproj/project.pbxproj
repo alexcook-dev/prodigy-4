@@ -1,0 +1,455 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		5E84C167C022430BA3858ABE /* CommandCenterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 794D7A91BC2F449483E329DA /* CommandCenterApp.swift */; };
+		28AF3D8C142A41F9A9E8B7D6 /* WorkspaceRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E271996CD6414EB89174684E /* WorkspaceRootView.swift */; };
+		C8F7C0CA028B4B099881C5AA /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B1F0FE56081425E82499147 /* Theme.swift */; };
+		D63C17A1E4B24D11903BC0E9 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E5DDECCF274A27AA970D45 /* SidebarView.swift */; };
+		C78F465372BB48858CBB93BB /* CenterPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C95E5098497418BB85ECD72 /* CenterPaneView.swift */; };
+		BA4708242C804BB080B814FA /* FileBrowserPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */; };
+		D4EF1582486D4AA198A4AC0F /* TerminalPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */; };
+		9CABA087C40747098D92B104 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A021B5B6387B4939800EC0EB /* Assets.xcassets */; };
+		B10000000000000000000001 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* Project.swift */; };
+		B10000000000000000000002 /* Agent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* Agent.swift */; };
+		B10000000000000000000003 /* ChatThread.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* ChatThread.swift */; };
+		B10000000000000000000004 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* Message.swift */; };
+		B10000000000000000000005 /* ProjectFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000005 /* ProjectFactory.swift */; };
+		B10000000000000000000006 /* WorkspaceSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000006 /* WorkspaceSelection.swift */; };
+		B10000000000000000000007 /* ProjectCreationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000007 /* ProjectCreationSheet.swift */; };
+		B10000000000000000000008 /* AgentCreationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000008 /* AgentCreationSheet.swift */; };
+		B10000000000000000000009 /* FirstRunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000009 /* FirstRunView.swift */; };
+F6A10001B001000000000001 /* FileNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000001 /* FileNode.swift */; };
+F6A10001B001000000000002 /* FileTreeLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000002 /* FileTreeLoader.swift */; };
+F6A10001B001000000000003 /* FileBrowserModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000003 /* FileBrowserModel.swift */; };
+F6A10001B001000000000004 /* FilePreviewPresenting.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000004 /* FilePreviewPresenting.swift */; };
+F6A10001B001000000000005 /* FilePreviewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000005 /* FilePreviewContent.swift */; };
+A2B10001B10001B10001B001 /* WorkspaceFocusController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B10001F10001F10001F001 /* WorkspaceFocusController.swift */; };
+A2B10001B10001B10001B002 /* KeyPassthroughTerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B10001F10001F10001F002 /* KeyPassthroughTerminalView.swift */; };
+A2B10001B10001B10001B003 /* TerminalSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B10001F10001F10001F003 /* TerminalSessionController.swift */; };
+A2B10001B10001B10001B004 /* TerminalViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B10001F10001F10001F004 /* TerminalViewRepresentable.swift */; };
+A2B10001B10001B10001B010 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A2B10001P10001P10001P001 /* SwiftTerm */; };
+A3C10001B10001B10001B001 /* PersistableHSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3C10001F10001F10001F001 /* PersistableHSplitView.swift */; };
+		C4D10001B10001B10001B001 /* ModelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4D10001F10001F10001F001 /* ModelProvider.swift */; };
+		C4D10001B10001B10001B002 /* ClaudeCLIEventParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4D10001F10001F10001F002 /* ClaudeCLIEventParser.swift */; };
+		C4D10001B10001B10001B003 /* ClaudeCLIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4D10001F10001F10001F003 /* ClaudeCLIProvider.swift */; };
+		C5E10001B10001B10001B001 /* ChatController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E10001F10001F10001F001 /* ChatController.swift */; };
+		C5E10001B10001B10001B002 /* StreamingMarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E10001F10001F10001F002 /* StreamingMarkdownView.swift */; };
+		C5E10001B10001B10001B003 /* ChatErrorBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E10001F10001F10001F003 /* ChatErrorBanner.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		794D7A91BC2F449483E329DA /* CommandCenterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandCenterApp.swift; sourceTree = "<group>"; };
+		E271996CD6414EB89174684E /* WorkspaceRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRootView.swift; sourceTree = "<group>"; };
+		5AE523E3026E477A875B5715 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BA8EE63358214777ABB6659C /* CommandCenter.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CommandCenter.entitlements; sourceTree = "<group>"; };
+		6B1F0FE56081425E82499147 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		D1E5DDECCF274A27AA970D45 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		4C95E5098497418BB85ECD72 /* CenterPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CenterPaneView.swift; sourceTree = "<group>"; };
+		D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserPaneView.swift; sourceTree = "<group>"; };
+		10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPaneView.swift; sourceTree = "<group>"; };
+		A021B5B6387B4939800EC0EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A10000000000000000000006 /* CommandCenter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CommandCenter.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B20000000000000000000001 /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
+		B20000000000000000000002 /* Agent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Agent.swift; sourceTree = "<group>"; };
+		B20000000000000000000003 /* ChatThread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatThread.swift; sourceTree = "<group>"; };
+		B20000000000000000000004 /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
+		B20000000000000000000005 /* ProjectFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectFactory.swift; sourceTree = "<group>"; };
+		B20000000000000000000006 /* WorkspaceSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSelection.swift; sourceTree = "<group>"; };
+		B20000000000000000000007 /* ProjectCreationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectCreationSheet.swift; sourceTree = "<group>"; };
+		B20000000000000000000008 /* AgentCreationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentCreationSheet.swift; sourceTree = "<group>"; };
+		B20000000000000000000009 /* FirstRunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstRunView.swift; sourceTree = "<group>"; };
+F6A10001F001000000000001 /* FileNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNode.swift; sourceTree = "<group>"; };
+F6A10001F001000000000002 /* FileTreeLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreeLoader.swift; sourceTree = "<group>"; };
+F6A10001F001000000000003 /* FileBrowserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserModel.swift; sourceTree = "<group>"; };
+F6A10001F001000000000004 /* FilePreviewPresenting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewPresenting.swift; sourceTree = "<group>"; };
+F6A10001F001000000000005 /* FilePreviewContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewContent.swift; sourceTree = "<group>"; };
+A2B10001F10001F10001F001 /* WorkspaceFocusController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceFocusController.swift; sourceTree = "<group>"; };
+A2B10001F10001F10001F002 /* KeyPassthroughTerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPassthroughTerminalView.swift; sourceTree = "<group>"; };
+A2B10001F10001F10001F003 /* TerminalSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSessionController.swift; sourceTree = "<group>"; };
+A2B10001F10001F10001F004 /* TerminalViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalViewRepresentable.swift; sourceTree = "<group>"; };
+A3C10001F10001F10001F001 /* PersistableHSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistableHSplitView.swift; sourceTree = "<group>"; };
+		C4D10001F10001F10001F001 /* ModelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelProvider.swift; sourceTree = "<group>"; };
+		C4D10001F10001F10001F002 /* ClaudeCLIEventParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCLIEventParser.swift; sourceTree = "<group>"; };
+		C4D10001F10001F10001F003 /* ClaudeCLIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCLIProvider.swift; sourceTree = "<group>"; };
+		C5E10001F10001F10001F001 /* ChatController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatController.swift; sourceTree = "<group>"; };
+		C5E10001F10001F10001F002 /* StreamingMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingMarkdownView.swift; sourceTree = "<group>"; };
+		C5E10001F10001F10001F003 /* ChatErrorBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatErrorBanner.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A10000000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2B10001B10001B10001B010 /* SwiftTerm in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A10000000000000000000007 = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000008 /* CommandCenter */,
+				A1000000000000000000000B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A10000000000000000000008 /* CommandCenter */ = {
+			isa = PBXGroup;
+			children = (
+				794D7A91BC2F449483E329DA /* CommandCenterApp.swift */,
+				E271996CD6414EB89174684E /* WorkspaceRootView.swift */,
+				5AE523E3026E477A875B5715 /* Info.plist */,
+				BA8EE63358214777ABB6659C /* CommandCenter.entitlements */,
+				A021B5B6387B4939800EC0EB /* Assets.xcassets */,
+				B30000000000000000000001 /* Models */,
+				B30000000000000000000002 /* Services */,
+				F6A10001G001000000000001 /* Files */,
+				A2B10001G10001G10001G001 /* Terminal */,
+				A2B10001F10001F10001F001 /* WorkspaceFocusController.swift */,
+				A1000000000000000000000A /* Theme */,
+				A10000000000000000000009 /* Views */,
+			);
+			path = CommandCenter;
+			sourceTree = "<group>";
+		};
+		B30000000000000000000001 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				B20000000000000000000001 /* Project.swift */,
+				B20000000000000000000002 /* Agent.swift */,
+				B20000000000000000000003 /* ChatThread.swift */,
+				B20000000000000000000004 /* Message.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		B30000000000000000000002 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				B20000000000000000000005 /* ProjectFactory.swift */,
+				B20000000000000000000006 /* WorkspaceSelection.swift */,
+				C4D10001F10001F10001F001 /* ModelProvider.swift */,
+				C4D10001F10001F10001F002 /* ClaudeCLIEventParser.swift */,
+				C4D10001F10001F10001F003 /* ClaudeCLIProvider.swift */,
+				C5E10001F10001F10001F001 /* ChatController.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		F6A10001G001000000000001 /* Files */ = {
+isa = PBXGroup;
+children = (
+F6A10001F001000000000001 /* FileNode.swift */,
+F6A10001F001000000000002 /* FileTreeLoader.swift */,
+F6A10001F001000000000003 /* FileBrowserModel.swift */,
+F6A10001F001000000000004 /* FilePreviewPresenting.swift */,
+F6A10001F001000000000005 /* FilePreviewContent.swift */,
+);
+path = Files;
+sourceTree = "<group>";
+};
+A2B10001G10001G10001G001 /* Terminal */ = {
+			isa = PBXGroup;
+			children = (
+				A2B10001F10001F10001F002 /* KeyPassthroughTerminalView.swift */,
+				A2B10001F10001F10001F003 /* TerminalSessionController.swift */,
+				A2B10001F10001F10001F004 /* TerminalViewRepresentable.swift */,
+			);
+			path = Terminal;
+			sourceTree = "<group>";
+		};
+A1000000000000000000000A /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				6B1F0FE56081425E82499147 /* Theme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000009 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				D1E5DDECCF274A27AA970D45 /* SidebarView.swift */,
+				4C95E5098497418BB85ECD72 /* CenterPaneView.swift */,
+				C5E10001F10001F10001F002 /* StreamingMarkdownView.swift */,
+				C5E10001F10001F10001F003 /* ChatErrorBanner.swift */,
+				D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */,
+				10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */,
+				A3C10001F10001F10001F001 /* PersistableHSplitView.swift */,
+				B20000000000000000000007 /* ProjectCreationSheet.swift */,
+				B20000000000000000000008 /* AgentCreationSheet.swift */,
+				B20000000000000000000009 /* FirstRunView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A1000000000000000000000B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000006 /* CommandCenter.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A10000000000000000000002 /* CommandCenter */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1000000000000000000000D /* Build configuration list for PBXNativeTarget "CommandCenter" */;
+			buildPhases = (
+				A10000000000000000000003 /* Sources */,
+				A10000000000000000000005 /* Frameworks */,
+				A10000000000000000000004 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CommandCenter;
+			packageProductDependencies = (
+				A2B10001P10001P10001P001 /* SwiftTerm */,
+			);
+			productName = CommandCenter;
+			productReference = A10000000000000000000006 /* CommandCenter.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A10000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1650;
+				LastUpgradeCheck = 1650;
+				TargetAttributes = {
+					A10000000000000000000002 = {
+						CreatedOnToolsVersion = 16.5;
+					};
+				};
+			};
+			buildConfigurationList = A1000000000000000000000C /* Build configuration list for PBXProject "CommandCenter" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A10000000000000000000007;
+			packageReferences = (
+				A2B10001R10001R10001R001 /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+			);
+			productRefGroup = A1000000000000000000000B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A10000000000000000000002 /* CommandCenter */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A10000000000000000000004 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9CABA087C40747098D92B104 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A10000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5E84C167C022430BA3858ABE /* CommandCenterApp.swift in Sources */,
+				28AF3D8C142A41F9A9E8B7D6 /* WorkspaceRootView.swift in Sources */,
+				C8F7C0CA028B4B099881C5AA /* Theme.swift in Sources */,
+				D63C17A1E4B24D11903BC0E9 /* SidebarView.swift in Sources */,
+				C78F465372BB48858CBB93BB /* CenterPaneView.swift in Sources */,
+				BA4708242C804BB080B814FA /* FileBrowserPaneView.swift in Sources */,
+				D4EF1582486D4AA198A4AC0F /* TerminalPaneView.swift in Sources */,
+				B10000000000000000000001 /* Project.swift in Sources */,
+				B10000000000000000000002 /* Agent.swift in Sources */,
+				B10000000000000000000003 /* ChatThread.swift in Sources */,
+				B10000000000000000000004 /* Message.swift in Sources */,
+				B10000000000000000000005 /* ProjectFactory.swift in Sources */,
+				B10000000000000000000006 /* WorkspaceSelection.swift in Sources */,
+				B10000000000000000000007 /* ProjectCreationSheet.swift in Sources */,
+				B10000000000000000000008 /* AgentCreationSheet.swift in Sources */,
+				B10000000000000000000009 /* FirstRunView.swift in Sources */,
+				F6A10001B001000000000001 /* FileNode.swift in Sources */,
+				F6A10001B001000000000002 /* FileTreeLoader.swift in Sources */,
+				F6A10001B001000000000003 /* FileBrowserModel.swift in Sources */,
+				F6A10001B001000000000004 /* FilePreviewPresenting.swift in Sources */,
+				F6A10001B001000000000005 /* FilePreviewContent.swift in Sources */,
+				A2B10001B10001B10001B001 /* WorkspaceFocusController.swift in Sources */,
+				A2B10001B10001B10001B002 /* KeyPassthroughTerminalView.swift in Sources */,
+				A2B10001B10001B10001B003 /* TerminalSessionController.swift in Sources */,
+				A2B10001B10001B10001B004 /* TerminalViewRepresentable.swift in Sources */,
+				A3C10001B10001B10001B001 /* PersistableHSplitView.swift in Sources */,
+				C4D10001B10001B10001B001 /* ModelProvider.swift in Sources */,
+				C4D10001B10001B10001B002 /* ClaudeCLIEventParser.swift in Sources */,
+				C4D10001B10001B10001B003 /* ClaudeCLIProvider.swift in Sources */,
+				C5E10001B10001B10001B001 /* ChatController.swift in Sources */,
+				C5E10001B10001B10001B002 /* StreamingMarkdownView.swift in Sources */,
+				C5E10001B10001B10001B003 /* ChatErrorBanner.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A1000000000000000000000E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A1000000000000000000000F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		A10000000000000000000010 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = CommandCenter/CommandCenter.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CommandCenter/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.alexcook.CommandCenter;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A10000000000000000000011 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = CommandCenter/CommandCenter.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CommandCenter/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.alexcook.CommandCenter;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A1000000000000000000000C /* Build configuration list for PBXProject "CommandCenter" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1000000000000000000000E /* Debug */,
+				A1000000000000000000000F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1000000000000000000000D /* Build configuration list for PBXNativeTarget "CommandCenter" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000010 /* Debug */,
+				A10000000000000000000011 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A2B10001R10001R10001R001 /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.15.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A2B10001P10001P10001P001 /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A2B10001R10001R10001R001 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A10000000000000000000001 /* Project object */;
+}

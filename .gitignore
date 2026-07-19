@@ -1,0 +1,17 @@
+# gstack local session/artifact state — not part of the app
+.gstack/
+
+# run-all-waves.sh log output
+.grok-wave-logs/
+
+# T1 CLI spike runtime cwd (recreated on each run)
+spikes/t1-cli-chat/.workdir/
+
+# T4 provider smoke runtime cwd
+spikes/t4-provider-smoke/.workdir/
+
+# macOS / Xcode
+.DS_Store
+*.xcuserstate
+xcuserdata/
+DerivedData/
