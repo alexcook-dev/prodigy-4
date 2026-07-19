@@ -35,21 +35,13 @@ once Step 1's semantic-color pass (D7) is in progress, so both land together.
 text/link accents (raw system blue `#0a84ff` fails 4.5:1 as body text) — the
 requirement is decided, but no actual hex value was chosen.
 
-**Why:** Same shape of gap as the spacing-grid TODO above — a real decision,
-correctly deferred, easy to lose once `#0a84ff` is sitting in the Visual System
-section looking usable for text by default.
-
-**Pros:** Five-minute fix once someone's looking at it in context (pick a value,
-verify 4.5:1, done); prevents the raw accent color leaking into text use.
-
-**Cons:** Blocks nothing today — no text/link accent gets built before Step 1's
-semantic-color pass exists to hold the value anyway.
+**Resolution (Wave 0 / T15):** `AccentText` asset-catalog token —
+Dark `#6CB6FF` (~7.3:1 on center), Light `#0066CC` (~5.6:1 on white).
+Non-text UI continues to use `Accent` (`#0A84FF` / `#007AFF`). Views use
+`Theme.accentText` only.
 
 **Context:** Surfaced during `/plan-design-review` (2026-07-19), Pass 6
 (Responsive & Accessibility), contrast computation against the Visual System
 palette. See the design plan's "Visual System → Contrast fixes" note.
 
-**Depends on / blocked by:** Nothing; naturally lands alongside the spacing-grid
-TODO and Step 1's semantic-color work.
-
-- Status: Open
+- Status: Resolved (Wave 0 scaffold)

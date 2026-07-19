@@ -670,7 +670,7 @@ immediate sequence, not two separate uncoordinated passes.
   - Files: throwaway script or minimal target; judge chat quality vs claude.ai
   - Verify: a scoped chat (system-prompt replace, tools off, config scoped) reads
     as a good general assistant, with acceptable first-token latency
-- [ ] **T2 (P1)** — shell — Scaffold SwiftUI 4-pane layout (Step 1)
+- [x] **T2 (P1)** — shell — Scaffold SwiftUI 4-pane layout (Step 1)
   - Verify: app launches with sidebar/chat/files/terminal placeholders
 - [ ] **T3 (P1)** — data — SwiftData models (Project/Agent/Thread/Message) + two
   separate sidebar sections (Step 6)
@@ -720,7 +720,7 @@ immediate sequence, not two separate uncoordinated passes.
   - Files: Project model (`lastActiveAt`), app launch flow
   - Verify: quit mid-conversation, relaunch → same Project/thread reopens;
     true first-run (zero Projects) still shows the greeting screen
-- [ ] **T15 (P1, foundational — do during Step 1)** — visual — Semantic/adaptive
+- [x] **T15 (P1, foundational — do during Step 1)** — visual — Semantic/adaptive
   color system: Light + Dark via asset-catalog color sets, contrast-safe
   text/accent tokens
   - Files: color asset catalog / `Color` extensions, all views (no raw hex)
