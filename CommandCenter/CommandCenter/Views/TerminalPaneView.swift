@@ -3,7 +3,18 @@ import SwiftUI
 /// Bottom-right terminal placeholder.
 /// Real SwiftTerm + pty + process-ended state is T7; keyboard passthrough is T10.
 struct TerminalPaneView: View {
+    /// Active Project's working folder for the prompt display.
+    var projectFolderPath: String? = nil
     var isFocused: Bool = false
+
+    private var promptPath: String {
+        guard let projectFolderPath else { return "~" }
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        if projectFolderPath.hasPrefix(home) {
+            return "~" + projectFolderPath.dropFirst(home.count)
+        }
+        return projectFolderPath
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,15 +58,7 @@ struct TerminalPaneView: View {
     private var terminalBody: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
-                Text("~/Projects/website $")
-                    .foregroundStyle(Theme.terminalPrompt)
-                Text("npm run dev")
-                    .foregroundStyle(Theme.terminalText)
-            }
-            Text("ready on :3000")
-                .foregroundStyle(Theme.terminalText)
-            HStack(spacing: 6) {
-                Text("~/Projects/website $")
+                Text("\(promptPath) $")
                     .foregroundStyle(Theme.terminalPrompt)
                 Rectangle()
                     .fill(Theme.terminalText)

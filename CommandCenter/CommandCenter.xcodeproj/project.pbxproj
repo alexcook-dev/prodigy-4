@@ -15,6 +15,15 @@
 		BA4708242C804BB080B814FA /* FileBrowserPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */; };
 		D4EF1582486D4AA198A4AC0F /* TerminalPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */; };
 		9CABA087C40747098D92B104 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A021B5B6387B4939800EC0EB /* Assets.xcassets */; };
+		B10000000000000000000001 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* Project.swift */; };
+		B10000000000000000000002 /* Agent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* Agent.swift */; };
+		B10000000000000000000003 /* ChatThread.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* ChatThread.swift */; };
+		B10000000000000000000004 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* Message.swift */; };
+		B10000000000000000000005 /* ProjectFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000005 /* ProjectFactory.swift */; };
+		B10000000000000000000006 /* WorkspaceSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000006 /* WorkspaceSelection.swift */; };
+		B10000000000000000000007 /* ProjectCreationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000007 /* ProjectCreationSheet.swift */; };
+		B10000000000000000000008 /* AgentCreationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000008 /* AgentCreationSheet.swift */; };
+		B10000000000000000000009 /* FirstRunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000009 /* FirstRunView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,6 +38,15 @@
 		10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPaneView.swift; sourceTree = "<group>"; };
 		A021B5B6387B4939800EC0EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000006 /* CommandCenter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CommandCenter.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B20000000000000000000001 /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
+		B20000000000000000000002 /* Agent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Agent.swift; sourceTree = "<group>"; };
+		B20000000000000000000003 /* ChatThread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatThread.swift; sourceTree = "<group>"; };
+		B20000000000000000000004 /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
+		B20000000000000000000005 /* ProjectFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectFactory.swift; sourceTree = "<group>"; };
+		B20000000000000000000006 /* WorkspaceSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSelection.swift; sourceTree = "<group>"; };
+		B20000000000000000000007 /* ProjectCreationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectCreationSheet.swift; sourceTree = "<group>"; };
+		B20000000000000000000008 /* AgentCreationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentCreationSheet.swift; sourceTree = "<group>"; };
+		B20000000000000000000009 /* FirstRunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstRunView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,10 +76,32 @@
 				5AE523E3026E477A875B5715 /* Info.plist */,
 				BA8EE63358214777ABB6659C /* CommandCenter.entitlements */,
 				A021B5B6387B4939800EC0EB /* Assets.xcassets */,
+				B30000000000000000000001 /* Models */,
+				B30000000000000000000002 /* Services */,
 				A1000000000000000000000A /* Theme */,
 				A10000000000000000000009 /* Views */,
 			);
 			path = CommandCenter;
+			sourceTree = "<group>";
+		};
+		B30000000000000000000001 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				B20000000000000000000001 /* Project.swift */,
+				B20000000000000000000002 /* Agent.swift */,
+				B20000000000000000000003 /* ChatThread.swift */,
+				B20000000000000000000004 /* Message.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		B30000000000000000000002 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				B20000000000000000000005 /* ProjectFactory.swift */,
+				B20000000000000000000006 /* WorkspaceSelection.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 		A1000000000000000000000A /* Theme */ = {
@@ -79,6 +119,9 @@
 				4C95E5098497418BB85ECD72 /* CenterPaneView.swift */,
 				D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */,
 				10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */,
+				B20000000000000000000007 /* ProjectCreationSheet.swift */,
+				B20000000000000000000008 /* AgentCreationSheet.swift */,
+				B20000000000000000000009 /* FirstRunView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -167,6 +210,15 @@
 				C78F465372BB48858CBB93BB /* CenterPaneView.swift in Sources */,
 				BA4708242C804BB080B814FA /* FileBrowserPaneView.swift in Sources */,
 				D4EF1582486D4AA198A4AC0F /* TerminalPaneView.swift in Sources */,
+				B10000000000000000000001 /* Project.swift in Sources */,
+				B10000000000000000000002 /* Agent.swift in Sources */,
+				B10000000000000000000003 /* ChatThread.swift in Sources */,
+				B10000000000000000000004 /* Message.swift in Sources */,
+				B10000000000000000000005 /* ProjectFactory.swift in Sources */,
+				B10000000000000000000006 /* WorkspaceSelection.swift in Sources */,
+				B10000000000000000000007 /* ProjectCreationSheet.swift in Sources */,
+				B10000000000000000000008 /* AgentCreationSheet.swift in Sources */,
+				B10000000000000000000009 /* FirstRunView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
