@@ -43,10 +43,13 @@ struct PersistableHSplitView: NSViewRepresentable {
     func makeNSView(context: Context) -> NSSplitView {
         let split = WorkspaceNSSplitView()
         split.isVertical = true // vertical divider → side-by-side panes
-        split.dividerStyle = .thin
+        // Transparent, thicker dividers so floating glass cards have air between them.
+        split.dividerStyle = .paneSplitter
         split.delegate = context.coordinator
         split.autosaveName = NSSplitView.AutosaveName(autosaveName)
         split.arrangesAllSubviews = true
+        split.wantsLayer = true
+        split.layer?.backgroundColor = NSColor.clear.cgColor
 
         context.coordinator.splitView = split
         context.coordinator.autosaveName = autosaveName
@@ -289,6 +292,8 @@ private final class HostingSlot: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         autoresizingMask = [.width, .height]
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
     }
 
     @available(*, unavailable)
@@ -303,17 +308,33 @@ private final class HostingSlot: NSView {
             let host = NSHostingView(rootView: content)
             host.frame = bounds
             host.autoresizingMask = [.width, .height]
+            // Transparent host so SwiftUI Liquid Glass can sample content behind.
+            if #available(macOS 14.0, *) {
+                // layer-backed clear
+            }
+            host.wantsLayer = true
+            host.layer?.backgroundColor = NSColor.clear.cgColor
             addSubview(host)
             hostingView = host
         }
     }
 }
 
-// MARK: - Thin split view subclass
+// MARK: - Transparent split view subclass
 
-/// Lets the split view participate cleanly in SwiftUI layout (intrinsic size flexible).
+/// Flexible split with **invisible wide dividers** so neighboring Liquid Glass
+/// cards float with a real gap (NSSplitView otherwise draws edge-to-edge).
 private final class WorkspaceNSSplitView: NSSplitView {
     override var intrinsicContentSize: NSSize {
         NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric)
+    }
+
+    /// Wide enough to read as spacing between floating glass panes.
+    override var dividerThickness: CGFloat {
+        LiquidGlassMetrics.interPaneGap
+    }
+
+    override func drawDivider(in rect: NSRect) {
+        // Transparent — gap is air for glass refraction, not a gray rule.
     }
 }

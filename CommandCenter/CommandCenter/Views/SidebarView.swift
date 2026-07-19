@@ -43,10 +43,10 @@ struct SidebarView: View {
             Spacer(minLength: 12)
             keyboardHints
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 4)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        // Liquid Glass supplies the pane fill (see WorkspaceRootView.liquidGlassPane).
+        // Glass fill applied by WorkspaceRootView.liquidGlassFloatingSlot.
         .background(Color.clear)
         .sheet(isPresented: $showProjectSheet) {
             ProjectCreationSheet { project in

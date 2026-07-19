@@ -27,17 +27,20 @@ struct WorkspaceRootView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            mainSplit
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(LiquidGlassMetrics.windowInset)
+        // GlassEffectContainer lets neighboring glass shapes share a coherent
+        // sampling layer (WWDC25 Liquid Glass composition).
+        GlassEffectContainer(spacing: LiquidGlassMetrics.interPaneGap) {
+            ZStack(alignment: .trailing) {
+                mainSplit
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(LiquidGlassMetrics.windowInset)
 
-            if isNarrow && isRightColumnDrawerPresented {
-                rightColumnDrawer
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                if isNarrow && isRightColumnDrawerPresented {
+                    rightColumnDrawer
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
         }
-        // Transparent root so pane glass can refract the window ambient / wallpaper.
         .background(Color.clear)
         .background(
             GeometryReader { geo in
@@ -194,10 +197,12 @@ struct WorkspaceRootView: View {
         )
         .contentShape(Rectangle())
         .onTapGesture { focus.focus(.sidebar) }
-        .liquidGlassPane()
+        .liquidGlassFloatingSlot()
     }
 
     private var centerPane: some View {
+        // Center is a lighter shell: glass frame with clear reading well so
+        // the message stream stays sharp (Apple guidance: glass = chrome).
         CenterPaneView(
             selection: selection,
             chat: chat,
@@ -208,7 +213,9 @@ struct WorkspaceRootView: View {
         )
         .contentShape(Rectangle())
         .onTapGesture { focus.focus(.chat) }
-        .liquidGlassPane()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .liquidGlassCard(cornerRadius: LiquidGlassMetrics.paneCorner)
+        .padding(LiquidGlassMetrics.slotInset)
     }
 
     private var rightColumn: some View {
@@ -222,12 +229,12 @@ struct WorkspaceRootView: View {
             onFocusTerminal: { focus.focus(.terminal) },
             onPaneShortcut: { focus.focus($0) }
         )
-        .liquidGlassPane()
+        .padding(LiquidGlassMetrics.slotInset)
     }
 
     private var rightColumnDrawer: some View {
         HStack(spacing: 0) {
-            Color.black.opacity(0.12)
+            Color.black.opacity(0.18)
                 .contentShape(Rectangle())
                 .onTapGesture { isRightColumnDrawerPresented = false }
 
@@ -351,25 +358,29 @@ private struct RightColumnView: View {
     let onPaneShortcut: (WorkspacePane) -> Void
 
     var body: some View {
-        VSplitView {
+        // Two stacked glass cards (not one opaque VSplitView slab).
+        VStack(spacing: LiquidGlassMetrics.interPaneGap) {
             FileBrowserPaneView(
                 model: fileBrowser,
                 previewPresenter: previewPresenter,
                 isFocused: filesFocused
             )
-            .frame(minHeight: 120)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusFiles)
+            .liquidGlassNested()
 
             TerminalPaneView(
                 isFocused: terminalFocused,
                 onPaneShortcut: onPaneShortcut
             )
-            .frame(minHeight: 100)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusTerminal)
+            .liquidGlassNested()
         }
-        .background(Theme.appBackground)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.clear)
     }
 }
 

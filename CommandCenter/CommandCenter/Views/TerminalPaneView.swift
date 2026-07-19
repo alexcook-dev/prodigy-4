@@ -19,8 +19,8 @@ struct TerminalPaneView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Terminal buffer stays slightly tinted for contrast; chrome is glass.
-        .background(Theme.terminalBackground.opacity(0.55))
+        // Nested glass card wraps this view; keep buffer slightly tinted for contrast.
+        .background(Theme.terminalBackground.opacity(0.35))
         .onAppear {
             // Clicking the pane focuses the terminal for typing.
         }

@@ -37,15 +37,18 @@ struct CommandCenterApp: App {
                     minWidth: LayoutMetrics.minWindowWidth,
                     minHeight: LayoutMetrics.minWindowHeight
                 )
-                // Let Liquid Glass refract the desktop / ambient window fill.
+                // Ambient fill + clear window chrome so Liquid Glass has light to sample.
                 .containerBackground(for: .window) {
                     LiquidGlassAmbientBackground()
                 }
+                .background(LiquidGlassWindowChrome())
         }
         .defaultSize(
             width: LayoutMetrics.defaultWindowWidth,
             height: LayoutMetrics.defaultWindowHeight
         )
+        // Unified titlebar composites with glass content.
+        .windowStyle(.hiddenTitleBar)
         .modelContainer(sharedModelContainer)
         // Unsandboxed personal build; ad-hoc signing is configured in the
         // Xcode project (CODE_SIGN_IDENTITY="-", ENABLE_APP_SANDBOX=NO).

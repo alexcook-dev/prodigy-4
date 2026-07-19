@@ -68,19 +68,23 @@ struct CenterPaneView: View {
         // Empty == same layout with zero messages (no marketing empty state).
         VStack(spacing: 0) {
             tabBar
+                .padding(.horizontal, 10)
+                .padding(.top, 10)
+                .padding(.bottom, 6)
+
             contentBody
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
             if case .chat = selection.activeSurface {
                 composerBar
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Liquid Glass pane chrome is applied by WorkspaceRootView; keep the
-        // reading surface transparent so messages float over the glass.
+        // Reading well stays clear; glass lives on the outer card + controls.
         .background(Color.clear)
         // T16: cap chat reading width on large displays (~900–1000px).
         .frame(maxWidth: LayoutMetrics.maxReadingWidth)
         .frame(maxWidth: .infinity) // stay centered in the pane
-        // Focus is shown on the composer text field (see composerBar).
         // ⌘⏎ discuss-in-chat: selection stages plain-text reference → composer.
         .onChange(of: selection.pendingComposerInsert) { _, value in
             guard let value else { return }
@@ -145,14 +149,10 @@ struct CenterPaneView: View {
 
             Spacer()
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 0)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Theme.borderHairline)
-                .frame(height: 1)
-        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        // Floating glass strip for tabs (chrome only — not a full-pane fill).
+        .liquidGlassClearBar(cornerRadius: LiquidGlassMetrics.controlCorner)
     }
 
     private var chatTabTitle: String {
