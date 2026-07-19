@@ -3,31 +3,29 @@ import SwiftUI
 
 /// Apple Liquid Glass metrics and helpers for Prodigy (macOS 26+).
 ///
-/// Design rules (WWDC25):
-/// - Glass is for **chrome** (sidebar, floating controls, cards) — not full-bleed
-///   opaque content areas that need dense reading contrast.
-/// - Leave **air** between glass shapes so refraction reads as separate lenses.
-/// - Prefer `.regular` / `.regular.interactive()` for controls; `.clear` for light shells.
+/// Design rules (WWDC25 / HIG):
+/// - Glass is for **discrete chrome cards**, not one fused slab.
+/// - Keep gaps **tight** (Apple multi-column apps use ~6–8pt, not large voids).
+/// - Prefer `.regular` / `.regular.interactive()` for controls; nested cards share the same language as Files/Terminal.
 enum LiquidGlassMetrics {
-    /// Outer rounded card radius for major panes.
-    static let paneCorner: CGFloat = 22
-    /// Nested cards (Files / Terminal within the right column).
-    static let nestedCorner: CGFloat = 16
+    /// Outer rounded card radius for major panes (sidebar column / center).
+    static let paneCorner: CGFloat = 14
+    /// Nested cards (Projects, Agents, Files, Terminal).
+    static let nestedCorner: CGFloat = 12
     /// Composer field / dense controls.
-    static let controlCorner: CGFloat = 14
-    /// Gap between floating glass panes (also used as split divider thickness).
-    static let interPaneGap: CGFloat = 12
-    /// Inset from the window edge so panes float inside the frame.
-    static let windowInset: CGFloat = 12
-    /// Inset of glass shape inside an NSSplitView slot.
-    static let slotInset: CGFloat = 2
+    static let controlCorner: CGFloat = 10
+    /// Gap between floating glass cards (also NSSplitView divider thickness).
+    static let interPaneGap: CGFloat = 6
+    /// Inset from the window edge.
+    static let windowInset: CGFloat = 6
+    /// Inset of a glass card inside a split slot.
+    static let slotInset: CGFloat = 1
 }
 
 // MARK: - View modifiers
 
 extension View {
-    /// Floating major pane: glass lens with continuous rounded corners.
-    /// Apply **inside** split slots; pair with transparent split dividers for gaps.
+    /// Floating major pane card.
     func liquidGlassCard(
         cornerRadius: CGFloat = LiquidGlassMetrics.paneCorner,
         interactive: Bool = false
@@ -42,7 +40,7 @@ extension View {
             )
     }
 
-    /// Nested card (Files / Terminal stack).
+    /// Nested card (Projects / Agents / Files / Terminal).
     func liquidGlassNested(interactive: Bool = false) -> some View {
         liquidGlassCard(
             cornerRadius: LiquidGlassMetrics.nestedCorner,
@@ -82,8 +80,7 @@ extension View {
             )
     }
 
-    /// Inset a floating glass card inside an NSSplitView slot so neighboring
-    /// cards don't share an edge (divider gap + slot inset).
+    /// Inset a floating glass card inside an NSSplitView slot.
     func liquidGlassFloatingSlot(
         cornerRadius: CGFloat = LiquidGlassMetrics.paneCorner
     ) -> some View {
@@ -96,22 +93,19 @@ extension View {
 
 // MARK: - Ambient window fill
 
-/// Neutral ambient fill so glass has light to refract without blue tint.
-/// Kept translucent so the desktop can participate when the window is clear.
+/// Neutral ambient fill so glass has light to sample (no blue tint).
 struct LiquidGlassAmbientBackground: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
-            // Soft neutral base (not pure clear — pure clear can make glass look flat).
             (colorScheme == .dark
-                ? Color(nsColor: .windowBackgroundColor).opacity(0.35)
-                : Color(nsColor: .windowBackgroundColor).opacity(0.45))
+                ? Color(nsColor: .windowBackgroundColor).opacity(0.40)
+                : Color(nsColor: .windowBackgroundColor).opacity(0.50))
 
-            // Subtle depth — desaturated, no accent blue.
             EllipticalGradient(
                 colors: [
-                    Color.primary.opacity(colorScheme == .dark ? 0.14 : 0.07),
+                    Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.06),
                     Color.clear,
                 ],
                 center: .topLeading,
@@ -120,7 +114,7 @@ struct LiquidGlassAmbientBackground: View {
             )
             EllipticalGradient(
                 colors: [
-                    Color.primary.opacity(colorScheme == .dark ? 0.10 : 0.05),
+                    Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.04),
                     Color.clear,
                 ],
                 center: .bottomTrailing,
@@ -128,34 +122,28 @@ struct LiquidGlassAmbientBackground: View {
                 endRadiusFraction: 0.75
             )
 
-            // Ultra-thin material veil so Liquid Glass has real blur sample content.
             Rectangle()
                 .fill(.ultraThinMaterial)
-                .opacity(colorScheme == .dark ? 0.55 : 0.40)
+                .opacity(colorScheme == .dark ? 0.50 : 0.35)
         }
         .ignoresSafeArea()
     }
 }
 
-// MARK: - Window chrome (transparent titlebar so glass reads correctly)
+// MARK: - Window chrome
 
-/// Configures the hosting `NSWindow` for Liquid Glass: clear background,
-/// transparent titlebar, full-size content. Apply once on the root view.
+/// Clear / full-size-content window so Liquid Glass can composite correctly.
 struct LiquidGlassWindowChrome: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.clear.cgColor
-        DispatchQueue.main.async {
-            Self.apply(to: view.window)
-        }
+        DispatchQueue.main.async { Self.apply(to: view.window) }
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async {
-            Self.apply(to: nsView.window)
-        }
+        DispatchQueue.main.async { Self.apply(to: nsView.window) }
     }
 
     private static func apply(to window: NSWindow?) {
@@ -167,7 +155,6 @@ struct LiquidGlassWindowChrome: NSViewRepresentable {
         if !window.styleMask.contains(.fullSizeContentView) {
             window.styleMask.insert(.fullSizeContentView)
         }
-        // Let the content view composite glass against the ambient fill.
         window.contentView?.wantsLayer = true
         window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
     }

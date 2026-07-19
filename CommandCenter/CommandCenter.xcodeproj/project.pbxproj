@@ -42,6 +42,7 @@ A3C10001B10001B10001B001 /* PersistableHSplitView.swift in Sources */ = {isa = P
 		C5E10001B10001B10001B002 /* StreamingMarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E10001F10001F10001F002 /* StreamingMarkdownView.swift */; };
 		C5E10001B10001B10001B003 /* ChatErrorBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E10001F10001F10001F003 /* ChatErrorBanner.swift */; };
 G7A10001B10001B10001B001 /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = G7A10001F10001F10001F001 /* LiquidGlass.swift */; };
+G7A10001B10001B10001B002 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = G7A10001F10001F10001F002 /* Typography.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -82,6 +83,7 @@ A3C10001F10001F10001F001 /* PersistableHSplitView.swift */ = {isa = PBXFileRefer
 		C5E10001F10001F10001F002 /* StreamingMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingMarkdownView.swift; sourceTree = "<group>"; };
 		C5E10001F10001F10001F003 /* ChatErrorBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatErrorBanner.swift; sourceTree = "<group>"; };
 G7A10001F10001F10001F001 /* LiquidGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlass.swift; sourceTree = "<group>"; };
+G7A10001F10001F10001F002 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -174,6 +176,7 @@ A1000000000000000000000A /* Theme */ = {
 			children = (
 				6B1F0FE56081425E82499147 /* Theme.swift */,
 				G7A10001F10001F10001F001 /* LiquidGlass.swift */,
+				G7A10001F10001F10001F002 /* Typography.swift */,
 			);
 			path = Theme;
 			sourceTree = "<group>";
@@ -282,6 +285,7 @@ A1000000000000000000000A /* Theme */ = {
 				28AF3D8C142A41F9A9E8B7D6 /* WorkspaceRootView.swift in Sources */,
 				C8F7C0CA028B4B099881C5AA /* Theme.swift in Sources */,
 				G7A10001B10001B10001B001 /* LiquidGlass.swift in Sources */,
+				G7A10001B10001B10001B002 /* Typography.swift in Sources */,
 				D63C17A1E4B24D11903BC0E9 /* SidebarView.swift in Sources */,
 				C78F465372BB48858CBB93BB /* CenterPaneView.swift in Sources */,
 				BA4708242C804BB080B814FA /* FileBrowserPaneView.swift in Sources */,

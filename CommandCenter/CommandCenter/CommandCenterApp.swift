@@ -33,6 +33,8 @@ struct CommandCenterApp: App {
         WindowGroup {
             WorkspaceRootView()
                 .environmentObject(focus)
+                // San Francisco (system font) for the whole app — Apple HIG default.
+                .font(AppTypography.body)
                 .frame(
                     minWidth: LayoutMetrics.minWindowWidth,
                     minHeight: LayoutMetrics.minWindowHeight

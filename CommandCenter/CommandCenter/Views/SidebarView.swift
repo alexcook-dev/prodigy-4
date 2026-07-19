@@ -36,26 +36,27 @@ struct SidebarView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Draggable divider between Projects and Agents — same idea as the
-            // main pane / Files·Terminal splits (user can rebalance vertical space).
+        // Two separate glass cards (Projects / Agents), stacked like Files /
+        // Terminal on the right — draggable split between them, not one slab.
+        VStack(spacing: LiquidGlassMetrics.interPaneGap) {
             VSplitView {
                 projectsSection
-                    .frame(minHeight: 96, idealHeight: 220)
+                    .frame(minHeight: 88, idealHeight: 220)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .liquidGlassNested()
                     .layoutPriority(1)
 
                 agentsSection
-                    .frame(minHeight: 96, idealHeight: 180)
+                    .frame(minHeight: 88, idealHeight: 160)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .liquidGlassNested()
                     .layoutPriority(1)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             keyboardHints
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        // Glass fill applied by WorkspaceRootView.liquidGlassFloatingSlot.
         .background(Color.clear)
         .sheet(isPresented: $showProjectSheet) {
             ProjectCreationSheet { project in
@@ -123,6 +124,8 @@ struct SidebarView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
     }
 
     @ViewBuilder
@@ -189,7 +192,7 @@ struct SidebarView: View {
                     ? "No archived projects."
                     : "Group chats and files by what you're working on."
             )
-            .font(.system(size: 12))
+            .font(AppTypography.secondary)
             .foregroundStyle(Theme.textSecondary)
             .fixedSize(horizontal: false, vertical: true)
 
@@ -197,17 +200,10 @@ struct SidebarView: View {
                 Button {
                     showProjectSheet = true
                 } label: {
-                    Text("＋ New Project")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.accentText)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 3)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .strokeBorder(Theme.accent, lineWidth: 1)
-                        )
+                    Text("New Project")
+                        .font(AppTypography.secondary.weight(.medium))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glass)
             }
         }
         .padding(.horizontal, 16)
@@ -225,24 +221,17 @@ struct SidebarView: View {
             if agents.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Reusable personas — an editor, a researcher, a planner.")
-                        .font(.system(size: 12))
+                        .font(AppTypography.secondary)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Button {
                         showAgentSheet = true
                     } label: {
-                        Text("＋ New Agent")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Theme.accentText)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 3)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .strokeBorder(Theme.accent, lineWidth: 1)
-                            )
+                        Text("New Agent")
+                            .font(AppTypography.secondary.weight(.medium))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glass)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 6)
@@ -271,6 +260,8 @@ struct SidebarView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
     }
 
     // MARK: - Helpers
@@ -321,23 +312,23 @@ struct SidebarView: View {
     private func sectionHeader(title: String, action: @escaping () -> Void) -> some View {
         HStack {
             Text(title)
-                .font(.system(size: 11, weight: .semibold))
+                .font(AppTypography.section)
                 .foregroundStyle(Theme.textSecondary)
                 .textCase(.uppercase)
-                .tracking(0.6)
+                .tracking(0.4)
 
             Spacer()
 
             Button(action: action) {
                 Image(systemName: "plus")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Theme.accent)
+                    .font(AppTypography.callout.weight(.medium))
+                    .foregroundStyle(Theme.textSecondary)
             }
             .buttonStyle(.plain)
             .help("New \(title.dropLast())")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
     }
 
     private func filterChip(
@@ -347,20 +338,13 @@ struct SidebarView: View {
     ) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 10, weight: selected ? .semibold : .regular))
-                .foregroundStyle(selected ? Theme.accentText : Theme.textTertiary)
+                .font(selected ? AppTypography.caption.weight(.semibold) : AppTypography.caption)
+                .foregroundStyle(selected ? Theme.textPrimary : Theme.textTertiary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(
                     Capsule()
-                        .fill(selected ? Theme.chipBackground : Color.clear)
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(
-                                    selected ? Theme.borderStructural : Color.clear,
-                                    lineWidth: 1
-                                )
-                        )
+                        .fill(selected ? Theme.chipBackground.opacity(0.85) : Color.clear)
                 )
         }
         .buttonStyle(.plain)
@@ -368,21 +352,14 @@ struct SidebarView: View {
     }
 
     private var keyboardHints: some View {
-        Text("Panes: \(hint("⌘1")) Sidebar  \(hint("⌘2")) Chat  \(hint("⌘3")) Files  \(hint("⌘4")) Term")
-            .font(.system(size: 10))
+        Text("⌘1 Sidebar · ⌘2 Chat · ⌘3 Files · ⌘4 Term")
+            .font(AppTypography.caption2)
             .foregroundStyle(Theme.textTertiary)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityLabel(
                 "Pane shortcuts: Command 1 Sidebar, Command 2 Chat, Command 3 Files, Command 4 Terminal"
             )
-    }
-
-    private func hint(_ keys: String) -> Text {
-        Text(keys)
-            .font(.system(size: 10).monospaced())
-            .foregroundStyle(Theme.textTertiary)
     }
 }
 
@@ -551,13 +528,13 @@ struct SidebarRowView: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 12))
+                    .font(AppTypography.callout)
                     .frame(width: 15)
                     .opacity(0.8)
                     .accessibilityHidden(true)
 
                 Text(title)
-                    .font(.system(size: 13))
+                    .font(AppTypography.callout)
                     .lineLimit(1)
 
                 Spacer(minLength: 4)

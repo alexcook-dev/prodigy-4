@@ -190,6 +190,8 @@ struct WorkspaceRootView: View {
     }
 
     private var sidebarPane: some View {
+        // No outer glass slab — Projects and Agents are separate nested cards
+        // (same pattern as Files / Terminal on the right).
         SidebarView(
             selection: selection,
             chat: chat,
@@ -197,7 +199,7 @@ struct WorkspaceRootView: View {
         )
         .contentShape(Rectangle())
         .onTapGesture { focus.focus(.sidebar) }
-        .liquidGlassFloatingSlot()
+        .padding(LiquidGlassMetrics.slotInset)
     }
 
     private var centerPane: some View {
