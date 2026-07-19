@@ -684,7 +684,7 @@ immediate sequence, not two separate uncoordinated passes.
   - Verify: markdown renders incrementally; picker changes apply next turn
 - [ ] **T6 (P2)** — files — lazy per-directory tree + preview flip (Step 4)
   - Verify: 100k-file directory opens without UI hang; denied dir shows message
-- [ ] **T7 (P2)** — terminal — SwiftTerm pane with alt-screen resize +
+- [x] **T7 (P2)** — terminal — SwiftTerm pane with alt-screen resize +
   process-ended state (Step 5)
   - Verify: vim opens/resizes correctly; killed shell shows recoverable state
 - [ ] **T8 (P3, deferred)** — usage — rate-window consumption display (Step 10)
@@ -695,7 +695,7 @@ immediate sequence, not two separate uncoordinated passes.
   - Verify: switch away from a streaming Project → reply completes in the
     background → unread-activity dot appears; a 4th concurrent Project falls
     back to spawn-per-turn
-- [ ] **T10 (P1, extends T7)** — terminal — Keyboard-passthrough contract:
+- [x] **T10 (P1, extends T7)** — terminal — Keyboard-passthrough contract:
   ⌘1-⌘4 pass through `TerminalView`, Esc scoped to file-preview only
   - Files: `TerminalView` wrapper/subclass
   - Verify: ⌘1-⌘4 switch panes from inside a running shell; vim's Esc never
