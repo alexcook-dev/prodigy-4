@@ -37,10 +37,19 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            projectsSection
-            sectionDivider
-            agentsSection
-            Spacer(minLength: 12)
+            // Draggable divider between Projects and Agents — same idea as the
+            // main pane / Files·Terminal splits (user can rebalance vertical space).
+            VSplitView {
+                projectsSection
+                    .frame(minHeight: 96, idealHeight: 220)
+                    .layoutPriority(1)
+
+                agentsSection
+                    .frame(minHeight: 96, idealHeight: 180)
+                    .layoutPriority(1)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
             keyboardHints
         }
         .padding(.vertical, 10)
@@ -101,14 +110,19 @@ struct SidebarView: View {
 
             if visibleProjects.isEmpty {
                 emptyProjectsHint
+                Spacer(minLength: 0)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(visibleProjects, id: \.id) { project in
-                        projectRow(project)
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(visibleProjects, id: \.id) { project in
+                            projectRow(project)
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     @ViewBuilder
@@ -232,26 +246,31 @@ struct SidebarView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 6)
+                Spacer(minLength: 0)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(agents, id: \.id) { agent in
-                        SidebarRowView(
-                            title: agent.name,
-                            icon: "diamond",
-                            status: status(for: agent),
-                            isSelected: selection.selectedAgentID == agent.id
-                        ) {
-                            selection.selectAgent(
-                                agent,
-                                in: currentProject,
-                                context: modelContext
-                            )
-                            try? modelContext.save()
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(agents, id: \.id) { agent in
+                            SidebarRowView(
+                                title: agent.name,
+                                icon: "diamond",
+                                status: status(for: agent),
+                                isSelected: selection.selectedAgentID == agent.id
+                            ) {
+                                selection.selectAgent(
+                                    agent,
+                                    in: currentProject,
+                                    context: modelContext
+                                )
+                                try? modelContext.save()
+                            }
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     // MARK: - Helpers
@@ -346,14 +365,6 @@ struct SidebarView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
-    private var sectionDivider: some View {
-        Rectangle()
-            .fill(Theme.borderStructural)
-            .frame(height: 1)
-            .padding(.top, 6)
-            .padding(.bottom, 6)
     }
 
     private var keyboardHints: some View {
