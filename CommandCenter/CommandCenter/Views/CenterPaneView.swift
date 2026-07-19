@@ -7,6 +7,8 @@ import SwiftUI
 struct CenterPaneView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var selection: WorkspaceSelection
+    /// Browser / project root for relative paths in file preview chrome.
+    var fileRootURL: URL? = nil
     var isFocused: Bool = true
     var onCreateProject: () -> Void
     var onQuickChat: () -> Void
@@ -316,34 +318,13 @@ struct CenterPaneView: View {
     }
 
     private func filePreviewBody(_ tab: FilePreviewTab) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(tab.fileName)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(Theme.textPrimary)
-
-            Text(tab.filePath)
-                .font(.system(size: 11).monospaced())
-                .foregroundStyle(Theme.textSecondary)
-
-            Text("File preview is a shell tab — real QuickLook/content lands with T6.")
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.textSecondary)
-                .padding(.top, 8)
-
-            Text("Esc closes this preview · ⌘⏎ discusses in chat (later wave)")
-                .font(.system(size: 11))
-                .foregroundStyle(Theme.textTertiary)
-                .padding(.top, 4)
-
-            Spacer()
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Theme.centerBackground)
-        .onKeyPress(.escape) {
-            selection.closeFilePreview(tab)
-            return .handled
-        }
+        let request = FilePreviewRequest(url: tab.url)
+        return FilePreviewView(
+            request: request,
+            rootURL: fileRootURL,
+            onClose: { selection.closeFilePreview(tab) },
+            onDiscussInChat: { selection.discussInChat(request) }
+        )
     }
 
     // MARK: - Composer (placeholder; no usage meter in V1)

@@ -682,7 +682,7 @@ immediate sequence, not two separate uncoordinated passes.
 - [ ] **T5 (P1)** — chat UI — streaming markdown rendering + model/effort picker
   (Step 3)
   - Verify: markdown renders incrementally; picker changes apply next turn
-- [ ] **T6 (P2)** — files — lazy per-directory tree + preview flip (Step 4)
+- [x] **T6 (P2)** — files — lazy per-directory tree + preview flip (Step 4)
   - Verify: 100k-file directory opens without UI hang; denied dir shows message
 - [ ] **T7 (P2)** — terminal — SwiftTerm pane with alt-screen resize +
   process-ended state (Step 5)

@@ -24,6 +24,11 @@
 		B10000000000000000000007 /* ProjectCreationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000007 /* ProjectCreationSheet.swift */; };
 		B10000000000000000000008 /* AgentCreationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000008 /* AgentCreationSheet.swift */; };
 		B10000000000000000000009 /* FirstRunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000009 /* FirstRunView.swift */; };
+F6A10001B001000000000001 /* FileNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000001 /* FileNode.swift */; };
+F6A10001B001000000000002 /* FileTreeLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000002 /* FileTreeLoader.swift */; };
+F6A10001B001000000000003 /* FileBrowserModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000003 /* FileBrowserModel.swift */; };
+F6A10001B001000000000004 /* FilePreviewPresenting.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000004 /* FilePreviewPresenting.swift */; };
+F6A10001B001000000000005 /* FilePreviewContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A10001F001000000000005 /* FilePreviewContent.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +52,11 @@
 		B20000000000000000000007 /* ProjectCreationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectCreationSheet.swift; sourceTree = "<group>"; };
 		B20000000000000000000008 /* AgentCreationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentCreationSheet.swift; sourceTree = "<group>"; };
 		B20000000000000000000009 /* FirstRunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstRunView.swift; sourceTree = "<group>"; };
+F6A10001F001000000000001 /* FileNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNode.swift; sourceTree = "<group>"; };
+F6A10001F001000000000002 /* FileTreeLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreeLoader.swift; sourceTree = "<group>"; };
+F6A10001F001000000000003 /* FileBrowserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserModel.swift; sourceTree = "<group>"; };
+F6A10001F001000000000004 /* FilePreviewPresenting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewPresenting.swift; sourceTree = "<group>"; };
+F6A10001F001000000000005 /* FilePreviewContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewContent.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,6 +88,7 @@
 				A021B5B6387B4939800EC0EB /* Assets.xcassets */,
 				B30000000000000000000001 /* Models */,
 				B30000000000000000000002 /* Services */,
+				F6A10001G001000000000001 /* Files */,
 				A1000000000000000000000A /* Theme */,
 				A10000000000000000000009 /* Views */,
 			);
@@ -104,7 +115,19 @@
 			path = Services;
 			sourceTree = "<group>";
 		};
-		A1000000000000000000000A /* Theme */ = {
+		F6A10001G001000000000001 /* Files */ = {
+isa = PBXGroup;
+children = (
+F6A10001F001000000000001 /* FileNode.swift */,
+F6A10001F001000000000002 /* FileTreeLoader.swift */,
+F6A10001F001000000000003 /* FileBrowserModel.swift */,
+F6A10001F001000000000004 /* FilePreviewPresenting.swift */,
+F6A10001F001000000000005 /* FilePreviewContent.swift */,
+);
+path = Files;
+sourceTree = "<group>";
+};
+A1000000000000000000000A /* Theme */ = {
 			isa = PBXGroup;
 			children = (
 				6B1F0FE56081425E82499147 /* Theme.swift */,
@@ -219,6 +242,11 @@
 				B10000000000000000000007 /* ProjectCreationSheet.swift in Sources */,
 				B10000000000000000000008 /* AgentCreationSheet.swift in Sources */,
 				B10000000000000000000009 /* FirstRunView.swift in Sources */,
+				F6A10001B001000000000001 /* FileNode.swift in Sources */,
+				F6A10001B001000000000002 /* FileTreeLoader.swift in Sources */,
+				F6A10001B001000000000003 /* FileBrowserModel.swift in Sources */,
+				F6A10001B001000000000004 /* FilePreviewPresenting.swift in Sources */,
+				F6A10001B001000000000005 /* FilePreviewContent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -4,13 +4,14 @@ import SwiftUI
 /// Root 4-pane shell matching wireframe proportions:
 /// left sidebar (Projects / Agents) | center chat/preview | right (Files / Terminal).
 ///
-/// T3/T11/T12: selection + SwiftData-backed Projects/Agents; creation and archive.
+/// Combines Wave 1-data (SwiftData selection) with Wave 1-files (lazy file browser + previews).
 struct WorkspaceRootView: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var selection = WorkspaceSelection()
     @State private var focusedPane: WorkspacePane = .chat
     @State private var showProjectSheet = false
+    @StateObject private var fileBrowser = FileBrowserModel()
 
     @Query(sort: \WorkspaceProject.lastActiveAt, order: .reverse)
     private var allProjects: [WorkspaceProject]
@@ -26,6 +27,7 @@ struct WorkspaceRootView: View {
 
             CenterPaneView(
                 selection: selection,
+                fileRootURL: fileBrowser.rootURL,
                 isFocused: focusedPane == .chat,
                 onCreateProject: { showProjectSheet = true },
                 onQuickChat: startQuickChat
@@ -34,6 +36,8 @@ struct WorkspaceRootView: View {
             .layoutPriority(1)
 
             RightColumnView(
+                fileBrowser: fileBrowser,
+                previewPresenter: selection,
                 project: currentProject,
                 filesFocused: focusedPane == .files,
                 terminalFocused: focusedPane == .terminal
@@ -64,9 +68,13 @@ struct WorkspaceRootView: View {
         }
         .onAppear {
             restoreSelectionIfNeeded()
+            rebindFileRoot()
         }
         .onChange(of: allProjects.count) { _, _ in
             restoreSelectionIfNeeded()
+        }
+        .onChange(of: selection.selectedProjectID) { _, _ in
+            rebindFileRoot()
         }
     }
 
@@ -86,6 +94,15 @@ struct WorkspaceRootView: View {
             ?? allProjects.first(where: { !$0.archived }) {
             selection.selectProject(recent)
             try? modelContext.save()
+        }
+    }
+
+    /// Bind the file browser to the active Project's working folder.
+    private func rebindFileRoot() {
+        if let path = currentProject?.folderPath {
+            fileBrowser.setRoot(URL(fileURLWithPath: path, isDirectory: true))
+        } else {
+            fileBrowser.setRoot(nil)
         }
     }
 
@@ -114,6 +131,8 @@ enum WorkspacePane: Hashable {
 // MARK: - Right column
 
 private struct RightColumnView: View {
+    @ObservedObject var fileBrowser: FileBrowserModel
+    var previewPresenter: FilePreviewPresenting
     let project: WorkspaceProject?
     let filesFocused: Bool
     let terminalFocused: Bool
@@ -121,7 +140,8 @@ private struct RightColumnView: View {
     var body: some View {
         VSplitView {
             FileBrowserPaneView(
-                projectFolderPath: project?.folderPath,
+                model: fileBrowser,
+                previewPresenter: previewPresenter,
                 isFocused: filesFocused
             )
             .frame(minHeight: 120)
