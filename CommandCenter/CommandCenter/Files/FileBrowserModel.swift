@@ -148,6 +148,34 @@ final class FileBrowserModel: ObservableObject {
         selectedURL = node.url
     }
 
+    /// Currently selected entry, if still visible in the tree.
+    func selectedNode() -> FileNode? {
+        guard let selectedURL else { return nil }
+        return visibleRows()
+            .compactMap { row -> FileNode? in
+                if case .entry = row.kind { return row.node }
+                return nil
+            }
+            .first { $0.url == selectedURL }
+    }
+
+    /// Move selection to the previous/next visible entry (arrow keys).
+    func moveSelection(by delta: Int) {
+        let entries = visibleRows().compactMap { row -> FileNode? in
+            if case .entry = row.kind { return row.node }
+            return nil
+        }
+        guard !entries.isEmpty else { return }
+
+        if let selectedURL,
+           let index = entries.firstIndex(where: { $0.url == selectedURL }) {
+            let next = min(max(index + delta, 0), entries.count - 1)
+            select(entries[next])
+        } else {
+            select(delta >= 0 ? entries[0] : entries[entries.count - 1])
+        }
+    }
+
     // MARK: - Flattened rows for List
 
     /// Depth-first visible rows based on expansion state only.

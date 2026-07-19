@@ -13,6 +13,9 @@ struct FileBrowserPaneView: View {
     var previewPresenter: FilePreviewPresenting?
     var isFocused: Bool = false
 
+    /// Keyboard focus for Space / Enter / arrows when the Files pane is active.
+    @FocusState private var listKeyboardFocused: Bool
+
     var body: some View {
         VStack(spacing: 0) {
             panelHeader
@@ -24,6 +27,36 @@ struct FileBrowserPaneView: View {
             Rectangle()
                 .fill(Theme.borderHairline.opacity(0.55))
                 .frame(height: 1)
+        }
+        .focusable()
+        .focused($listKeyboardFocused)
+        .onChange(of: isFocused) { _, focused in
+            // When the workspace focuses Files (click / ⌘3), capture keyboard.
+            listKeyboardFocused = focused
+        }
+        .onAppear {
+            if isFocused { listKeyboardFocused = true }
+        }
+        // Finder-style: Space / Enter → preview selected file (or expand folder).
+        .onKeyPress(.space) {
+            guard isFocused || listKeyboardFocused else { return .ignored }
+            activateSelected()
+            return .handled
+        }
+        .onKeyPress(.return) {
+            guard isFocused || listKeyboardFocused else { return .ignored }
+            activateSelected()
+            return .handled
+        }
+        .onKeyPress(.upArrow) {
+            guard isFocused || listKeyboardFocused else { return .ignored }
+            model.moveSelection(by: -1)
+            return .handled
+        }
+        .onKeyPress(.downArrow) {
+            guard isFocused || listKeyboardFocused else { return .ignored }
+            model.moveSelection(by: 1)
+            return .handled
         }
     }
 
@@ -226,6 +259,10 @@ struct FileBrowserPaneView: View {
         .padding(.vertical, 3)
         .background(isSelected ? Theme.fileSelectionFill : Color.clear)
         .contentShape(Rectangle())
+        // Double-tap first so it wins over single-tap selection.
+        .onTapGesture(count: 2) {
+            handleDoubleClick(node)
+        }
         .onTapGesture {
             handleTap(node)
         }
@@ -238,7 +275,7 @@ struct FileBrowserPaneView: View {
                     model.refresh(node)
                 }
             } else {
-                Button("Open Preview") {
+                Button("Quick Look") {
                     openPreview(for: node)
                 }
             }
@@ -247,7 +284,14 @@ struct FileBrowserPaneView: View {
             }
         }
         .accessibilityLabel(node.isDirectory ? "Folder \(node.name)" : "File \(node.name)")
+        .accessibilityHint(node.isDirectory ? "Space expands or collapses" : "Space opens preview")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityAction(named: "Preview") {
+            if !node.isDirectory {
+                model.select(node)
+                openPreview(for: node)
+            }
+        }
     }
 
     private func leadingInset(for depth: Int) -> CGFloat {
@@ -256,8 +300,29 @@ struct FileBrowserPaneView: View {
 
     // MARK: - Actions
 
+    /// Single click: select (Finder-like). Folders also toggle expand.
     private func handleTap(_ node: FileNode) {
         model.select(node)
+        listKeyboardFocused = true
+        if node.isDirectory {
+            model.toggleExpand(node)
+        }
+    }
+
+    /// Double-click: open file preview, or toggle folder.
+    private func handleDoubleClick(_ node: FileNode) {
+        model.select(node)
+        listKeyboardFocused = true
+        if node.isDirectory {
+            model.toggleExpand(node)
+        } else {
+            openPreview(for: node)
+        }
+    }
+
+    /// Space / Return — same as Finder Quick Look for files; expand folders.
+    private func activateSelected() {
+        guard let node = model.selectedNode() else { return }
         if node.isDirectory {
             model.toggleExpand(node)
         } else {
