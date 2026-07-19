@@ -65,6 +65,7 @@ struct CenterPaneView: View {
 
     private var chatPlaceholder: some View {
         ScrollView {
+            // Reading column: cap at maxReadingWidth and center on large displays (T16).
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
                     Spacer(minLength: 40)
@@ -109,7 +110,7 @@ struct CenterPaneView: View {
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.textPrimary)
                     .lineSpacing(3)
-                    .frame(maxWidth: 720, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 HStack {
@@ -177,7 +178,8 @@ struct CenterPaneView: View {
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 20)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: LayoutMetrics.maxReadingWidth, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -185,38 +187,43 @@ struct CenterPaneView: View {
     // MARK: - Composer (placeholder; no usage meter in V1)
 
     private var composerPlaceholder: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Message Website Redesign…")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.textSecondary)
-                Spacer()
-                Text("⏎ send · ⇧⏎ newline")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.textTertiary)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(Theme.elevatedSurface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .strokeBorder(Theme.borderStructural, lineWidth: 1)
-                    )
-            )
+        VStack(spacing: 0) {
+            // Keep composer aligned with the reading column on large displays.
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Message Website Redesign…")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    Text("⏎ send · ⇧⏎ newline")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textTertiary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(Theme.elevatedSurface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .strokeBorder(Theme.borderStructural, lineWidth: 1)
+                        )
+                )
 
-            HStack(spacing: 8) {
-                composerPill("Claude · Sonnet")
-                composerPill("Effort: High")
-                Spacer()
-                // Usage meter intentionally omitted in V1 (PLAN.md NOT in Scope / Pass 7 #18).
+                HStack(spacing: 8) {
+                    composerPill("Claude · Sonnet")
+                    composerPill("Effort: High")
+                    Spacer()
+                    // Usage meter intentionally omitted in V1 (PLAN.md NOT in Scope / Pass 7 #18).
+                }
+                .font(.system(size: 11))
             }
-            .font(.system(size: 11))
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 12)
+            .frame(maxWidth: LayoutMetrics.maxReadingWidth, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 10)
-        .padding(.bottom, 12)
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(Theme.borderHairline)

@@ -99,18 +99,47 @@ enum Theme {
     static let kbdBackground = Color("KbdBackground")
 }
 
-// MARK: - Layout constants (from wireframe proportions)
+// MARK: - Layout constants (from wireframe proportions + T16 window behavior)
 
 enum LayoutMetrics {
-    /// Left sidebar column width (wf-1 `224px`).
+    // MARK: Sidebar
+
+    /// Left sidebar ideal width (wf-1 `224px`).
     static let sidebarWidth: CGFloat = 224
+    static let sidebarMinWidth: CGFloat = 160
+    static let sidebarMaxWidth: CGFloat = 320
 
-    /// Right column width (wf-1 `320px`).
+    // MARK: Center
+
+    /// Center pane must stay usable when tiled; no hard floor on the window itself.
+    static let centerMinWidth: CGFloat = 280
+
+    /// Max readable width for center-pane chat content on large/external displays
+    /// (PLAN.md Responsive & Accessibility: ~900–1000px).
+    static let maxReadingWidth: CGFloat = 960
+
+    // MARK: Right column
+
+    /// Right column ideal width (wf-1 `320px`).
     static let rightColumnWidth: CGFloat = 320
+    static let rightColumnMinWidth: CGFloat = 200
+    static let rightColumnMaxWidth: CGFloat = 480
 
-    /// Default minimum window size that still shows all three columns.
+    /// Overlay drawer width when the right column is collapsed at narrow widths.
+    static let rightColumnDrawerWidth: CGFloat = 320
+
+    /// Below this window width the right column (Files/Terminal) collapses to an
+    /// overlay/drawer — Mail.app / Xcode pattern. No hard minimum window size;
+    /// ~650–700px tiles are daily use. 3-col needs roughly 224+360+320 ≈ 900.
+    static let rightColumnCollapseBreakpoint: CGFloat = 960
+
+    // MARK: Window
+
     static let defaultWindowWidth: CGFloat = 1200
     static let defaultWindowHeight: CGFloat = 760
-    static let minWindowWidth: CGFloat = 900
-    static let minWindowHeight: CGFloat = 520
+
+    /// Soft platform floor only — deliberately low so windows can tile to ~650–700.
+    /// PLAN.md: "No hard minimum window size."
+    static let minWindowWidth: CGFloat = 480
+    static let minWindowHeight: CGFloat = 360
 }

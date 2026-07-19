@@ -14,6 +14,7 @@
 		C78F465372BB48858CBB93BB /* CenterPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C95E5098497418BB85ECD72 /* CenterPaneView.swift */; };
 		BA4708242C804BB080B814FA /* FileBrowserPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */; };
 		D4EF1582486D4AA198A4AC0F /* TerminalPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */; };
+		A2B3C4D5E6F708192A3B4C5D /* PersistableHSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F50617283A4B5C6D /* PersistableHSplitView.swift */; };
 		9CABA087C40747098D92B104 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A021B5B6387B4939800EC0EB /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -27,6 +28,7 @@
 		4C95E5098497418BB85ECD72 /* CenterPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CenterPaneView.swift; sourceTree = "<group>"; };
 		D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserPaneView.swift; sourceTree = "<group>"; };
 		10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPaneView.swift; sourceTree = "<group>"; };
+		B1C2D3E4F50617283A4B5C6D /* PersistableHSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistableHSplitView.swift; sourceTree = "<group>"; };
 		A021B5B6387B4939800EC0EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000006 /* CommandCenter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CommandCenter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -79,6 +81,7 @@
 				4C95E5098497418BB85ECD72 /* CenterPaneView.swift */,
 				D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */,
 				10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */,
+				B1C2D3E4F50617283A4B5C6D /* PersistableHSplitView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -167,6 +170,7 @@
 				C78F465372BB48858CBB93BB /* CenterPaneView.swift in Sources */,
 				BA4708242C804BB080B814FA /* FileBrowserPaneView.swift in Sources */,
 				D4EF1582486D4AA198A4AC0F /* TerminalPaneView.swift in Sources */,
+				A2B3C4D5E6F708192A3B4C5D /* PersistableHSplitView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
