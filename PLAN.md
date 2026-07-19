@@ -732,7 +732,7 @@ immediate sequence, not two separate uncoordinated passes.
   - Verify: tile the window to ~650px → right column collapses to an overlay,
     chat stays usable; dividers drag and persist; large-display chat content
     caps at ~1000px
-- [ ] **T17 (P3)** — a11y — Status-dot accessibility labels + keyboard-reachable
+- [x] **T17 (P3)** — a11y — Status-dot accessibility labels + keyboard-reachable
   Archive action
   - Files: `SidebarRowView`, status-dot component
   - Verify: VoiceOver announces dot state; Archive reachable via Tab+Space,

@@ -6,9 +6,12 @@ import SwiftUI
 /// only (`SidebarRowView`) — pure code reuse, not a visual merge.
 ///
 /// T3: SwiftData-backed lists. T11: creation sheets. T12: archive filter + action.
+/// T17: status-dot a11y labels + keyboard-reachable Archive.
 struct SidebarView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var selection: WorkspaceSelection
+    /// Optional: when present, amber Streaming dots track live turns (T17).
+    var chat: ChatController? = nil
 
     var isFocused: Bool = false
 
@@ -119,21 +122,27 @@ struct SidebarView: View {
 
     @ViewBuilder
     private func projectRow(_ project: WorkspaceProject) -> some View {
-        SidebarRowView(
-            title: project.name,
-            icon: "square.on.square",
-            status: status(for: project),
-            isSelected: selection.selectedProjectID == project.id
-                && selection.selectedAgentID == nil
-        ) {
-            selection.selectProject(project)
-            try? modelContext.save()
+        HStack(spacing: 0) {
+            SidebarRowView(
+                title: project.name,
+                icon: "square.on.square",
+                status: status(for: project),
+                isSelected: selection.selectedProjectID == project.id
+                    && selection.selectedAgentID == nil
+            ) {
+                selection.selectProject(project)
+                try? modelContext.save()
+            }
+
+            // T17: Archive is a real Button — Tab-focusable, Space/Enter-activatable,
+            // and focus-visible via the system keyboard focus ring. Context menu kept
+            // as a secondary mouse path (and Ctrl-click / menu-key when available).
+            archiveButton(for: project)
         }
         .contextMenu {
             if project.archived {
                 Button("Unarchive") {
-                    project.archived = false
-                    try? modelContext.save()
+                    unarchive(project)
                 }
             } else {
                 Button("Archive") {
@@ -151,6 +160,21 @@ struct SidebarView: View {
                 }
             }
         }
+    }
+
+    /// Per-row Archive / Unarchive control (T12 + T17 keyboard reachability).
+    private func archiveButton(for project: WorkspaceProject) -> some View {
+        ProjectArchiveButton(
+            projectName: project.name,
+            isArchived: project.archived
+        ) {
+            if project.archived {
+                unarchive(project)
+            } else {
+                archive(project)
+            }
+        }
+        .padding(.trailing, 6)
     }
 
     private var emptyProjectsHint: some View {
@@ -246,12 +270,23 @@ struct SidebarView: View {
         return allProjects.first { $0.id == id }
     }
 
-    private func status(for project: WorkspaceProject) -> RowStatus? {
-        project.hasUnviewedActivity ? .done : nil
+    /// Busy (amber) > unread (green) > idle. Always a concrete status so the
+    /// status-dot can announce Streaming / Idle to VoiceOver (T17).
+    private func status(for project: WorkspaceProject) -> RowStatus {
+        if let chat, chat.isBusy, chat.streamingProjectID == project.id {
+            return .busy
+        }
+        if project.hasUnviewedActivity { return .done }
+        return .idle
     }
 
-    private func status(for agent: Agent) -> RowStatus? {
-        agent.hasUnviewedActivity ? .done : nil
+    private func status(for agent: Agent) -> RowStatus {
+        if let chat, chat.isBusy, let threadID = chat.streamingThreadID,
+           agent.threads.contains(where: { $0.id == threadID }) {
+            return .busy
+        }
+        if agent.hasUnviewedActivity { return .done }
+        return .idle
     }
 
     private func archive(_ project: WorkspaceProject) {
@@ -265,6 +300,11 @@ struct SidebarView: View {
             selection.selectedAgentID = nil
             selection.showChat()
         }
+        try? modelContext.save()
+    }
+
+    private func unarchive(_ project: WorkspaceProject) {
+        project.archived = false
         try? modelContext.save()
     }
 
@@ -408,29 +448,104 @@ extension WorkspaceProject: Identifiable {}
 
 // MARK: - Row chrome (shared by Projects + Agents lists)
 
-enum RowStatus {
+/// Sidebar activity indicator states (Visual System status dots + T17 a11y).
+///
+/// - `busy`: amber — actively streaming tokens
+/// - `done`: green — unread completed activity
+/// - `idle`: no color — not streaming / no unread (announced as "Idle")
+enum RowStatus: Equatable {
     case busy
     case done
+    case idle
 
-    var color: Color {
+    var color: Color? {
         switch self {
         case .busy: Theme.statusBusy
         case .done: Theme.statusDone
+        case .idle: nil
         }
     }
 
-    var accessibilityLabel: String {
+    /// VoiceOver value — never color-only (T17 / PLAN Accessibility).
+    var accessibilityValue: String {
         switch self {
         case .busy: "Streaming"
         case .done: "Unread activity"
+        case .idle: "Idle"
         }
+    }
+}
+
+/// Colored activity indicator with explicit accessibility label + value.
+/// Color is supplementary; VoiceOver reads "Status, Streaming" / "Status, Idle".
+struct StatusDot: View {
+    let status: RowStatus
+
+    var body: some View {
+        ZStack {
+            if let color = status.color {
+                Circle()
+                    .fill(color)
+                    .frame(width: 6, height: 6)
+            } else {
+                // Reserve the same slot so row layout is stable; a11y still announces Idle.
+                Color.clear
+                    .frame(width: 6, height: 6)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Status")
+        .accessibilityValue(status.accessibilityValue)
+        // Decorative color alone must not be the only channel (WCAG / PLAN T17).
+        .accessibilityAddTraits(.updatesFrequently)
+    }
+}
+
+/// Per-row Archive / Unarchive control.
+///
+/// Real `Button` so it is Tab-reachable and Space/Enter-activatable under macOS
+/// Full Keyboard Access. Draws an explicit focus ring because `.plain` would
+/// otherwise leave focus invisible (T17).
+struct ProjectArchiveButton: View {
+    let projectName: String
+    let isArchived: Bool
+    let action: () -> Void
+
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: isArchived ? "tray.and.arrow.up" : "archivebox")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.textSecondary)
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(isFocused ? Theme.selectionFill.opacity(0.55) : Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .strokeBorder(isFocused ? Theme.focusRing : Color.clear, lineWidth: 2)
+                )
+        }
+        .buttonStyle(.plain)
+        .focused($isFocused)
+        .help(isArchived ? "Unarchive" : "Archive")
+        .accessibilityLabel(isArchived ? "Unarchive \(projectName)" : "Archive \(projectName)")
+        .accessibilityHint(
+            isArchived
+                ? "Moves this project back to the active list"
+                : "Hides this project from the active list"
+        )
+        .accessibilityAddTraits(.isButton)
     }
 }
 
 struct SidebarRowView: View {
     let title: String
     let icon: String
-    var status: RowStatus? = nil
+    var status: RowStatus = .idle
     var isSelected: Bool = false
     let action: () -> Void
 
@@ -441,6 +556,7 @@ struct SidebarRowView: View {
                     .font(.system(size: 12))
                     .frame(width: 15)
                     .opacity(0.8)
+                    .accessibilityHidden(true)
 
                 Text(title)
                     .font(.system(size: 13))
@@ -448,12 +564,9 @@ struct SidebarRowView: View {
 
                 Spacer(minLength: 4)
 
-                if let status {
-                    Circle()
-                        .fill(status.color)
-                        .frame(width: 6, height: 6)
-                        .accessibilityLabel(status.accessibilityLabel)
-                }
+                // StatusDot keeps its own a11y label/value so VoiceOver can
+                // announce Streaming / Idle independently of the row name (T17).
+                StatusDot(status: status)
             }
             .foregroundStyle(isSelected ? Theme.textOnAccent : Theme.textRow)
             .padding(.horizontal, 8)
@@ -466,7 +579,10 @@ struct SidebarRowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 8)
+        .padding(.leading, 8)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }
 
