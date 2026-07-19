@@ -716,7 +716,7 @@ immediate sequence, not two separate uncoordinated passes.
   - Files: chat error-state view, `ClaudeCLIProvider` error mapping
   - Verify: each of the 5 categories (auth/billing/rate-limit/overloaded/
     process-died) shows its own message + correct CTA; partial reply preserved
-- [ ] **T14 (P2)** — launch — Auto-resume last-active Project + thread on launch
+- [x] **T14 (P2)** — launch — Auto-resume last-active Project + thread on launch
   - Files: Project model (`lastActiveAt`), app launch flow
   - Verify: quit mid-conversation, relaunch → same Project/thread reopens;
     true first-run (zero Projects) still shows the greeting screen

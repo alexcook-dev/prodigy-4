@@ -93,13 +93,15 @@ struct WorkspaceRootView: View {
             }
         }
         .onAppear {
-            restoreSelectionIfNeeded()
+            // T14: auto-select last-active Project + resume its thread (D5.3);
+            // true first-run (zero Projects) leaves selection empty → wf-2.
+            performLaunchResumeIfNeeded()
             rebindFileRoot()
-            // T9: keep the LRU pool's "focused" slot aligned with the sidebar.
-            ClaudeCLIProvider.shared.setFocusedProject(selection.selectedProjectID)
         }
         .onChange(of: allProjects.count) { _, _ in
-            restoreSelectionIfNeeded()
+            // Projects may appear after SwiftData finishes loading, or after
+            // the first Project is created from the greeting screen.
+            performLaunchResumeIfNeeded()
         }
         .onChange(of: selection.selectedProjectID) { _, newID in
             rebindFileRoot()
@@ -241,15 +243,54 @@ struct WorkspaceRootView: View {
         return allProjects.first { $0.id == id }
     }
 
-    private func restoreSelectionIfNeeded() {
-        if let id = selection.selectedProjectID,
-           allProjects.contains(where: { $0.id == id }) {
+    /// T14 / D6 launch behavior.
+    ///
+    /// - Zero Projects ever → leave selection nil; `CenterPaneView` shows
+    ///   `FirstRunView` (wf-2). No picker, no auto-create.
+    /// - Any Project exists → select the most-recently-active by `lastActiveAt`
+    ///   (updated on every selection) and open its most recent thread. Warm
+    ///   the Claude CLI via `--resume` / D5.3 rehydrate path so the next turn
+    ///   continues mid-conversation without a cold start.
+    private func performLaunchResumeIfNeeded() {
+        // True first-run: zero Projects — greeting screen only.
+        guard !allProjects.isEmpty else {
+            ClaudeCLIProvider.shared.setFocusedProject(nil)
             return
         }
-        if let recent = allProjects.first(where: { !$0.archived && !$0.isHiddenFromSidebar })
-            ?? allProjects.first(where: { !$0.archived }) {
-            selection.selectProject(recent)
+
+        // Already restored this session and selection still points at a live Project.
+        if selection.didPerformLaunchResume,
+           let id = selection.selectedProjectID,
+           allProjects.contains(where: { $0.id == id }) {
+            ClaudeCLIProvider.shared.setFocusedProject(id)
+            return
+        }
+
+        // Selection already set this session (e.g. ProjectCreationSheet just
+        // called selectProject) but launch resume hasn't warmed the CLI yet.
+        if let id = selection.selectedProjectID,
+           let project = allProjects.first(where: { $0.id == id }) {
+            let thread = WorkspaceSelection.mostRecentThread(in: project)
+            // If an Agent thread is more recent, restore that persona too.
+            if let thread, let agent = thread.agent, selection.selectedAgentID == nil {
+                selection.selectedAgentID = agent.id
+            }
+            selection.prepareSessionResume(project: project, thread: thread)
+            selection.markLaunchResumeComplete()
+            selection.showChat()
+            focus.focus(.chat)
+            return
+        }
+
+        // Cold launch with existing Projects: auto-select last-active, no picker.
+        // `allProjects` is sorted by lastActiveAt descending.
+        if let restored = selection.resumeLastActive(from: allProjects) {
             try? modelContext.save()
+            selection.prepareSessionResume(
+                project: restored.project,
+                thread: restored.thread
+            )
+            focus.focus(.chat)
         }
     }
 

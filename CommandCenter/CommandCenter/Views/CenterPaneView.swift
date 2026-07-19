@@ -4,6 +4,10 @@ import SwiftUI
 /// Center pane: chat thread (default) or file preview tabs.
 /// Chat streaming / provider wiring land later; this wave wires selection,
 /// first-run, single-thread V1, and file-preview tabs only (T11).
+///
+/// T14: on relaunch the parent auto-selects the last-active Project and its
+/// most recent thread — this view never shows a picker when Projects exist.
+/// True first-run (zero Projects) still shows `FirstRunView` (wf-2).
 struct CenterPaneView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var selection: WorkspaceSelection
@@ -19,9 +23,15 @@ struct CenterPaneView: View {
     @Query(sort: \Agent.name)
     private var agents: [Agent]
 
+    /// Explicit selection, or most-recent Project while launch resume applies
+    /// (avoids a one-frame "Select a Project" flash — T14 skips any picker).
     private var selectedProject: WorkspaceProject? {
-        guard let id = selection.selectedProjectID else { return nil }
-        return allProjects.first { $0.id == id }
+        if let id = selection.selectedProjectID,
+           let match = allProjects.first(where: { $0.id == id }) {
+            return match
+        }
+        guard !allProjects.isEmpty else { return nil }
+        return allProjects.first(where: { !$0.archived }) ?? allProjects.first
     }
 
     private var selectedAgent: Agent? {
@@ -29,13 +39,14 @@ struct CenterPaneView: View {
         return agents.first { $0.id == id }
     }
 
-    /// Active chat thread: agent-scoped if an Agent is selected, else primary.
+    /// Active chat thread: agent-scoped if an Agent is selected, else the
+    /// Project's most recent thread (primary in the common V1 case).
     private var activeThread: ChatThread? {
         guard let project = selectedProject else { return nil }
         if let agent = selectedAgent {
-            return project.thread(for: agent)
+            return project.thread(for: agent) ?? WorkspaceSelection.mostRecentThread(in: project)
         }
-        return project.primaryThread
+        return WorkspaceSelection.mostRecentThread(in: project) ?? project.primaryThread
     }
 
     /// True first-run: zero Projects ever (including hidden quick-chat).
@@ -173,33 +184,14 @@ struct CenterPaneView: View {
 
     private var chatBody: some View {
         Group {
-            if selectedProject == nil {
-                noProjectSelected
-            } else if let thread = activeThread, !thread.sortedMessages.isEmpty {
+            // T14: never show a Project-picker screen. When Projects exist the
+            // launch path (or the lastActiveAt fallback above) always resolves
+            // a Project; empty thread state covers brand-new Projects.
+            if let thread = activeThread, !thread.sortedMessages.isEmpty {
                 messageList(thread.sortedMessages)
             } else {
                 emptyThreadState
             }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var noProjectSelected: some View {
-        VStack(spacing: 10) {
-            Text("Select a Project")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(Theme.textPrimary)
-            Text("Choose one from the sidebar, or create a new Project to start chatting.")
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.textSecondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 360)
-            Button(action: onCreateProject) {
-                Text("New Project")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Theme.accentText)
-            }
-            .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

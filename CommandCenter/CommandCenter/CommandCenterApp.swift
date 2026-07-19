@@ -2,7 +2,8 @@ import SwiftData
 import SwiftUI
 
 /// Personal Mac command center — shell (T2) + colors (T15) + SwiftData (T3/T11/T12)
-/// + file browser (T6) + SwiftTerm terminal (T7/T10) + Claude CLI provider (T4/T9).
+/// + file browser (T6) + SwiftTerm terminal (T7/T10) + Claude CLI provider (T4/T9)
+/// + launch resume of last-active Project/thread (T14).
 @main
 struct CommandCenterApp: App {
     @StateObject private var focus = WorkspaceFocusController()
