@@ -1,9 +1,27 @@
 import SwiftUI
 
-/// Bottom-right terminal panel: SwiftTerm PTY shell (T7) + keyboard passthrough (T10).
+/// Bottom-right pane tabs: Setup (placeholder) · TextEdit · Terminal.
+private enum BottomRightTab: String, CaseIterable, Identifiable {
+    case setup
+    case textEdit
+    case terminal
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .setup: return "Setup"
+        case .textEdit: return "TextEdit"
+        case .terminal: return "Terminal"
+        }
+    }
+}
+
+/// Bottom-right terminal panel: SwiftTerm PTY shell (T7) + keyboard passthrough (T10),
+/// plus a **TextEdit** tab for document editing (open/save like macOS TextEdit).
 ///
 /// Also reused for **center-column terminal tabs** (`showsChromeHeader: false` hides
-/// the Setup/Run strip so the center tab bar is the only chrome).
+/// the Setup/TextEdit/Terminal strip so the center tab bar is the only chrome).
 ///
 /// Failure state (PLAN.md Constraints / wf-3 #5): exited shell shows a visible
 /// "process ended" bar with Restart — never a frozen pane.
@@ -12,20 +30,77 @@ struct TerminalPaneView: View {
     var onPaneShortcut: ((WorkspacePane) -> Void)?
     /// Initial shell cwd (user home by default).
     var initialWorkingDirectory: String? = nil
-    /// When false, omit the right-column Setup/Run/Terminal strip (center tabs).
+    /// When false, omit the right-column Setup/TextEdit/Terminal strip (center tabs).
     var showsChromeHeader: Bool = true
     /// Optional title callback when the shell cwd/title changes (center tab label).
     var onTitleChange: ((String) -> Void)? = nil
+    /// Default folder for TextEdit Open/Save (project folder or Documents).
+    var textEditDefaultDirectory: URL? = nil
 
     @StateObject private var session = TerminalSessionController()
+    @StateObject private var textDocument = TextEditDocumentModel()
+    @AppStorage("prodigy.rightColumn.bottomTab")
+    private var bottomTabRaw = BottomRightTab.terminal.rawValue
+
+    private var bottomTab: BottomRightTab {
+        BottomRightTab(rawValue: bottomTabRaw) ?? .terminal
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             if showsChromeHeader {
                 panelHeader
+                // Keep Terminal + TextEdit mounted so switching tabs never drops
+                // the PTY or unsaved editor state.
+                ZStack {
+                    terminalStack
+                        .opacity(bottomTab == .terminal ? 1 : 0)
+                        .allowsHitTesting(bottomTab == .terminal && isFocused)
+                        .accessibilityHidden(bottomTab != .terminal)
+
+                    TextEditPaneView(
+                        document: textDocument,
+                        isFocused: isFocused && bottomTab == .textEdit
+                    )
+                    .opacity(bottomTab == .textEdit ? 1 : 0)
+                    .allowsHitTesting(bottomTab == .textEdit)
+                    .accessibilityHidden(bottomTab != .textEdit)
+
+                    if bottomTab == .setup {
+                        setupPlaceholder
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 centerSessionHeader
+                terminalStack
             }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(bottomTab == .terminal || !showsChromeHeader
+            ? Theme.terminalBackground
+            : Theme.centerBackground)
+        .onAppear {
+            // Only seed cwd before first shell start — never reset on tab re-select.
+            if !session.isProcessRunning, let initialWorkingDirectory {
+                session.setInitialWorkingDirectory(initialWorkingDirectory)
+            }
+            if let textEditDefaultDirectory {
+                textDocument.defaultDirectory = textEditDefaultDirectory
+            }
+        }
+        .onChange(of: textEditDefaultDirectory) { _, url in
+            if let url {
+                textDocument.defaultDirectory = url
+            }
+        }
+        .onChange(of: session.headerTitle) { _, title in
+            onTitleChange?(title)
+        }
+    }
+
+    private var terminalStack: some View {
+        VStack(spacing: 0) {
             terminalBody
             if session.showsProcessEndedBar {
                 processEndedBar
@@ -33,15 +108,6 @@ struct TerminalPaneView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.terminalBackground)
-        .onAppear {
-            // Only seed cwd before first shell start — never reset on tab re-select.
-            if !session.isProcessRunning, let initialWorkingDirectory {
-                session.setInitialWorkingDirectory(initialWorkingDirectory)
-            }
-        }
-        .onChange(of: session.headerTitle) { _, title in
-            onTitleChange?(title)
-        }
     }
 
     /// Compact header for center-column terminal tabs.
@@ -75,30 +141,57 @@ struct TerminalPaneView: View {
     // MARK: - Header
 
     private var panelHeader: some View {
-        // sc1-style tab strip: Terminal is the active tab; Setup/Run are chrome placeholders.
         HStack(spacing: 0) {
-            terminalTab(title: "Setup", selected: false)
-            terminalTab(title: "Run", selected: false)
-            terminalTab(title: "Terminal", selected: true)
-
-            Button {
-                // Reserved for multi-terminal sessions later.
-            } label: {
-                Image(systemName: "plus")
-                    .font(Font.caption.weight(.medium))
-                    .foregroundStyle(Theme.textTertiary)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
+            ForEach(BottomRightTab.allCases) { tab in
+                Button {
+                    bottomTabRaw = tab.rawValue
+                } label: {
+                    Text(tab.title)
+                        .font((bottomTab == tab ? Font.subheadline.weight(.semibold) : Font.subheadline))
+                        .foregroundStyle(bottomTab == tab ? Theme.textPrimary : Theme.textSecondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.clear)
+                        .overlay(alignment: .bottom) {
+                            if bottomTab == tab {
+                                Rectangle()
+                                    .fill(Theme.accent)
+                                    .frame(height: 2)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(tabHelp(tab))
             }
-            .buttonStyle(.plain)
-            .help("New terminal (coming soon)")
+
+            if bottomTab == .terminal {
+                Button {
+                    // Reserved for multi-terminal sessions later.
+                } label: {
+                    Image(systemName: "plus")
+                        .font(Font.caption.weight(.medium))
+                        .foregroundStyle(Theme.textTertiary)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("New terminal (coming soon)")
+            }
 
             Spacer(minLength: 8)
 
-            Text(session.headerTitle)
-                .font(Font.caption)
-                .foregroundStyle(Theme.textTertiary)
-                .lineLimit(1)
+            if bottomTab == .terminal {
+                Text(session.headerTitle)
+                    .font(Font.caption)
+                    .foregroundStyle(Theme.textTertiary)
+                    .lineLimit(1)
+            } else if bottomTab == .textEdit {
+                Text(textDocument.windowTitle)
+                    .font(Font.caption)
+                    .foregroundStyle(textDocument.isDirty ? Theme.accentText : Theme.textTertiary)
+                    .lineLimit(1)
+            }
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
@@ -110,20 +203,35 @@ struct TerminalPaneView: View {
         }
     }
 
-    private func terminalTab(title: String, selected: Bool) -> some View {
-        Text(title)
-            .font((selected ? Font.subheadline.weight(.semibold) : Font.subheadline))
-            .foregroundStyle(selected ? Theme.textPrimary : Theme.textSecondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(Color.clear)
-            .overlay(alignment: .bottom) {
-                if selected {
-                    Rectangle()
-                        .fill(Theme.accent)
-                        .frame(height: 2)
-                }
+    private func tabHelp(_ tab: BottomRightTab) -> String {
+        switch tab {
+        case .setup: return "Setup notes (coming soon)"
+        case .textEdit: return "TextEdit — open, edit, and save documents"
+        case .terminal: return "Terminal shell"
+        }
+    }
+
+    private var setupPlaceholder: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "wrench.and.screwdriver")
+                .font(.system(size: 28, weight: .light))
+                .foregroundStyle(Theme.textTertiary)
+            Text("Setup")
+                .font(Font.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+            Text("Project setup notes will live here.\nUse TextEdit for freeform notes in the meantime.")
+                .font(Font.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(.center)
+            Button("Open TextEdit") {
+                bottomTabRaw = BottomRightTab.textEdit.rawValue
             }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(16)
+        .background(Theme.centerBackground)
     }
 
     // MARK: - Terminal body
@@ -131,7 +239,7 @@ struct TerminalPaneView: View {
     private var terminalBody: some View {
         TerminalViewRepresentable(
             session: session,
-            isFocused: isFocused,
+            isFocused: isFocused && bottomTab == .terminal,
             onPaneShortcut: onPaneShortcut
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -167,9 +275,6 @@ struct TerminalPaneView: View {
                     .padding(.vertical, 4)
             }
             .buttonStyle(.glass)
-            // No global Return shortcut — that would steal Enter from chat/composer
-            // while the process-ended bar is visible. Click (or later pane-local
-            // binding) restarts; label keeps the ⏎ affordance from the wireframe.
             .help("Restart the shell")
             .accessibilityLabel("Restart shell")
         }
