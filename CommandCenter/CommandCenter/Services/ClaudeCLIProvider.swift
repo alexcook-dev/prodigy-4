@@ -1031,6 +1031,9 @@ final class ClaudeCLISession: @unchecked Sendable {
         case .thinking:
             cont?.yield(.thinking)
 
+        case .thinkingDelta(let text):
+            cont?.yield(.thinkingDelta(text))
+
         case .textDelta(let text):
             assembledText += text
             cont?.yield(.textDelta(text))

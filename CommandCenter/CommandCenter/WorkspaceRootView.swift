@@ -98,7 +98,7 @@ struct WorkspaceRootView: View {
             performLaunchResumeIfNeeded()
             rebindFileRoot()
             // T9: keep the LRU pool's "focused" slot aligned with the sidebar.
-            ClaudeCLIProvider.shared.setFocusedProject(selection.selectedProjectID)
+            RoutingModelProvider.shared.setFocusedProject(selection.selectedProjectID)
             chat.focusedProjectID = selection.selectedProjectID
         }
         .onChange(of: allProjects.count) { _, _ in
@@ -106,7 +106,7 @@ struct WorkspaceRootView: View {
         }
         .onChange(of: selection.selectedProjectID) { _, newID in
             rebindFileRoot()
-            ClaudeCLIProvider.shared.setFocusedProject(newID)
+            RoutingModelProvider.shared.setFocusedProject(newID)
             chat.focusedProjectID = newID
         }
         // ⌘2 / Navigate → Chat: always flip the center surface to the Chat tab
@@ -262,14 +262,14 @@ struct WorkspaceRootView: View {
     /// selection empty so FirstRunView (wf-2) is shown — never a picker.
     private func performLaunchResumeIfNeeded() {
         guard !allProjects.isEmpty else {
-            ClaudeCLIProvider.shared.setFocusedProject(nil)
+            RoutingModelProvider.shared.setFocusedProject(nil)
             return
         }
 
         if selection.didPerformLaunchResume,
            let id = selection.selectedProjectID,
            allProjects.contains(where: { $0.id == id }) {
-            ClaudeCLIProvider.shared.setFocusedProject(id)
+            RoutingModelProvider.shared.setFocusedProject(id)
             return
         }
 
@@ -297,11 +297,10 @@ struct WorkspaceRootView: View {
     }
 
     private func rebindFileRoot() {
-        if let path = currentProject?.folderPath {
-            fileBrowser.setRoot(URL(fileURLWithPath: path, isDirectory: true))
+        // Project with a real folder → that folder. Quick chat / no project → ~.
+        if let project = currentProject, !project.isQuickChat {
+            fileBrowser.setRoot(URL(fileURLWithPath: project.folderPath, isDirectory: true))
         } else {
-            // No Project selected: still show a real tree rooted at ~ (PLAN.md
-            // IA revision after Wave 0). Project selection rebinds to its folder.
             fileBrowser.setRoot(FileManager.default.homeDirectoryForCurrentUser)
         }
     }

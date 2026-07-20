@@ -27,6 +27,8 @@ struct CenterPaneView: View {
 
     @FocusState private var composerFocused: Bool
     @State private var scrollAnchor = UUID()
+    /// Persist reasoning visibility across launches.
+    @AppStorage("prodigy.chat.showReasoning") private var showReasoningStored = true
 
     /// Explicit selection, or most-recent Project while launch resume applies
     /// (avoids a one-frame "Select a Project" flash — T14 skips any picker).
@@ -112,6 +114,23 @@ struct CenterPaneView: View {
         .onChange(of: selection.activeSurface) { _, surface in
             if case .chat = surface {
                 selectedProject?.hasUnviewedActivity = false
+                composerFocused = true
+            }
+        }
+        // ⌘2 / Navigate → Chat always returns caret to the composer (not terminal).
+        .onChange(of: focus.chatTabActivationToken) { _, _ in
+            composerFocused = true
+        }
+        .onChange(of: isFocused) { _, focused in
+            if focused, case .chat = selection.activeSurface {
+                composerFocused = true
+            }
+        }
+        .onAppear {
+            chat.showReasoning = showReasoningStored
+            if case .chat = selection.activeSurface {
+                focus.focus(.chat)
+                composerFocused = true
             }
         }
     }
@@ -127,6 +146,8 @@ struct CenterPaneView: View {
                 showsClose: false
             ) {
                 selection.showChat()
+                focus.focus(.chat)
+                composerFocused = true
             }
 
             ForEach(selection.filePreviewTabs) { tab in
@@ -145,9 +166,28 @@ struct CenterPaneView: View {
                 }
             }
 
-            // T11: "+" opens file-preview tabs only, never a second chat thread.
-            Button {
-                openFilePreviewPicker()
+            ForEach(selection.browserTabs) { tab in
+                CenterTab(
+                    title: tab.title,
+                    isActive: {
+                        if case .browser(let open) = selection.activeSurface {
+                            return open.id == tab.id
+                        }
+                        return false
+                    }(),
+                    showsClose: true,
+                    onClose: { selection.closeBrowserTab(tab) }
+                ) {
+                    selection.activeSurface = .browser(tab)
+                }
+            }
+
+            // "+" : file preview or Safari tab.
+            Menu {
+                Button("Open File…") { openFilePreviewPicker() }
+                Button("Safari") {
+                    selection.openSafariTab()
+                }
             } label: {
                 Image(systemName: "plus")
                     .font(Font.caption.weight(.medium))
@@ -155,10 +195,41 @@ struct CenterPaneView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
             }
-            .buttonStyle(.plain)
-            .help("Open file preview (never a second chat thread)")
+            .menuStyle(.borderlessButton)
+            .help("Open file or Safari tab")
 
             Spacer()
+
+            // Reasoning toggle — show model thinking/code before the reply.
+            Toggle(isOn: Binding(
+                get: { showReasoningStored },
+                set: { newValue in
+                    showReasoningStored = newValue
+                    chat.showReasoning = newValue
+                }
+            )) {
+                Image(systemName: "brain.head.profile")
+                    .font(Font.caption)
+            }
+            .toggleStyle(.button)
+            .help(showReasoningStored ? "Hide reasoning" : "Show reasoning")
+            .foregroundStyle(showReasoningStored ? Theme.accent : Theme.textSecondary)
+
+            // sc8 open-with dropdown (Finder, VS Code, Safari…).
+            Menu {
+                OpenWithMenuContent(
+                    workspacePath: selection.workspacePath(from: Array(allProjects)),
+                    onOpenSafari: { selection.openSafariTab() }
+                )
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(Font.callout)
+                    .foregroundStyle(Theme.textSecondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+            }
+            .menuStyle(.borderlessButton)
+            .help("Open with…")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -206,6 +277,14 @@ struct CenterPaneView: View {
             EmptyView() // Hosted as full-pane body above.
         case .filePreview(let tab):
             filePreviewBody(tab)
+        case .browser(let tab):
+            SafariBrowserView(
+                tab: tab,
+                onClose: { selection.closeBrowserTab(tab) },
+                onUpdate: { title, url in
+                    selection.updateBrowserTab(tab, title: title, urlString: url)
+                }
+            )
         }
     }
 
@@ -246,11 +325,16 @@ struct CenterPaneView: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 20)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // Continuous selection across the thread (copy by dragging).
+                .textSelection(.enabled)
             }
             .onChange(of: messages.count) { _, _ in
                 scrollToBottom(proxy)
             }
             .onChange(of: chat.streamingText) { _, _ in
+                scrollToBottom(proxy)
+            }
+            .onChange(of: chat.streamingReasoning) { _, _ in
                 scrollToBottom(proxy)
             }
             .onChange(of: chat.streamPhase) { _, _ in
@@ -303,8 +387,14 @@ struct CenterPaneView: View {
                     .frame(maxWidth: 480, alignment: .trailing)
             }
         case .assistant:
-            // sc4: full-width markdown reply + compact meta footer.
+            // sc4: full-width markdown reply + reasoning + copy.
             VStack(alignment: .leading, spacing: 8) {
+                if showReasoningStored,
+                   let reasoning = message.reasoning,
+                   !reasoning.isEmpty {
+                    ReasoningDisclosure(text: reasoning)
+                }
+
                 StreamingMarkdownView(
                     text: message.content,
                     isStreaming: false,
@@ -323,6 +413,16 @@ struct CenterPaneView: View {
                             .foregroundStyle(Theme.textTertiary)
                     }
                     Spacer(minLength: 0)
+
+                    Button {
+                        copyToPasteboard(message.content)
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                            .font(Font.caption)
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Copy response")
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -331,6 +431,12 @@ struct CenterPaneView: View {
                 .font(Font.subheadline)
                 .foregroundStyle(Theme.textSecondary)
         }
+    }
+
+    private func copyToPasteboard(_ text: String) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(text, forType: .string)
     }
 
     private func relativeTime(_ date: Date) -> String {
@@ -344,11 +450,15 @@ struct CenterPaneView: View {
     @ViewBuilder
     private var streamingBubble: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if showReasoningStored, !chat.streamingReasoning.isEmpty {
+                ReasoningDisclosure(text: chat.streamingReasoning, isLive: true)
+            }
+
             if chat.streamPhase == .thinking && chat.streamingText.isEmpty {
                 // wf-3 #1: pulsing dot + "Thinking…" + Stop
                 HStack(spacing: 10) {
                     ThinkingPulse()
-                    Text("Thinking…")
+                    Text(chat.streamingReasoning.isEmpty ? "Thinking…" : "Writing…")
                         .font(Font.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                     stopButton
@@ -481,7 +591,10 @@ struct CenterPaneView: View {
         .padding(.bottom, 14)
         .background(Theme.centerBackground)
         .onAppear {
-            if isFocused { composerFocused = true }
+            // Default caret to chat composer, not the terminal.
+            chat.showReasoning = showReasoningStored
+            composerFocused = true
+            focus.focus(.chat)
         }
     }
 
@@ -512,14 +625,29 @@ struct CenterPaneView: View {
 
     private var modelPicker: some View {
         Menu {
-            ForEach(ChatModelOption.allCases) { option in
-                Button {
-                    chat.selectedModel = option
-                } label: {
-                    if chat.selectedModel == option {
-                        Label(option.displayName, systemImage: "checkmark")
-                    } else {
-                        Text(option.displayName)
+            Section("Claude") {
+                ForEach(ChatModelOption.allCases.filter { $0.family == .claude }) { option in
+                    Button {
+                        chat.selectedModel = option
+                    } label: {
+                        if chat.selectedModel == option {
+                            Label(option.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(option.displayName)
+                        }
+                    }
+                }
+            }
+            Section("Grok") {
+                ForEach(ChatModelOption.allCases.filter { $0.family == .grok }) { option in
+                    Button {
+                        chat.selectedModel = option
+                    } label: {
+                        if chat.selectedModel == option {
+                            Label(option.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(option.displayName)
+                        }
                     }
                 }
             }
@@ -528,7 +656,7 @@ struct CenterPaneView: View {
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
-        .help("Model for the next turn")
+        .help("Model for the next turn (Claude or Grok)")
     }
 
     private var effortPicker: some View {
@@ -628,6 +756,53 @@ private struct ThinkingPulse: View {
             )
             .onAppear { dimmed = true }
             .accessibilityLabel("Thinking")
+    }
+}
+
+// MARK: - Reasoning disclosure
+
+private struct ReasoningDisclosure: View {
+    let text: String
+    var isLive: Bool = false
+    @State private var expanded = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    expanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                        .font(Font.caption2.weight(.semibold))
+                    Image(systemName: "brain.head.profile")
+                        .font(Font.caption)
+                    Text(isLive ? "Reasoning…" : "Reasoning")
+                        .font(Font.caption.weight(.medium))
+                    if isLive {
+                        ProgressView()
+                            .controlSize(.mini)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .foregroundStyle(Theme.textSecondary)
+            }
+            .buttonStyle(.plain)
+
+            if expanded {
+                Text(text)
+                    .font(Font.caption.monospaced())
+                    .foregroundStyle(Theme.textSecondary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Theme.chipBackground)
+                    )
+            }
+        }
     }
 }
 

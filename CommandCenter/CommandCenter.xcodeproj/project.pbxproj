@@ -48,6 +48,12 @@ H8A10001B002 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef 
 H9A10001B003 /* ResizableSplitStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = H9A10001F003 /* ResizableSplitStack.swift */; };
 M1A10001B001 /* ClaudeAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = M1A10001F001 /* ClaudeAuthService.swift */; };
 M2A10001B001 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = M2A10001F001 /* DashboardView.swift */; };
+M3A10001B001 /* SafariBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = M3A10001F001 /* SafariBrowserView.swift */; };
+M3A10001B002 /* OpenWithMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = M3A10001F002 /* OpenWithMenu.swift */; };
+M4A10001B001 /* SpellCheckedTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = M4A10001F001 /* SpellCheckedTextEditor.swift */; };
+M5A10001B001 /* GrokCLIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = M5A10001F001 /* GrokCLIProvider.swift */; };
+M5A10001B002 /* GrokAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = M5A10001F002 /* GrokAuthService.swift */; };
+M5A10001B003 /* RoutingModelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = M5A10001F003 /* RoutingModelProvider.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -94,6 +100,12 @@ H8A10001F002 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileTy
 H9A10001F003 /* ResizableSplitStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResizableSplitStack.swift; sourceTree = "<group>"; };
 M1A10001F001 /* ClaudeAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeAuthService.swift; sourceTree = "<group>"; };
 M2A10001F001 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+M3A10001F001 /* SafariBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariBrowserView.swift; sourceTree = "<group>"; };
+M3A10001F002 /* OpenWithMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenWithMenu.swift; sourceTree = "<group>"; };
+M4A10001F001 /* SpellCheckedTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpellCheckedTextEditor.swift; sourceTree = "<group>"; };
+M5A10001F001 /* GrokCLIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrokCLIProvider.swift; sourceTree = "<group>"; };
+M5A10001F002 /* GrokAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrokAuthService.swift; sourceTree = "<group>"; };
+M5A10001F003 /* RoutingModelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutingModelProvider.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -156,6 +168,9 @@ M2A10001F001 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileT
 				C4D10001F10001F10001F002 /* ClaudeCLIEventParser.swift */,
 				C4D10001F10001F10001F003 /* ClaudeCLIProvider.swift */,
 				M1A10001F001 /* ClaudeAuthService.swift */,
+				M5A10001F001 /* GrokCLIProvider.swift */,
+				M5A10001F002 /* GrokAuthService.swift */,
+				M5A10001F003 /* RoutingModelProvider.swift */,
 				C5E10001F10001F10001F001 /* ChatController.swift */,
 			);
 			path = Services;
@@ -203,6 +218,9 @@ A1000000000000000000000A /* Theme */ = {
 				D9D47543DC1049C9AA98BF62 /* FileBrowserPaneView.swift */,
 				H8A10001F002 /* SettingsView.swift */,
 				M2A10001F001 /* DashboardView.swift */,
+				M3A10001F001 /* SafariBrowserView.swift */,
+				M3A10001F002 /* OpenWithMenu.swift */,
+				M4A10001F001 /* SpellCheckedTextEditor.swift */,
 				H9A10001F003 /* ResizableSplitStack.swift */,
 				10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */,
 				A3C10001F10001F10001F001 /* PersistableHSplitView.swift */,
@@ -304,7 +322,13 @@ A1000000000000000000000A /* Theme */ = {
 				H8A10001B002 /* SettingsView.swift in Sources */,
 				H8A10001B001 /* AppAppearance.swift in Sources */,
 				M1A10001B001 /* ClaudeAuthService.swift in Sources */,
+				M5A10001B001 /* GrokCLIProvider.swift in Sources */,
+				M5A10001B002 /* GrokAuthService.swift in Sources */,
+				M5A10001B003 /* RoutingModelProvider.swift in Sources */,
 				M2A10001B001 /* DashboardView.swift in Sources */,
+				M3A10001B001 /* SafariBrowserView.swift in Sources */,
+				M3A10001B002 /* OpenWithMenu.swift in Sources */,
+				M4A10001B001 /* SpellCheckedTextEditor.swift in Sources */,
 				H9A10001B003 /* ResizableSplitStack.swift in Sources */,
 				D63C17A1E4B24D11903BC0E9 /* SidebarView.swift in Sources */,
 				C78F465372BB48858CBB93BB /* CenterPaneView.swift in Sources */,

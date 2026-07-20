@@ -11,6 +11,7 @@ enum ClaudeCLIEventParser {
         case ignore
         case sessionInit(sessionID: String, model: String?, capabilities: [String])
         case thinking
+        case thinkingDelta(String)
         case textDelta(String)
         case rateLimit(utilization: Double?, resetsAt: Date?, status: String?)
         case apiRetry(category: ProviderErrorCategory, message: String?, resetsAt: Date?)
@@ -94,9 +95,29 @@ enum ClaudeCLIEventParser {
 
         switch eventType {
         case "content_block_start":
-            if let block = event["content_block"] as? [String: Any],
-               (block["type"] as? String) == "thinking" {
-                return .thinking
+            if let block = event["content_block"] as? [String: Any] {
+                let blockType = block["type"] as? String
+                if blockType == "thinking" {
+                    // Some payloads include initial thinking text on start.
+                    if let thinking = block["thinking"] as? String, !thinking.isEmpty {
+                        return .thinkingDelta(thinking)
+                    }
+                    return .thinking
+                }
+                // Tool / code invocations — surface in the reasoning panel.
+                if blockType == "tool_use" || blockType == "server_tool_use" {
+                    let name = (block["name"] as? String) ?? "tool"
+                    var line = "▸ \(name)"
+                    if let input = block["input"] {
+                        if let data = try? JSONSerialization.data(
+                            withJSONObject: input,
+                            options: [.sortedKeys]
+                        ), let json = String(data: data, encoding: .utf8) {
+                            line += "\n\(json)"
+                        }
+                    }
+                    return .thinkingDelta(line + "\n")
+                }
             }
             return .ignore
 
@@ -106,8 +127,19 @@ enum ClaudeCLIEventParser {
             if deltaType == "text_delta", let text = delta["text"] as? String, !text.isEmpty {
                 return .textDelta(text)
             }
+            // Extended thinking / reasoning tokens (shown via UI toggle).
             if deltaType == "thinking_delta" {
+                let text = (delta["thinking"] as? String)
+                    ?? (delta["text"] as? String)
+                    ?? ""
+                if !text.isEmpty { return .thinkingDelta(text) }
                 return .thinking
+            }
+            // Partial tool input JSON
+            if deltaType == "input_json_delta",
+               let partial = delta["partial_json"] as? String,
+               !partial.isEmpty {
+                return .thinkingDelta(partial)
             }
             return .ignore
 

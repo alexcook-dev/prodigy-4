@@ -36,13 +36,15 @@ struct AgentCreationSheet: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 fieldLabel("System prompt")
-                TextEditor(text: $systemPrompt)
-                    .font(Font.subheadline)
-                    .foregroundStyle(Theme.textPrimary)
-                    .scrollContentBackground(.hidden)
-                    .frame(minHeight: 120, maxHeight: 200)
-                    .padding(8)
-                    .background(fieldBackground)
+                // Native spell check + grammar (AppKit continuous checking).
+                SpellCheckedTextEditor(
+                    text: $systemPrompt,
+                    font: .systemFont(ofSize: NSFont.systemFontSize),
+                    textColor: .labelColor
+                )
+                .frame(minHeight: 120, maxHeight: 200)
+                .padding(8)
+                .background(fieldBackground)
             }
 
             HStack {

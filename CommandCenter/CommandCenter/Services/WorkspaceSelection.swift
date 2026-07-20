@@ -2,18 +2,19 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-/// Center-pane surface: chat, file preview, or the project Dashboard (sc3).
-/// V1: tab bar "+" only ever opens file previews — never a second chat thread.
+/// Center-pane surface: chat, file preview, in-app browser, or Dashboard (sc3).
 enum CenterSurface: Hashable, Identifiable {
     case chat
     case dashboard
     case filePreview(FilePreviewTab)
+    case browser(BrowserTab)
 
     var id: String {
         switch self {
         case .chat: "chat"
         case .dashboard: "dashboard"
         case .filePreview(let tab): tab.id.uuidString
+        case .browser(let tab): tab.id.uuidString
         }
     }
 }
@@ -32,6 +33,19 @@ struct FilePreviewTab: Hashable, Identifiable {
     var url: URL { URL(fileURLWithPath: filePath) }
 }
 
+/// In-app browser tab (Safari-style WKWebView — sc8 / user request).
+struct BrowserTab: Hashable, Identifiable {
+    let id: UUID
+    var title: String
+    var urlString: String
+
+    init(id: UUID = UUID(), title: String = "Safari", urlString: String = "https://www.apple.com") {
+        self.id = id
+        self.title = title
+        self.urlString = urlString
+    }
+}
+
 /// Shared selection state for sidebar + center pane.
 /// Held by `WorkspaceRootView` and passed down as bindings / environment.
 /// Also hosts file-preview presentation for the file browser (T6 + Wave 3 wiring).
@@ -44,6 +58,8 @@ final class WorkspaceSelection: FilePreviewPresenting {
     var activeSurface: CenterSurface = .chat
     /// Open file-preview tabs only — never extra chat threads (T11).
     var filePreviewTabs: [FilePreviewTab] = []
+    /// In-app Safari browser tabs.
+    var browserTabs: [BrowserTab] = []
     /// Set once launch auto-resume (T14) has run for this session.
     private(set) var didPerformLaunchResume = false
 
@@ -167,6 +183,41 @@ final class WorkspaceSelection: FilePreviewPresenting {
         selectedProjectID = nil
         selectedAgentID = nil
         activeSurface = .dashboard
+    }
+
+    /// Open a new in-app Safari tab (WKWebView) in the center column.
+    @discardableResult
+    func openSafariTab(urlString: String = "https://www.apple.com") -> BrowserTab {
+        let tab = BrowserTab(title: "Safari", urlString: urlString)
+        browserTabs.append(tab)
+        activeSurface = .browser(tab)
+        return tab
+    }
+
+    func closeBrowserTab(_ tab: BrowserTab) {
+        browserTabs.removeAll { $0.id == tab.id }
+        if case .browser(let open) = activeSurface, open.id == tab.id {
+            activeSurface = .chat
+        }
+    }
+
+    func updateBrowserTab(_ tab: BrowserTab, title: String? = nil, urlString: String? = nil) {
+        guard let idx = browserTabs.firstIndex(where: { $0.id == tab.id }) else { return }
+        if let title { browserTabs[idx].title = title }
+        if let urlString { browserTabs[idx].urlString = urlString }
+        if case .browser(let open) = activeSurface, open.id == tab.id {
+            activeSurface = .browser(browserTabs[idx])
+        }
+    }
+
+    /// Absolute path for "open with" / copy path — project folder or home.
+    func workspacePath(from projects: [WorkspaceProject]) -> String {
+        if let id = selectedProjectID,
+           let project = projects.first(where: { $0.id == id }),
+           !project.isQuickChat {
+            return project.folderPath
+        }
+        return FileManager.default.homeDirectoryForCurrentUser.path
     }
 
     // MARK: FilePreviewPresenting (file browser → center pane)

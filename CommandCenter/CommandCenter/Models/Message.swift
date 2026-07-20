@@ -18,6 +18,8 @@ final class Message {
     var isPartial: Bool
     /// Provider model label for assistant messages (display only until T5).
     var modelLabel: String?
+    /// Extended thinking / reasoning text streamed before the visible reply.
+    var reasoning: String?
 
     var thread: ChatThread?
 
@@ -32,6 +34,7 @@ final class Message {
         createdAt: Date = .now,
         isPartial: Bool = false,
         modelLabel: String? = nil,
+        reasoning: String? = nil,
         thread: ChatThread? = nil
     ) {
         self.id = UUID()
@@ -40,6 +43,7 @@ final class Message {
         self.createdAt = createdAt
         self.isPartial = isPartial
         self.modelLabel = modelLabel
+        self.reasoning = reasoning
         self.thread = thread
     }
 }
