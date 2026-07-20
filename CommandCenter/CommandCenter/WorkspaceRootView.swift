@@ -448,10 +448,12 @@ private struct RightColumnView: View {
         } bottom: {
             TerminalPaneView(
                 isFocused: terminalFocused,
-                onPaneShortcut: onPaneShortcut
+                onPaneShortcut: onPaneShortcut,
+                textEditDefaultDirectory: projectFolderURL
+                    ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
             )
             // Stable identity so project/workspace switches never remount the
-            // right-column PTY (only user close / shell exit ends the session).
+            // right-column PTY or TextEdit document.
             .id("right-column-terminal")
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
