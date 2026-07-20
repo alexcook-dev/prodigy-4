@@ -38,12 +38,18 @@ enum Theme {
     static let terminalBackground = Color("TerminalBackground")
 
     // MARK: - Text
+    //
+    // Use system label colors so Light/Dark always stay readable (sc2 light =
+    // near-black labels on gray chrome). Asset-catalog text tokens previously
+    // paired with white-on-selection caused white-on-light in the sidebar.
 
-    static let textPrimary = Color("TextPrimary")
-    static let textSecondary = Color("TextSecondary")
-    static let textTertiary = Color("TextTertiary")
-    static let textRow = Color("TextRow")
-    static let textOnAccent = Color("TextOnAccent")
+    static let textPrimary = Color(nsColor: .labelColor)
+    static let textSecondary = Color(nsColor: .secondaryLabelColor)
+    static let textTertiary = Color(nsColor: .tertiaryLabelColor)
+    static let textRow = Color(nsColor: .labelColor)
+    /// Text drawn on a **saturated accent** fill (true control accent / blue).
+    /// Not for the soft sidebar selection chip (use `textPrimary` there).
+    static let textOnAccent = Color(nsColor: .alternateSelectedControlTextColor)
 
     // MARK: - Accent
 

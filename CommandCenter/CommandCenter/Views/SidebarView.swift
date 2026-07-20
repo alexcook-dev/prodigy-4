@@ -622,7 +622,10 @@ struct SidebarRowView: View {
                 // announce Streaming / Idle independently of the row name (T17).
                 StatusDot(status: status)
             }
-            .foregroundStyle(isSelected ? Theme.textOnAccent : Theme.textRow)
+            // Soft selection chip (sc2) is light gray — use label color, not
+            // textOnAccent (white), or rows go white-on-light in Light mode.
+            .foregroundStyle(Theme.textPrimary)
+            .fontWeight(isSelected ? .medium : .regular)
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
             .frame(maxWidth: .infinity, alignment: .leading)
