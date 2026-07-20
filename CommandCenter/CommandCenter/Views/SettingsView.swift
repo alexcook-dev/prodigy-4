@@ -1,12 +1,18 @@
 import AppKit
 import SwiftUI
 
-/// Settings — appearance, access, skills, Claude + Grok authentication + usage.
+/// Settings — General, Visuals, skills, auth, appearance.
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(AppStorageKey.appearance) private var appearanceRaw = AppAppearance.system.rawValue
     @AppStorage(AppStorageKey.contentZoom) private var zoomLevel = ContentZoom.default
     @AppStorage(AppStorageKey.fullMacAccess) private var fullMacAccess = false
+    @AppStorage(AppStorageKey.loadToolsWhenNeeded) private var loadToolsWhenNeeded = true
+    @AppStorage(AppStorageKey.connectorSearch) private var connectorSearch = true
+    @AppStorage(AppStorageKey.switchModelsWhenFlagged) private var switchModelsWhenFlagged = true
+    @AppStorage(AppStorageKey.artifactsEnabled) private var artifactsEnabled = true
+    @AppStorage(AppStorageKey.aiPoweredArtifacts) private var aiPoweredArtifacts = true
+    @AppStorage(AppStorageKey.inlineVisualizations) private var inlineVisualizations = true
     @State private var claudeAuth = ClaudeAuthService.shared
     @State private var grokAuth = GrokAuthService.shared
     @ObservedObject private var usageMeter = UsageMeterService.shared
@@ -26,12 +32,23 @@ struct SettingsView: View {
         )
     }
 
+    /// ~60% of the active display width (and a usable height).
+    private var settingsFrame: (width: CGFloat, height: CGFloat) {
+        let screen = NSScreen.main?.visibleFrame
+            ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let width = max(640, floor(screen.width * LayoutMetrics.settingsWindowScreenFraction))
+        let height = max(560, floor(screen.height * 0.72))
+        return (width, height)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
-                updatesSection
+                generalSection
+                visualsSection
                 accessSection
                 skillsSection
+                updatesSection
                 appearanceSection
                 zoomSection
                 usageSection
@@ -83,39 +100,126 @@ struct SettingsView: View {
                 }
             }
         }
-        .frame(minWidth: 480, minHeight: 620)
+        .frame(
+            minWidth: settingsFrame.width * 0.9,
+            idealWidth: settingsFrame.width,
+            maxWidth: settingsFrame.width,
+            minHeight: settingsFrame.height * 0.85,
+            idealHeight: settingsFrame.height,
+            maxHeight: settingsFrame.height
+        )
+    }
+
+    // MARK: - General
+
+    private var generalSection: some View {
+        Section {
+            settingsToggle(
+                title: "Load tools when needed",
+                subtitle: "Controls how connector tools are loaded in new conversations.",
+                isOn: Binding(
+                    get: { loadToolsWhenNeeded },
+                    set: { newValue in
+                        loadToolsWhenNeeded = newValue
+                        RoutingModelProvider.shared.teardownAll()
+                    }
+                )
+            )
+
+            settingsToggle(
+                title: "Connector search",
+                subtitle: "Let the model search the connector/skill directory and surface ones relevant to your conversation.",
+                isOn: Binding(
+                    get: { connectorSearch },
+                    set: { connectorSearch = $0 }
+                )
+            )
+
+            settingsToggle(
+                title: "Switch models when a message is flagged",
+                subtitle: "When safety measures flag a message, automatically switch to a different model to keep chatting. When off, your chat will pause instead.",
+                isOn: $switchModelsWhenFlagged
+            )
+        } header: {
+            Text("General")
+        } footer: {
+            Text("Tool access mode applies to Claude and Grok. Skills and connectors live under ~/.prodigy/skills (synced to both CLIs).")
+                .font(AppTypography.caption)
+        }
+    }
+
+    // MARK: - Visuals
+
+    private var visualsSection: some View {
+        Section {
+            settingsToggle(
+                title: "Artifacts",
+                subtitle: "Generate code, documents, and designs in a dedicated surface alongside your conversation.",
+                isOn: $artifactsEnabled
+            )
+
+            settingsToggle(
+                title: "AI-powered artifacts",
+                subtitle: "Build apps and interactive documents that use the model inside the artifact.",
+                isOn: $aiPoweredArtifacts
+            )
+            .disabled(!artifactsEnabled)
+            .opacity(artifactsEnabled ? 1 : 0.5)
+
+            settingsToggle(
+                title: "Inline visualizations",
+                subtitle: "Allow the model to generate interactive visualizations, charts, and diagrams directly in the conversation.",
+                isOn: $inlineVisualizations
+            )
+        } header: {
+            Text("Visuals")
+        } footer: {
+            Text("Visual preferences shape how Prodigy asks models to format rich output. Artifacts appear as structured blocks in chat until a dedicated side panel ships.")
+                .font(AppTypography.caption)
+        }
+    }
+
+    private func settingsToggle(
+        title: String,
+        subtitle: String,
+        isOn: Binding<Bool>
+    ) -> some View {
+        Toggle(isOn: isOn) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(AppTypography.body.weight(.medium))
+                Text(subtitle)
+                    .font(AppTypography.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .tint(Theme.accent)
     }
 
     // MARK: - Full Mac access
 
     private var accessSection: some View {
         Section {
-            Toggle(isOn: Binding(
-                get: { fullMacAccess },
-                set: { newValue in
-                    fullMacAccess = newValue
-                    access.setFullMacAccess(newValue)
-                    // Rebuild CLI sessions so tools/permission flags take effect.
-                    RoutingModelProvider.shared.teardownAll()
-                }
-            )) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Full Mac access")
-                        .font(AppTypography.body.weight(.medium))
-                    Text("Unrestricted tools — terminal, files, network (OpenClaw-style). Applies to Claude and Grok.")
-                        .font(AppTypography.caption)
-                        .foregroundStyle(Theme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .tint(Theme.accent)
+            settingsToggle(
+                title: "Full Mac access",
+                subtitle: "Unrestricted tools — terminal, files, network (OpenClaw-style). Bypasses permission prompts. Applies to Claude and Grok.",
+                isOn: Binding(
+                    get: { fullMacAccess },
+                    set: { newValue in
+                        fullMacAccess = newValue
+                        access.setFullMacAccess(newValue)
+                        RoutingModelProvider.shared.teardownAll()
+                    }
+                )
+            )
         } header: {
             Text("Access")
         } footer: {
             Text(
                 fullMacAccess
-                    ? "ON: models can run shell commands, edit files, and use skills across your Mac. Permission prompts are auto-approved. Destructive actions still deserve care."
-                    : "OFF (default): chat-only mode with tools disabled — safer for everyday conversation."
+                    ? "ON: models can run shell commands, edit files, and use skills across your Mac. Destructive actions still deserve care."
+                    : "OFF: tools follow “Load tools when needed” under General (no permission bypass)."
             )
             .font(AppTypography.caption)
         }

@@ -988,25 +988,42 @@ final class ClaudeCLISession: @unchecked Sendable {
         // System prompt always applied as full replace.
         args += ["--system-prompt", systemPrompt]
 
-        if fullMacAccess {
-            // OpenClaw-style: full tools, skip permission prompts, load user
-            // skills from ~/.claude/skills (mirrored from ~/.prodigy/skills).
+        let loadTools = fullMacAccess || ClaudeCLIProvider.isLoadToolsWhenNeededEnabled()
+        if loadTools {
+            // Tools available for this conversation.
             args += [
                 "--tools", "default",
-                "--allow-dangerously-skip-permissions",
-                "--dangerously-skip-permissions",
-                "--permission-mode", "bypassPermissions",
                 "--setting-sources", "user",
-                // Whole home + project cwd (cwd already set on Process).
-                "--add-dir", NSHomeDirectory(),
             ]
+            if fullMacAccess {
+                // OpenClaw-style unrestricted: skip permission prompts, whole Mac.
+                args += [
+                    "--allow-dangerously-skip-permissions",
+                    "--dangerously-skip-permissions",
+                    "--permission-mode", "bypassPermissions",
+                    "--add-dir", NSHomeDirectory(),
+                ]
+            } else {
+                // Load tools when needed — tools on, still prompt for risky actions.
+                args += [
+                    "--permission-mode", "acceptEdits",
+                ]
+            }
             let skillsDir = FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".prodigy/skills", isDirectory: true).path
             if FileManager.default.fileExists(atPath: skillsDir) {
                 args += ["--add-dir", skillsDir]
             }
+            if ClaudeCLIProvider.isConnectorSearchEnabled() {
+                // Allow discovery of user skills/connectors directory.
+                let claudeSkills = FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent(".claude/skills", isDirectory: true).path
+                if FileManager.default.fileExists(atPath: claudeSkills) {
+                    args += ["--add-dir", claudeSkills]
+                }
+            }
         } else {
-            // D5.1 chat defaults — tools off, no global config/skills contamination.
+            // Chat-only — tools off, no global config/skills contamination.
             args += [
                 "--tools", "",
                 "--setting-sources", "",
@@ -1229,6 +1246,21 @@ extension ClaudeCLIProvider {
     /// Thread-safe read of the full-Mac-access toggle (UserDefaults).
     nonisolated static func isFullMacAccessEnabled() -> Bool {
         UserDefaults.standard.bool(forKey: AppStorageKey.fullMacAccess)
+    }
+
+    /// Default true when key unset — matches Settings UI default for "Load tools when needed".
+    nonisolated static func isLoadToolsWhenNeededEnabled() -> Bool {
+        if UserDefaults.standard.object(forKey: AppStorageKey.loadToolsWhenNeeded) == nil {
+            return true
+        }
+        return UserDefaults.standard.bool(forKey: AppStorageKey.loadToolsWhenNeeded)
+    }
+
+    nonisolated static func isConnectorSearchEnabled() -> Bool {
+        if UserDefaults.standard.object(forKey: AppStorageKey.connectorSearch) == nil {
+            return true
+        }
+        return UserDefaults.standard.bool(forKey: AppStorageKey.connectorSearch)
     }
 }
 
