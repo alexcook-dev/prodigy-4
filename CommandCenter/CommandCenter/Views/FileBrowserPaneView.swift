@@ -12,6 +12,8 @@ struct FileBrowserPaneView: View {
     @ObservedObject var model: FileBrowserModel
     /// Interim `FilePreviewSession` today; chat controller tomorrow.
     var previewPresenter: FilePreviewPresenting?
+    /// Active project's working folder (optional shortcut in the location menu).
+    var projectFolderURL: URL? = nil
     var isFocused: Bool = false
 
     /// Keyboard focus for Space / Enter / arrows when the Files pane is active.
@@ -21,6 +23,7 @@ struct FileBrowserPaneView: View {
     var body: some View {
         VStack(spacing: 0) {
             panelHeader
+            locationBar
             treeBody
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -83,33 +86,20 @@ struct FileBrowserPaneView: View {
                 .lineLimit(1)
                 .help(model.rootURL?.path ?? headerTitle)
 
-            Text("Changes")
-                .font(Font.subheadline)
-                .foregroundStyle(Theme.textTertiary)
-            Text("Checks")
-                .font(Font.subheadline)
-                .foregroundStyle(Theme.textTertiary)
-
             Spacer(minLength: 4)
 
-            if model.rootURL != nil {
-                Button {
-                    model.reloadRoot()
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(Font.caption.weight(.medium))
-                        .foregroundStyle(Theme.textTertiary)
-                        .frame(width: 22, height: 22)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Reload folder")
+            Button {
+                model.reloadRoot()
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(Font.caption.weight(.medium))
+                    .foregroundStyle(Theme.textTertiary)
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
             }
-
-            Image(systemName: "magnifyingglass")
-                .font(Font.caption.weight(.medium))
-                .foregroundStyle(Theme.textTertiary)
-                .help(headerTitle)
+            .buttonStyle(.plain)
+            .help("Reload folder")
+            .disabled(model.rootURL == nil)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -121,11 +111,108 @@ struct FileBrowserPaneView: View {
         }
     }
 
+    /// Home / Up / path / Open… so the tree defaults to ~ and can navigate freely.
+    private var locationBar: some View {
+        HStack(spacing: 6) {
+            Button {
+                model.goHome()
+            } label: {
+                Image(systemName: "house.fill")
+                    .font(Font.caption.weight(.semibold))
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(model.isAtUserHome ? Theme.accent : Theme.textSecondary)
+            .help("Go to home folder (\(FilePathDisplay.compact(FileBrowserModel.userHomeURL)))")
+            .disabled(model.isAtUserHome)
+
+            Button {
+                model.goUp()
+            } label: {
+                Image(systemName: "chevron.up")
+                    .font(Font.caption.weight(.semibold))
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(model.canGoUp ? Theme.textSecondary : Theme.textTertiary)
+            .help("Go to parent folder")
+            .disabled(!model.canGoUp)
+
+            Menu {
+                ForEach(FileBrowserModel.commonLocations, id: \.url.path) { place in
+                    Button(place.title) {
+                        model.setRoot(place.url)
+                    }
+                }
+                if let projectFolderURL {
+                    Divider()
+                    Button("Project Folder") {
+                        model.setRoot(projectFolderURL)
+                    }
+                }
+                Divider()
+                Button("Choose Folder…") {
+                    pickFolder()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "folder")
+                        .font(Font.caption2)
+                    Text(currentLocationLabel)
+                        .font(Font.caption.weight(.medium))
+                        .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(Font.system(size: 8, weight: .semibold))
+                }
+                .foregroundStyle(Theme.textSecondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Theme.chipBackground.opacity(0.6))
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
+            .menuStyle(.borderlessButton)
+            .help(model.rootURL?.path ?? "Location")
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Theme.centerBackground)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Theme.borderHairline)
+                .frame(height: 1)
+        }
+    }
+
+    private var currentLocationLabel: String {
+        if let root = model.rootURL {
+            return FilePathDisplay.compact(root)
+        }
+        return "~"
+    }
+
     private var headerTitle: String {
         if let root = model.rootURL {
             return "Files — \(FilePathDisplay.compact(root))"
         }
         return "Files"
+    }
+
+    private func pickFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = false
+        panel.prompt = "Open"
+        panel.message = "Choose a folder to show in Files"
+        panel.directoryURL = model.rootURL ?? FileBrowserModel.userHomeURL
+        if panel.runModal() == .OK, let url = panel.url {
+            model.setRoot(url)
+        }
     }
 
     // MARK: - Body
@@ -146,14 +233,20 @@ struct FileBrowserPaneView: View {
     }
 
     private var emptyNoProject: some View {
-        VStack(spacing: 6) {
-            Text("No project selected.")
+        VStack(spacing: 8) {
+            Text("No folder open")
                 .font(Font.subheadline)
                 .foregroundStyle(Theme.textSecondary)
-            Text("Files follow the active project's folder.")
+            Text("Defaults to your home folder (~).")
                 .font(Font.caption)
                 .foregroundStyle(Theme.textTertiary)
                 .multilineTextAlignment(.center)
+            Button("Go to Home") {
+                model.goHome()
+            }
+            .font(Font.caption)
+            .buttonStyle(.plain)
+            .foregroundStyle(Theme.accentText)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(16)
@@ -290,6 +383,9 @@ struct FileBrowserPaneView: View {
         }
         .contextMenu {
             if node.isDirectory {
+                Button("Open as Root") {
+                    model.setRoot(node.url)
+                }
                 Button(isExpanded ? "Collapse" : "Expand") {
                     model.toggleExpand(node)
                 }
@@ -300,6 +396,10 @@ struct FileBrowserPaneView: View {
                 Button("Quick Look") {
                     openPreview(for: node)
                 }
+            }
+            Divider()
+            Button("Go to Home") {
+                model.goHome()
             }
             Button("Reveal in Finder") {
                 NSWorkspace.shared.activateFileViewerSelecting([node.url])
@@ -331,12 +431,12 @@ struct FileBrowserPaneView: View {
         }
     }
 
-    /// Double-click: open file preview, or toggle folder.
+    /// Double-click: open file preview, or open folder as the new tree root.
     private func handleDoubleClick(_ node: FileNode) {
         model.select(node)
         listKeyboardFocused = true
         if node.isDirectory {
-            model.toggleExpand(node)
+            model.setRoot(node.url)
         } else {
             openPreview(for: node)
         }

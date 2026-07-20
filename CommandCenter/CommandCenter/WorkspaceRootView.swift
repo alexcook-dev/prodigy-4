@@ -29,18 +29,24 @@ struct WorkspaceRootView: View {
 
     var body: some View {
         // sc1 shell: flush edge-to-edge columns, no outer window padding.
-        VStack(spacing: 0) {
-            AppUpdateBanner(updates: appUpdates)
+        ZStack(alignment: .trailing) {
+            mainSplit
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            ZStack(alignment: .trailing) {
-                mainSplit
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if isNarrow && isRightColumnDrawerPresented {
+                rightColumnDrawer
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
 
-                if isNarrow && isRightColumnDrawerPresented {
-                    rightColumnDrawer
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
+            // Bottom-left update toast (does not steal layout from columns).
+            VStack {
+                Spacer(minLength: 0)
+                HStack {
+                    AppUpdateToast(updates: appUpdates)
+                    Spacer(minLength: 0)
                 }
             }
+            .allowsHitTesting(appUpdates.shouldShowBanner)
         }
         .background(Theme.appBackground)
         .task {
@@ -107,7 +113,8 @@ struct WorkspaceRootView: View {
         }
         .onAppear {
             performLaunchResumeIfNeeded()
-            rebindFileRoot()
+            // Files always defaults to the logged-in user's home — not the project folder.
+            ensureFilesAtUserHome()
             // T9: keep the LRU pool's "focused" slot aligned with the sidebar.
             RoutingModelProvider.shared.setFocusedProject(selection.selectedProjectID)
             chat.focusedProjectID = selection.selectedProjectID
@@ -116,7 +123,8 @@ struct WorkspaceRootView: View {
             performLaunchResumeIfNeeded()
         }
         .onChange(of: selection.selectedProjectID) { _, newID in
-            rebindFileRoot()
+            // Do NOT rebind Files to the project path — home stays the default.
+            // User can open the project folder from the Files location menu.
             RoutingModelProvider.shared.setFocusedProject(newID)
             chat.focusedProjectID = newID
         }
@@ -146,19 +154,23 @@ struct WorkspaceRootView: View {
     private var mainSplit: some View {
         Group {
             if isNarrow {
+                // 25% sidebar / 75% center when the right column is collapsed.
                 PersistableHSplitView(
-                    autosaveName: "CommandCenter.MainSplit.Narrow.sc1",
+                    // v4: force fraction layout (v3 could keep bogus NSSplitView defaults).
+                    autosaveName: "CommandCenter.MainSplit.Narrow.v4-25-75",
                     panes: [
                         .init(
                             minWidth: LayoutMetrics.sidebarMinWidth,
-                            idealWidth: LayoutMetrics.sidebarWidth,
+                            idealFraction: LayoutMetrics.sidebarNarrowDefaultFraction,
                             maxWidth: LayoutMetrics.sidebarMaxWidth,
+                            maxFraction: LayoutMetrics.sidePaneMaxFraction,
                             holdingPriority: .defaultHigh
                         ) {
                             sidebarPane
                         },
                         .init(
                             minWidth: LayoutMetrics.centerMinWidth,
+                            idealFraction: LayoutMetrics.centerNarrowDefaultFraction,
                             holdingPriority: .defaultLow
                         ) {
                             centerPane
@@ -166,27 +178,32 @@ struct WorkspaceRootView: View {
                     ]
                 )
             } else {
+                // Display-relative defaults: 25% | 50% | 25% with 1pt hairline dividers.
                 PersistableHSplitView(
-                    autosaveName: "CommandCenter.MainSplit.Wide.sc1",
+                    // v4: force fraction layout (v3 could keep bogus NSSplitView defaults).
+                    autosaveName: "CommandCenter.MainSplit.Wide.v4-25-50-25",
                     panes: [
                         .init(
                             minWidth: LayoutMetrics.sidebarMinWidth,
-                            idealWidth: LayoutMetrics.sidebarWidth,
+                            idealFraction: LayoutMetrics.sidebarDefaultFraction,
                             maxWidth: LayoutMetrics.sidebarMaxWidth,
+                            maxFraction: LayoutMetrics.sidePaneMaxFraction,
                             holdingPriority: .defaultHigh
                         ) {
                             sidebarPane
                         },
                         .init(
                             minWidth: LayoutMetrics.centerMinWidth,
+                            idealFraction: LayoutMetrics.centerDefaultFraction,
                             holdingPriority: .defaultLow
                         ) {
                             centerPane
                         },
                         .init(
                             minWidth: LayoutMetrics.rightColumnMinWidth,
-                            idealWidth: LayoutMetrics.rightColumnWidth,
+                            idealFraction: LayoutMetrics.rightColumnDefaultFraction,
                             maxWidth: LayoutMetrics.rightColumnMaxWidth,
+                            maxFraction: LayoutMetrics.sidePaneMaxFraction,
                             holdingPriority: .defaultHigh
                         ) {
                             rightColumn
@@ -231,6 +248,7 @@ struct WorkspaceRootView: View {
             fileBrowser: fileBrowser,
             previewPresenter: selection,
             project: currentProject,
+            projectFolderURL: activeProjectFolderURL,
             filesFocused: focus.focusedPane == .files,
             terminalFocused: focus.focusedPane == .terminal,
             onFocusFiles: { focus.focus(.files) },
@@ -310,13 +328,20 @@ struct WorkspaceRootView: View {
         }
     }
 
-    private func rebindFileRoot() {
-        // Project with a real folder → that folder. Quick chat / no project → ~.
-        if let project = currentProject, !project.isQuickChat {
-            fileBrowser.setRoot(URL(fileURLWithPath: project.folderPath, isDirectory: true))
-        } else {
-            fileBrowser.setRoot(FileManager.default.homeDirectoryForCurrentUser)
-        }
+    /// Files pane always opens at `~` (logged-in user home). Project folders
+    /// are optional destinations via the location menu — never forced.
+    private func ensureFilesAtUserHome() {
+        fileBrowser.setRoot(FileBrowserModel.userHomeURL)
+    }
+
+    private var activeProjectFolderURL: URL? {
+        guard let project = currentProject else { return nil }
+        let url = URL(fileURLWithPath: project.folderPath, isDirectory: true)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        // Quick chat is already rooted at home — no separate project entry.
+        if project.isQuickChat { return nil }
+        if url.standardizedFileURL.path == FileBrowserModel.userHomeURL.path { return nil }
+        return url
     }
 
     private func startQuickChat() {
@@ -363,6 +388,8 @@ private struct RightColumnView: View {
     @ObservedObject var fileBrowser: FileBrowserModel
     var previewPresenter: FilePreviewPresenting
     let project: WorkspaceProject?
+    /// Optional project working folder for the Files location menu (never auto-forced).
+    var projectFolderURL: URL? = nil
     let filesFocused: Bool
     let terminalFocused: Bool
     let onFocusFiles: () -> Void
@@ -388,6 +415,7 @@ private struct RightColumnView: View {
             FileBrowserPaneView(
                 model: fileBrowser,
                 previewPresenter: previewPresenter,
+                projectFolderURL: projectFolderURL,
                 isFocused: filesFocused
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)

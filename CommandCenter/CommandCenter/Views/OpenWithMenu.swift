@@ -5,6 +5,7 @@ import SwiftUI
 struct OpenWithMenuContent: View {
     let workspacePath: String
     var onOpenSafari: () -> Void
+    var onOpenTerminal: () -> Void = {}
     var onOpenMail: () -> Void = {}
     var onOpenCalendar: () -> Void = {}
 
@@ -42,7 +43,7 @@ struct OpenWithMenuContent: View {
         Button {
             _ = openBundle("com.apple.Terminal", path: workspacePath)
         } label: {
-            Label("Terminal", systemImage: "terminal.fill")
+            Label("macOS Terminal", systemImage: "terminal.fill")
         }
 
         Button {
@@ -59,6 +60,12 @@ struct OpenWithMenuContent: View {
             onOpenSafari()
         } label: {
             Label("Safari", systemImage: "safari")
+        }
+
+        Button {
+            onOpenTerminal()
+        } label: {
+            Label("Terminal Tab", systemImage: "terminal")
         }
 
         Button {

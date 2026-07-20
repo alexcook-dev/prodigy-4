@@ -25,6 +25,10 @@ final class KeyPassthroughTerminalView: LocalProcessTerminalView {
             onPaneShortcut?(pane)
             return false
         }
+        // ⌘+/⌘-/⌘0 (and ⌘=) content zoom — let main menu handle them.
+        if Self.isContentZoomShortcut(event) {
+            return false
+        }
         // Forward everything else (Esc, Ctrl-C, arrows, printable keys, …)
         // to TerminalView / AppKit default handling.
         return super.performKeyEquivalent(with: event)
@@ -49,6 +53,27 @@ final class KeyPassthroughTerminalView: LocalProcessTerminalView {
         case "3": return .files
         case "4": return .terminal
         default: return nil
+        }
+    }
+
+    /// ⌘=, ⌘+, ⌘-, ⌘0 — content zoom (View menu).
+    static func isContentZoomShortcut(_ event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard flags.contains(.command),
+              !flags.contains(.option),
+              !flags.contains(.control),
+              let chars = event.charactersIgnoringModifiers,
+              chars.count == 1,
+              let ch = chars.first
+        else {
+            return false
+        }
+        // Allow Shift for ⌘+ (plus is often Shift+=).
+        switch ch {
+        case "=", "+", "-", "0":
+            return true
+        default:
+            return false
         }
     }
 

@@ -14,6 +14,8 @@ enum CenterSurface: Hashable, Identifiable {
     case dashboard
     case filePreview(FilePreviewTab)
     case browser(UUID)
+    /// In-app terminal session tab (PTY shell) — same column as Chat/Safari.
+    case terminal(UUID)
     /// Apple Mail inbox viewer (via Mail.app scripting) — in-app.
     case appleMail
     /// Apple Calendar events (EventKit) — in-app.
@@ -26,6 +28,7 @@ enum CenterSurface: Hashable, Identifiable {
         case .dashboard: "dashboard"
         case .filePreview(let tab): tab.id.uuidString
         case .browser(let tabID): tabID.uuidString
+        case .terminal(let tabID): "term-\(tabID.uuidString)"
         case .appleMail: "apple-mail"
         case .appleCalendar: "apple-calendar"
         }
@@ -71,6 +74,24 @@ struct BrowserTab: Hashable, Identifiable {
     }
 }
 
+/// In-app terminal tab (SwiftTerm PTY) in the center column.
+struct TerminalTab: Hashable, Identifiable {
+    let id: UUID
+    var title: String
+    /// Working directory for the shell (defaults to user home).
+    var workingDirectory: String
+
+    init(
+        id: UUID = UUID(),
+        title: String = "Terminal",
+        workingDirectory: String = FileManager.default.homeDirectoryForCurrentUser.path
+    ) {
+        self.id = id
+        self.title = title
+        self.workingDirectory = workingDirectory
+    }
+}
+
 /// Preset destinations for in-app web tabs (+ menu / Open With).
 enum WebTabPreset: String, CaseIterable, Identifiable {
     case safari
@@ -112,6 +133,8 @@ final class WorkspaceSelection: FilePreviewPresenting {
     var filePreviewTabs: [FilePreviewTab] = []
     /// In-app Safari browser tabs.
     var browserTabs: [BrowserTab] = []
+    /// In-app terminal tabs (center column).
+    var terminalTabs: [TerminalTab] = []
     /// Whether the Apple Mail tab is open.
     var isAppleMailTabOpen: Bool = false
     /// Whether the Apple Calendar tab is open.
@@ -174,6 +197,9 @@ final class WorkspaceSelection: FilePreviewPresenting {
         }
         if let browser = browserTabs.last {
             return .browser(browser.id)
+        }
+        if let terminal = terminalTabs.last {
+            return .terminal(terminal.id)
         }
         if let preview = filePreviewTabs.last {
             return .filePreview(preview)
@@ -386,19 +412,7 @@ final class WorkspaceSelection: FilePreviewPresenting {
     func closeFilePreview(id: UUID) {
         filePreviewTabs.removeAll { $0.id == id }
         if case .filePreview(let open) = activeSurface, open.id == id {
-            if let next = filePreviewTabs.last {
-                activeSurface = .filePreview(next)
-            } else if let chat = chatTabs.last {
-                activeSurface = .chat(chat.id)
-            } else if isAppleMailTabOpen {
-                activeSurface = .appleMail
-            } else if isAppleCalendarTabOpen {
-                activeSurface = .appleCalendar
-            } else if let browser = browserTabs.last {
-                activeSurface = .browser(browser.id)
-            } else {
-                activeSurface = .empty
-            }
+            activeSurface = fallBackSurfaceAfterClose()
         }
     }
 
@@ -469,20 +483,56 @@ final class WorkspaceSelection: FilePreviewPresenting {
     func closeBrowserTab(id: UUID) {
         browserTabs.removeAll { $0.id == id }
         if case .browser(let openID) = activeSurface, openID == id {
-            if let next = browserTabs.last {
-                activeSurface = .browser(next.id)
-            } else if let chat = chatTabs.last {
-                activeSurface = .chat(chat.id)
-            } else if isAppleMailTabOpen {
-                activeSurface = .appleMail
-            } else if isAppleCalendarTabOpen {
-                activeSurface = .appleCalendar
-            } else if let preview = filePreviewTabs.last {
-                activeSurface = .filePreview(preview)
-            } else {
-                activeSurface = .empty
-            }
+            activeSurface = fallBackSurfaceAfterClose()
         }
+    }
+
+    // MARK: - Center terminal tabs
+
+    /// Open a new terminal tab in the center column (independent PTY session).
+    @discardableResult
+    func openTerminalTab(workingDirectory: String? = nil) -> TerminalTab {
+        let cwd = workingDirectory
+            ?? FileManager.default.homeDirectoryForCurrentUser.path
+        let index = terminalTabs.count + 1
+        let tab = TerminalTab(
+            title: index == 1 ? "Terminal" : "Terminal \(index)",
+            workingDirectory: cwd
+        )
+        terminalTabs.append(tab)
+        activeSurface = .terminal(tab.id)
+        return tab
+    }
+
+    func selectTerminalTab(_ tab: TerminalTab) {
+        activeSurface = .terminal(tab.id)
+    }
+
+    func selectTerminalTab(id: UUID) {
+        guard terminalTabs.contains(where: { $0.id == id }) else { return }
+        activeSurface = .terminal(id)
+    }
+
+    func closeTerminalTab(_ tab: TerminalTab) {
+        closeTerminalTab(id: tab.id)
+    }
+
+    func closeTerminalTab(id: UUID) {
+        terminalTabs.removeAll { $0.id == id }
+        if case .terminal(let openID) = activeSurface, openID == id {
+            activeSurface = fallBackSurfaceAfterClose()
+        }
+    }
+
+    func terminalTab(id: UUID) -> TerminalTab? {
+        terminalTabs.first { $0.id == id }
+    }
+
+    func updateTerminalTab(id: UUID, title: String) {
+        guard let idx = terminalTabs.firstIndex(where: { $0.id == id }) else { return }
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, terminalTabs[idx].title != trimmed else { return }
+        terminalTabs[idx].title = trimmed
     }
 
     /// Update title/URL for a browser tab **without** changing `activeSurface`.

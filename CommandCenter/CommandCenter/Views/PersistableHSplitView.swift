@@ -13,7 +13,11 @@ struct PersistableHSplitView: NSViewRepresentable {
     struct Pane {
         var minWidth: CGFloat
         var idealWidth: CGFloat?
+        /// Preferred share of available split width (e.g. 0.25 = 25%). Wins over idealWidth when set.
+        var idealFraction: CGFloat?
         var maxWidth: CGFloat?
+        /// Cap as a fraction of available width (e.g. 0.40). Combined with maxWidth when both set.
+        var maxFraction: CGFloat?
         /// Higher priority resists growth when the split grows.
         var holdingPriority: NSLayoutConstraint.Priority
         var content: AnyView
@@ -21,15 +25,29 @@ struct PersistableHSplitView: NSViewRepresentable {
         init(
             minWidth: CGFloat,
             idealWidth: CGFloat? = nil,
+            idealFraction: CGFloat? = nil,
             maxWidth: CGFloat? = nil,
+            maxFraction: CGFloat? = nil,
             holdingPriority: NSLayoutConstraint.Priority = .defaultLow,
             @ViewBuilder content: () -> some View
         ) {
             self.minWidth = minWidth
             self.idealWidth = idealWidth
+            self.idealFraction = idealFraction
             self.maxWidth = maxWidth
+            self.maxFraction = maxFraction
             self.holdingPriority = holdingPriority
             self.content = AnyView(content())
+        }
+
+        func resolvedMaxWidth(available: CGFloat) -> CGFloat? {
+            let fromFraction = maxFraction.map { available * $0 }
+            switch (maxWidth, fromFraction) {
+            case let (a?, b?): return min(a, b)
+            case let (a?, nil): return a
+            case let (nil, b?): return b
+            case (nil, nil): return nil
+            }
         }
     }
 
@@ -73,7 +91,20 @@ struct PersistableHSplitView: NSViewRepresentable {
         var autosaveName: String = ""
         private var slots: [HostingSlot] = []
         private var paneSpecs: [Pane] = []
-        private var hasAppliedInitialWidths = false
+        /// After the user drags a divider we stop auto-reapplying fractions.
+        private var userHasCustomizedWidths = false
+        private var isApplyingProgrammaticLayout = false
+        private var lastSplitWidth: CGFloat = 0
+        private var lastPaneWidths: [CGFloat] = []
+        private var pendingFractionApply = false
+
+        private var usesFractions: Bool {
+            paneSpecs.contains { $0.idealFraction != nil }
+        }
+
+        private var customizedKey: String {
+            "prodigy.split.customized.\(autosaveName)"
+        }
 
         func apply(panes: [Pane], to split: NSSplitView, forceRebuild: Bool) {
             let needsRebuild = forceRebuild
@@ -81,7 +112,9 @@ struct PersistableHSplitView: NSViewRepresentable {
                 || panes.count != split.arrangedSubviews.count
 
             if needsRebuild {
-                hasAppliedInitialWidths = false
+                userHasCustomizedWidths = UserDefaults.standard.bool(forKey: customizedKey)
+                lastSplitWidth = 0
+                lastPaneWidths = []
 
                 for view in split.arrangedSubviews {
                     split.removeArrangedSubview(view)
@@ -101,12 +134,7 @@ struct PersistableHSplitView: NSViewRepresentable {
                 }
 
                 paneSpecs = panes
-
-                // Defer initial sizing until the split has a real bounds.
-                DispatchQueue.main.async { [weak self, weak split] in
-                    guard let self, let split else { return }
-                    self.applyInitialOrRestoredWidths(to: split)
-                }
+                scheduleFractionLayout(on: split, attemptsLeft: 12)
             } else {
                 for (index, pane) in panes.enumerated() where index < slots.count {
                     slots[index].setContent(pane.content)
@@ -116,60 +144,63 @@ struct PersistableHSplitView: NSViewRepresentable {
             }
         }
 
-        /// Prefer NSSplitView autosave restoration; if none exists yet, seed ideal widths.
-        private func applyInitialOrRestoredWidths(to split: NSSplitView) {
-            guard !hasAppliedInitialWidths, split.bounds.width > 0, !paneSpecs.isEmpty else { return }
-            hasAppliedInitialWidths = true
+        /// Retry until the split has a real width (first frame is often 0).
+        private func scheduleFractionLayout(on split: NSSplitView, attemptsLeft: Int) {
+            guard attemptsLeft > 0 else { return }
+            DispatchQueue.main.async { [weak self, weak split] in
+                guard let self, let split else { return }
+                if split.bounds.width < 2 {
+                    self.scheduleFractionLayout(on: split, attemptsLeft: attemptsLeft - 1)
+                    return
+                }
+                if self.usesFractions && !self.userHasCustomizedWidths {
+                    self.applyFractionalLayout(to: split)
+                } else {
+                    self.applyNonOverlappingLayout(to: split)
+                }
+            }
+        }
 
-            // If autosave already restored non-trivial frames, keep them.
-            let existing = split.arrangedSubviews.map(\.frame.width)
-            let hasRestoredFrames = existing.count == paneSpecs.count
-                && existing.allSatisfy { $0 > 1 }
-                && existing.reduce(0, +) > split.bounds.width * 0.5
-
-            if hasRestoredFrames {
+        /// Force 25% / 50% / 25% (or whatever idealFraction is set) of the live width.
+        private func applyFractionalLayout(to split: NSSplitView) {
+            guard !paneSpecs.isEmpty, split.bounds.width > 1 else { return }
+            guard usesFractions else {
+                applyNonOverlappingLayout(to: split)
                 return
             }
 
             let count = paneSpecs.count
             let divider = split.dividerThickness
             let available = max(split.bounds.width - CGFloat(max(count - 1, 0)) * divider, 0)
+            guard available > 1 else { return }
 
             var widths = paneSpecs.map { pane -> CGFloat in
-                let ideal = pane.idealWidth ?? pane.minWidth
-                var w = max(pane.minWidth, ideal)
-                if let maxW = pane.maxWidth {
-                    w = min(maxW, w)
+                if let f = pane.idealFraction {
+                    return available * f
                 }
-                return w
+                return max(pane.minWidth, pane.idealWidth ?? pane.minWidth)
             }
-
-            // Flexible pane (lowest holding priority) absorbs remainder.
-            var flexibleIndex = count - 1
-            var lowest = paneSpecs[0].holdingPriority
-            flexibleIndex = 0
-            for i in 1..<count {
-                if paneSpecs[i].holdingPriority < lowest {
-                    lowest = paneSpecs[i].holdingPriority
-                    flexibleIndex = i
-                }
+            let sum = widths.reduce(CGFloat(0), +)
+            if sum > 0 {
+                let scale = available / sum
+                widths = widths.map { $0 * scale }
             }
+            widths = Self.clampWidths(widths, specs: paneSpecs, available: available)
 
-            let fixedSum = widths.enumerated()
-                .filter { $0.offset != flexibleIndex }
-                .map(\.element)
-                .reduce(CGFloat(0), +)
-            widths[flexibleIndex] = max(paneSpecs[flexibleIndex].minWidth, available - fixedSum)
+            isApplyingProgrammaticLayout = true
+            defer { isApplyingProgrammaticLayout = false }
 
             var x: CGFloat = 0
-            let height = split.bounds.height
+            let height = max(split.bounds.height, 1)
             for i in 0..<count {
-                split.arrangedSubviews[i].setFrameSize(NSSize(width: widths[i], height: height))
-                split.arrangedSubviews[i].setFrameOrigin(NSPoint(x: x, y: 0))
+                split.arrangedSubviews[i].frame = NSRect(
+                    x: x, y: 0, width: widths[i], height: height
+                )
                 x += widths[i] + divider
             }
-
-            // Persist the seed so the next launch restores via autosave.
+            lastSplitWidth = split.bounds.width
+            lastPaneWidths = widths
+            // Write frames so NSSplitView autosave stores the fraction layout.
             split.adjustSubviews()
         }
 
@@ -233,12 +264,14 @@ struct PersistableHSplitView: NSViewRepresentable {
             var lo = leftMins
             var hi = width - divider - rightMins
 
+            let available = max(width - CGFloat(max(count - 1, 0)) * divider, 0)
+
             // Right-group max widths: divider cannot go left of (width - div - rightMaxes).
             if rightStart < count {
                 var rightMaxSum: CGFloat = 0
                 var allHaveMax = true
                 for i in rightStart..<count {
-                    guard let maxW = paneSpecs[i].maxWidth else {
+                    guard let maxW = paneSpecs[i].resolvedMaxWidth(available: available) else {
                         allHaveMax = false
                         break
                     }
@@ -256,7 +289,7 @@ struct PersistableHSplitView: NSViewRepresentable {
 
             // Left-group max: pane at dividerIndex.
             if dividerIndex < splitView.arrangedSubviews.count,
-               let maxWidth = paneSpecs[dividerIndex].maxWidth {
+               let maxWidth = paneSpecs[dividerIndex].resolvedMaxWidth(available: available) {
                 let leftEdge = splitView.arrangedSubviews[dividerIndex].frame.minX
                 let fromLeftMax = leftEdge + maxWidth
                 if fromLeftMax >= lo {
@@ -268,7 +301,7 @@ struct PersistableHSplitView: NSViewRepresentable {
             var leftMaxSum: CGFloat = 0
             var allLeftHaveMax = true
             for i in 0...dividerIndex {
-                guard let maxW = paneSpecs[i].maxWidth else {
+                guard let maxW = paneSpecs[i].resolvedMaxWidth(available: available) else {
                     allLeftHaveMax = false
                     break
                 }
@@ -293,13 +326,40 @@ struct PersistableHSplitView: NSViewRepresentable {
 
         func splitViewDidResizeSubviews(_ notification: Notification) {
             guard let splitView = notification.object as? NSSplitView else { return }
-            // After a live drag, re-clamp so a pane never sits past maxWidth or
-            // stacks on its neighbor (NSSplitView can leave illegal frames when
-            // min/max fight under a tight window).
-            applyNonOverlappingLayout(to: splitView)
+            guard !isApplyingProgrammaticLayout else { return }
+
+            let widths = splitView.arrangedSubviews.map(\.frame.width)
+            let total = splitView.bounds.width
+
+            // Same overall width but panes moved → user dragged a divider.
+            if usesFractions,
+               lastSplitWidth > 1,
+               abs(total - lastSplitWidth) < 1.5,
+               lastPaneWidths.count == widths.count {
+                let moved = zip(widths, lastPaneWidths).contains { abs($0 - $1) > 2 }
+                if moved {
+                    userHasCustomizedWidths = true
+                    UserDefaults.standard.set(true, forKey: customizedKey)
+                }
+            }
+
+            lastSplitWidth = total
+            lastPaneWidths = widths
+
+            // Only clamp — do not re-force fractions here (avoids a layout loop).
+            if userHasCustomizedWidths || !usesFractions {
+                applyNonOverlappingLayout(to: splitView)
+            }
         }
 
         func splitView(_ splitView: NSSplitView, resizeSubviewsWithOldSize oldSize: NSSize) {
+            guard !isApplyingProgrammaticLayout else { return }
+            // Window grew/shrank: re-apply 25/50/25 so layout tracks display/window size.
+            if usesFractions && !userHasCustomizedWidths,
+               abs(oldSize.width - splitView.bounds.width) > 1 {
+                applyFractionalLayout(to: splitView)
+                return
+            }
             applyNonOverlappingLayout(to: splitView)
         }
 
@@ -360,10 +420,10 @@ struct PersistableHSplitView: NSViewRepresentable {
                 widths = specs.map { max($0.minWidth, $0.idealWidth ?? $0.minWidth) }
             }
 
-            // Hard clamp each pane into [min, max].
+            // Hard clamp each pane into [min, max] (absolute and/or fractional max).
             for i in 0..<count {
                 widths[i] = max(specs[i].minWidth, widths[i])
-                if let maxW = specs[i].maxWidth {
+                if let maxW = specs[i].resolvedMaxWidth(available: available) {
                     widths[i] = min(maxW, widths[i])
                 }
             }
