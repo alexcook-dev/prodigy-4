@@ -2,11 +2,19 @@ import AppKit
 import SwiftUI
 
 /// Compact Apple Reminders (To-Do) pane for the top-right column tab.
+///
+/// Full CRUD inside Prodigy: add, complete, edit (title/notes/due/list), delete.
 struct AppleRemindersPaneView: View {
     @ObservedObject var reminders: AppleRemindersService
     var isFocused: Bool = false
 
     @FocusState private var draftFocused: Bool
+    /// Item being edited in the sheet (`nil` = sheet dismissed).
+    @State private var editingItem: AppleReminderItem?
+    /// Inline title edit for a single row (quick rename).
+    @State private var inlineEditID: String?
+    @State private var inlineEditTitle: String = ""
+    @FocusState private var inlineFieldFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,7 +32,32 @@ struct AppleRemindersPaneView: View {
             await reminders.refresh()
         }
         .onChange(of: isFocused) { _, focused in
-            if focused { draftFocused = true }
+            if focused, inlineEditID == nil { draftFocused = true }
+        }
+        .sheet(item: $editingItem) { item in
+            TodoEditSheet(
+                item: item,
+                lists: reminders.lists,
+                onSave: { title, notes, due, listID in
+                    Task {
+                        let ok = await reminders.updateReminder(
+                            item,
+                            title: title,
+                            notes: notes,
+                            dueDate: .some(due),
+                            listID: listID
+                        )
+                        if ok { editingItem = nil }
+                    }
+                },
+                onDelete: {
+                    Task {
+                        _ = await reminders.deleteReminder(item)
+                        editingItem = nil
+                    }
+                },
+                onCancel: { editingItem = nil }
+            )
         }
     }
 
@@ -98,6 +131,7 @@ struct AppleRemindersPaneView: View {
                 .onSubmit {
                     Task {
                         _ = await reminders.addReminder(title: reminders.draftTitle)
+                        draftFocused = true
                     }
                 }
 
@@ -105,10 +139,12 @@ struct AppleRemindersPaneView: View {
                 Button("Add") {
                     Task {
                         _ = await reminders.addReminder(title: reminders.draftTitle)
+                        draftFocused = true
                     }
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.mini)
+                .keyboardShortcut(.defaultAction)
             }
         }
         .padding(.horizontal, 10)
@@ -133,7 +169,7 @@ struct AppleRemindersPaneView: View {
                     Text("No open to-dos")
                         .font(Font.subheadline.weight(.medium))
                         .foregroundStyle(Theme.textSecondary)
-                    Text("Add one above, or open Reminders.app.")
+                    Text("Add one above — edit or delete anytime.")
                         .font(Font.caption)
                         .foregroundStyle(Theme.textTertiary)
                         .multilineTextAlignment(.center)
@@ -178,40 +214,136 @@ struct AppleRemindersPaneView: View {
             }
             .buttonStyle(.plain)
             .help("Mark complete")
+            .disabled(inlineEditID == item.id)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(Font.subheadline)
-                    .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
+                if inlineEditID == item.id {
+                    TextField("Title", text: $inlineEditTitle)
+                        .textFieldStyle(.plain)
+                        .font(Font.subheadline)
+                        .focused($inlineFieldFocused)
+                        .onSubmit { commitInlineEdit(item) }
+                        .onExitCommand { cancelInlineEdit() }
+                } else {
+                    Text(item.title)
+                        .font(Font.subheadline)
+                        .foregroundStyle(Theme.textPrimary)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 2) {
+                            beginInlineEdit(item)
+                        }
 
-                HStack(spacing: 6) {
-                    if let due = item.dueDate {
-                        Text(dueLabel(due))
-                            .font(Font.caption2)
-                            .foregroundStyle(due < Date() ? Theme.errorText : Theme.textTertiary)
-                    }
-                    if reminders.selectedListID == nil {
-                        Text(item.listName)
-                            .font(Font.caption2)
-                            .foregroundStyle(Theme.textTertiary)
-                            .lineLimit(1)
+                    HStack(spacing: 6) {
+                        if let due = item.dueDate {
+                            Text(dueLabel(due))
+                                .font(Font.caption2)
+                                .foregroundStyle(due < Date() ? Theme.errorText : Theme.textTertiary)
+                        }
+                        if !item.notes.isEmpty {
+                            Text(item.notes)
+                                .font(Font.caption2)
+                                .foregroundStyle(Theme.textTertiary)
+                                .lineLimit(1)
+                        }
+                        if reminders.selectedListID == nil {
+                            Text(item.listName)
+                                .font(Font.caption2)
+                                .foregroundStyle(Theme.textTertiary)
+                                .lineLimit(1)
+                        }
                     }
                 }
             }
-            Spacer(minLength: 0)
+
+            Spacer(minLength: 4)
+
+            if inlineEditID == item.id {
+                Button("Save") { commitInlineEdit(item) }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.mini)
+                Button {
+                    cancelInlineEdit()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(Font.caption2.weight(.semibold))
+                        .foregroundStyle(Theme.textTertiary)
+                        .frame(width: 18, height: 18)
+                }
+                .buttonStyle(.plain)
+                .help("Cancel")
+            } else {
+                Button {
+                    editingItem = item
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(Font.caption.weight(.medium))
+                        .foregroundStyle(Theme.textTertiary)
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Edit to-do")
+
+                Button {
+                    Task { _ = await reminders.deleteReminder(item) }
+                } label: {
+                    Image(systemName: "trash")
+                        .font(Font.caption.weight(.medium))
+                        .foregroundStyle(Theme.textTertiary)
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Delete to-do")
+            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .contextMenu {
+            Button("Edit…") {
+                editingItem = item
+            }
+            Button("Rename") {
+                beginInlineEdit(item)
+            }
             Button("Mark Complete") {
                 Task { await reminders.setCompleted(item, completed: true) }
             }
+            Divider()
+            Button("Delete", role: .destructive) {
+                Task { _ = await reminders.deleteReminder(item) }
+            }
+            Divider()
             Button("Open in Reminders") {
                 openRemindersApp()
             }
+        }
+    }
+
+    // MARK: - Inline edit
+
+    private func beginInlineEdit(_ item: AppleReminderItem) {
+        inlineEditID = item.id
+        inlineEditTitle = item.title
+        DispatchQueue.main.async {
+            inlineFieldFocused = true
+        }
+    }
+
+    private func cancelInlineEdit() {
+        inlineEditID = nil
+        inlineEditTitle = ""
+        inlineFieldFocused = false
+    }
+
+    private func commitInlineEdit(_ item: AppleReminderItem) {
+        let title = inlineEditTitle
+        cancelInlineEdit()
+        Task {
+            _ = await reminders.updateReminder(item, title: title)
         }
     }
 
@@ -267,5 +399,144 @@ struct AppleRemindersPaneView: View {
         } else {
             NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Reminders.app"))
         }
+    }
+}
+
+// MARK: - Edit sheet
+
+private struct TodoEditSheet: View {
+    let item: AppleReminderItem
+    let lists: [AppleReminderList]
+    var onSave: (_ title: String, _ notes: String, _ due: Date?, _ listID: String?) -> Void
+    var onDelete: () -> Void
+    var onCancel: () -> Void
+
+    @State private var title: String = ""
+    @State private var notes: String = ""
+    @State private var hasDueDate: Bool = false
+    @State private var dueDate: Date = Date()
+    @State private var listID: String = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Edit To-Do")
+                .font(Font.headline.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+
+            VStack(alignment: .leading, spacing: 6) {
+                fieldLabel("Title")
+                TextField("Title", text: $title)
+                    .textFieldStyle(.plain)
+                    .font(Font.callout)
+                    .foregroundStyle(Theme.textPrimary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(fieldChrome)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                fieldLabel("Notes")
+                TextField("Notes (optional)", text: $notes, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(Font.callout)
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(3...6)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(fieldChrome)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                fieldLabel("List")
+                Picker("List", selection: $listID) {
+                    ForEach(lists) { list in
+                        Text(list.title).tag(list.id)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Due date", isOn: $hasDueDate)
+                    .toggleStyle(.checkbox)
+                    .font(Font.subheadline)
+                    .foregroundStyle(Theme.textPrimary)
+                if hasDueDate {
+                    DatePicker(
+                        "Due",
+                        selection: $dueDate,
+                        displayedComponents: [.date]
+                    )
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
+                }
+            }
+
+            HStack {
+                Button("Delete", role: .destructive, action: onDelete)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.errorText)
+
+                Spacer()
+
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.textSecondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+
+                Button("Save") {
+                    onSave(
+                        title,
+                        notes,
+                        hasDueDate ? dueDate : nil,
+                        listID.isEmpty ? nil : listID
+                    )
+                }
+                .buttonStyle(.plain)
+                .font(Font.callout.weight(.medium))
+                .foregroundStyle(Theme.textOnAccent)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(Theme.accent)
+                )
+                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .opacity(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 360)
+        .background(Theme.appBackground)
+        .onAppear {
+            title = item.title
+            notes = item.notes
+            hasDueDate = item.dueDate != nil
+            dueDate = item.dueDate ?? Date()
+            listID = item.listID
+            if listID.isEmpty, let first = lists.first {
+                listID = first.id
+            }
+        }
+    }
+
+    private func fieldLabel(_ text: String) -> some View {
+        Text(text)
+            .font(Font.caption.weight(.semibold))
+            .foregroundStyle(Theme.textSecondary)
+            .textCase(.uppercase)
+            .tracking(0.6)
+    }
+
+    private var fieldChrome: some View {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .fill(Theme.elevatedSurface)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(Theme.borderStructural, lineWidth: 1)
+            )
     }
 }

@@ -145,7 +145,7 @@ final class AppleRemindersService: ObservableObject {
 
     /// Create a new incomplete reminder in the selected (or default) list.
     @discardableResult
-    func addReminder(title: String) async -> Bool {
+    func addReminder(title: String, notes: String = "", dueDate: Date? = nil) async -> Bool {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
         errorMessage = nil
@@ -153,6 +153,14 @@ final class AppleRemindersService: ObservableObject {
             try await requestAccessIfNeeded()
             let reminder = EKReminder(eventStore: store)
             reminder.title = trimmed
+            let notesTrimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            reminder.notes = notesTrimmed.isEmpty ? nil : notesTrimmed
+            if let dueDate {
+                reminder.dueDateComponents = Calendar.current.dateComponents(
+                    [.year, .month, .day, .hour, .minute],
+                    from: dueDate
+                )
+            }
             reminder.calendar = preferredCalendar()
             try store.save(reminder, commit: true)
             draftTitle = ""
@@ -160,6 +168,106 @@ final class AppleRemindersService: ObservableObject {
             return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    /// Update title / notes / due date / list for an existing reminder.
+    @discardableResult
+    func updateReminder(
+        _ item: AppleReminderItem,
+        title: String? = nil,
+        notes: String? = nil,
+        dueDate: Date?? = nil,
+        listID: String? = nil
+    ) async -> Bool {
+        errorMessage = nil
+        do {
+            try await requestAccessIfNeeded()
+            guard let reminder = store.calendarItem(withIdentifier: item.id) as? EKReminder else {
+                errorMessage = "To-do not found."
+                await refresh()
+                return false
+            }
+
+            if let title {
+                let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else {
+                    errorMessage = "Title can’t be empty."
+                    return false
+                }
+                reminder.title = trimmed
+            }
+
+            if let notes {
+                let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+                reminder.notes = trimmed.isEmpty ? nil : trimmed
+            }
+
+            if let dueDate {
+                // `dueDate` is `Date??`: `.some(nil)` clears, `.some(date)` sets.
+                if let date = dueDate {
+                    reminder.dueDateComponents = Calendar.current.dateComponents(
+                        [.year, .month, .day, .hour, .minute],
+                        from: date
+                    )
+                } else {
+                    reminder.dueDateComponents = nil
+                }
+            }
+
+            if let listID,
+               let calendar = store.calendars(for: .reminder).first(where: {
+                   $0.calendarIdentifier == listID
+               }) {
+                reminder.calendar = calendar
+            }
+
+            try store.save(reminder, commit: true)
+
+            // Patch local model for snappy UI before full refresh.
+            if let idx = reminders.firstIndex(where: { $0.id == item.id }) {
+                if let title {
+                    let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty { reminders[idx].title = trimmed }
+                }
+                if let notes {
+                    reminders[idx].notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+                if let dueDate {
+                    reminders[idx].dueDate = dueDate
+                }
+                if let listID,
+                   let list = lists.first(where: { $0.id == listID }) {
+                    reminders[idx].listID = listID
+                    reminders[idx].listName = list.title
+                }
+            }
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            await refresh()
+            return false
+        }
+    }
+
+    /// Permanently delete a reminder from Reminders.app.
+    @discardableResult
+    func deleteReminder(_ item: AppleReminderItem) async -> Bool {
+        errorMessage = nil
+        do {
+            try await requestAccessIfNeeded()
+            guard let reminder = store.calendarItem(withIdentifier: item.id) as? EKReminder else {
+                // Already gone — drop from local list.
+                reminders.removeAll { $0.id == item.id }
+                return true
+            }
+            try store.remove(reminder, commit: true)
+            reminders.removeAll { $0.id == item.id }
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            await refresh()
             return false
         }
     }
