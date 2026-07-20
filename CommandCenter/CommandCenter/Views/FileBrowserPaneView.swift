@@ -4,10 +4,8 @@ import UniformTypeIdentifiers
 
 /// Top-right file browser: FileManager tree with lazy per-directory loading.
 ///
-/// Expand enumerates only that directory's immediate children, off the main
-/// thread (PLAN.md T6 / Next Step 4). Selection asks a `FilePreviewPresenting`
-/// host to flip the center pane into preview — the real chat view will take
-/// over that host role in Wave 3.
+/// Supports multi-select (⌘/Shift/⌘A), drag-and-drop move between folders,
+/// and defaults to the logged-in user's home (`~`) with Desktop / Documents first.
 struct FileBrowserPaneView: View {
     @ObservedObject var model: FileBrowserModel
     /// Interim `FilePreviewSession` today; chat controller tomorrow.
@@ -40,23 +38,20 @@ struct FileBrowserPaneView: View {
                     .allowsHitTesting(false)
             }
         }
-        // Accept files dragged from Mail attachments (or Finder).
         .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
             handleDrop(providers)
         }
-        // Keep keyboard arrows / Space without the system blue focus ring
-        // around the whole top-right Files pane when clicked.
         .focusable()
         .focusEffectDisabled()
         .focused($listKeyboardFocused)
         .onChange(of: isFocused) { _, focused in
-            // When the workspace focuses Files (click / ⌘3), capture keyboard.
             listKeyboardFocused = focused
         }
         .onAppear {
             if isFocused { listKeyboardFocused = true }
+            // Always open at the logged-in user's home (Desktop, Documents, …).
+            model.goHome()
         }
-        // Finder-style: Space / Enter → preview selected file (or expand folder).
         .onKeyPress(.space) {
             guard isFocused || listKeyboardFocused else { return .ignored }
             activateSelected()
@@ -77,12 +72,17 @@ struct FileBrowserPaneView: View {
             model.moveSelection(by: 1)
             return .handled
         }
+        .onKeyPress(characters: CharacterSet(charactersIn: "aA")) { press in
+            guard isFocused || listKeyboardFocused else { return .ignored }
+            guard press.modifiers.contains(.command) else { return .ignored }
+            model.selectAllVisible()
+            return .handled
+        }
     }
 
     // MARK: - Header
 
     private var panelHeader: some View {
-        // sc1-style: "All files" chrome + utility icons.
         HStack(spacing: 10) {
             Text("All files")
                 .font(Font.subheadline.weight(.semibold))
@@ -342,12 +342,31 @@ struct FileBrowserPaneView: View {
 
     private func entryRow(_ row: FileTreeRow) -> some View {
         let node = row.node
-        let isSelected = model.selectedURL == node.url
+        let selected = model.isSelected(node)
+        return entryRowContent(row: row, node: node, isSelected: selected)
+            .onTapGesture(count: 2) { handleDoubleClick(node) }
+            .onTapGesture { handleTap(node) }
+            .onDrag { dragProvider(for: node) }
+            .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+                let dest = node.isDirectory ? node.url : node.url.deletingLastPathComponent()
+                return handleDrop(providers, onto: dest)
+            }
+            .contextMenu { entryContextMenu(node: node) }
+            .accessibilityLabel(node.isDirectory ? "Folder \(node.name)" : "File \(node.name)")
+            .accessibilityHint(node.isDirectory ? "Space expands or collapses" : "Space opens preview")
+            .accessibilityAddTraits(selected ? .isSelected : [])
+            .accessibilityAction(named: "Preview") {
+                if !node.isDirectory {
+                    model.select(node)
+                    openPreview(for: node)
+                }
+            }
+    }
+
+    private func entryRowContent(row: FileTreeRow, node: FileNode, isSelected: Bool) -> some View {
         let isLoading = model.isLoading(node)
         let isExpanded = model.isExpanded(node)
-
         return HStack(spacing: 6) {
-            // Disclosure / spinner / file glyph
             Group {
                 if node.isDirectory {
                     if isLoading {
@@ -378,46 +397,38 @@ struct FileBrowserPaneView: View {
         .padding(.vertical, 3)
         .background(isSelected ? Theme.fileSelectionFill : Color.clear)
         .contentShape(Rectangle())
-        // Double-tap first so it wins over single-tap selection.
-        .onTapGesture(count: 2) {
-            handleDoubleClick(node)
+    }
+
+    @ViewBuilder
+    private func entryContextMenu(node: FileNode) -> some View {
+        if node.isDirectory {
+            Button("Open as Root") { model.setRoot(node.url) }
+            Button(model.isExpanded(node) ? "Collapse" : "Expand") { model.toggleExpand(node) }
+            Button("Refresh") { model.refresh(node) }
+        } else {
+            Button("Quick Look") { openPreview(for: node) }
         }
-        .onTapGesture {
-            handleTap(node)
-        }
-        .contextMenu {
-            if node.isDirectory {
-                Button("Open as Root") {
-                    model.setRoot(node.url)
-                }
-                Button(isExpanded ? "Collapse" : "Expand") {
-                    model.toggleExpand(node)
-                }
-                Button("Refresh") {
-                    model.refresh(node)
-                }
-            } else {
-                Button("Quick Look") {
-                    openPreview(for: node)
-                }
-            }
+        if model.selectedURLs.count > 1 {
             Divider()
-            Button("Go to Home") {
-                model.goHome()
-            }
-            Button("Reveal in Finder") {
-                NSWorkspace.shared.activateFileViewerSelecting([node.url])
+            Button("Reveal \(model.selectedURLs.count) Items in Finder") {
+                NSWorkspace.shared.activateFileViewerSelecting(model.selectedURLs)
             }
         }
-        .accessibilityLabel(node.isDirectory ? "Folder \(node.name)" : "File \(node.name)")
-        .accessibilityHint(node.isDirectory ? "Space expands or collapses" : "Space opens preview")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityAction(named: "Preview") {
-            if !node.isDirectory {
-                model.select(node)
-                openPreview(for: node)
-            }
+        Divider()
+        Button("Go to Home") { model.goHome() }
+        Button("Reveal in Finder") {
+            NSWorkspace.shared.activateFileViewerSelecting([node.url])
         }
+    }
+
+    private func dragProvider(for node: FileNode) -> NSItemProvider {
+        // Ensure the dragged row is selected so multi-select drops include peers.
+        if !model.isSelected(node) {
+            model.select(node)
+        }
+        let urls = model.selectedURLs.isEmpty ? [node.url] : model.selectedURLs
+        // Primary file URL for Finder / system; multi-select expanded on drop.
+        return NSItemProvider(object: (urls.first ?? node.url) as NSURL)
     }
 
     private func leadingInset(for depth: Int) -> CGFloat {
@@ -426,12 +437,19 @@ struct FileBrowserPaneView: View {
 
     // MARK: - Actions
 
-    /// Single click: select (Finder-like). Folders also toggle expand.
+    /// Single click: select. ⌘ toggles multi-select; Shift ranges. Folders expand on plain click.
     private func handleTap(_ node: FileNode) {
-        model.select(node)
         listKeyboardFocused = true
-        if node.isDirectory {
-            model.toggleExpand(node)
+        let flags = NSApp.currentEvent?.modifierFlags ?? []
+        if flags.contains(.command) {
+            model.toggleSelect(node)
+        } else if flags.contains(.shift) {
+            model.selectRange(to: node)
+        } else {
+            model.select(node)
+            if node.isDirectory {
+                model.toggleExpand(node)
+            }
         }
     }
 
@@ -459,31 +477,58 @@ struct FileBrowserPaneView: View {
     private func openPreview(for node: FileNode) {
         guard !node.isDirectory else { return }
         let request = FilePreviewRequest(url: node.url)
-        // Wave 3 wiring: WorkspaceSelection flips the center pane to a preview tab.
         previewPresenter?.presentFilePreview(request)
     }
 
-    /// Drop files (e.g. dragged from Mail attachments) into the project folder tree.
+    /// Drop onto the pane background → selection folder or root.
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        handleDrop(providers, onto: nil)
+    }
+
+    /// Drop onto a folder (move within tree / copy from Finder).
+    private func handleDrop(_ providers: [NSItemProvider], onto destination: URL?) -> Bool {
         var any = false
+        let group = DispatchGroup()
+        let lock = NSLock()
+        var collected: [URL] = []
         for provider in providers {
             guard provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) else { continue }
             any = true
+            group.enter()
             provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                defer { group.leave() }
                 let url: URL?
                 if let data = item as? Data {
                     url = URL(dataRepresentation: data, relativeTo: nil)
+                } else if let u = item as? URL {
+                    url = u
+                } else if let s = item as? String {
+                    url = URL(fileURLWithPath: s)
                 } else {
-                    url = item as? URL
+                    url = nil
                 }
-                guard let url else { return }
-                DispatchQueue.main.async {
-                    do {
-                        _ = try model.importFiles([url])
-                    } catch {
-                        // Silent fail — Files pane has no toast; drop target feedback is enough.
-                    }
+                if let url {
+                    lock.lock()
+                    collected.append(url.standardizedFileURL)
+                    lock.unlock()
                 }
+            }
+        }
+        group.notify(queue: .main) {
+            lock.lock()
+            var urls = collected
+            lock.unlock()
+            guard !urls.isEmpty else { return }
+            // Multi-select drag: onDrag only carries one URL — expand to full selection
+            // when the dragged item is part of the current multi-select.
+            if model.selectedURLs.count > 1,
+               urls.contains(where: { model.selectedPaths.contains($0.path) }) {
+                urls = model.selectedURLs
+            }
+            do {
+                _ = try model.handleFileDrop(urls, onto: destination)
+            } catch {
+                // Drop highlight is the only feedback.
             }
         }
         return any
