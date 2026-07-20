@@ -107,7 +107,7 @@ struct WorkspaceRootView: View {
             return .handled
         }
         .sheet(isPresented: $showProjectSheet) {
-            ProjectCreationSheet { project in
+            ProjectCreationSheet(kind: .project) { project in
                 selection.selectProject(project)
             }
         }
@@ -450,6 +450,9 @@ private struct RightColumnView: View {
                 isFocused: terminalFocused,
                 onPaneShortcut: onPaneShortcut
             )
+            // Stable identity so project/workspace switches never remount the
+            // right-column PTY (only user close / shell exit ends the session).
+            .id("right-column-terminal")
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusTerminal)

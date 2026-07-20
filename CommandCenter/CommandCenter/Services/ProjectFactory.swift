@@ -1,26 +1,37 @@
 import Foundation
 import SwiftData
 
-/// Creates Projects (and their V1 primary thread) consistently for picker,
-/// "start empty", and quick-chat entry points.
+/// Creates Projects / Workspaces (and their V1 primary thread) consistently for
+/// picker, "start empty", and quick-chat entry points.
 enum ProjectFactory {
     /// Default parent for "start empty" Projects: `~/Projects`.
     static var defaultProjectsRoot: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Projects", isDirectory: true)
+        defaultRoot(for: .project)
     }
 
-    /// Creates `~/Projects/<name>` (or a unique sibling if the name collides)
-    /// and inserts a Project + primary ChatThread.
+    /// Default parent for "start empty" Workspaces: `~/Workspaces`.
+    static var defaultWorkspacesRoot: URL {
+        defaultRoot(for: .workspace)
+    }
+
+    static func defaultRoot(for kind: WorkspaceContainerKind) -> URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(kind.defaultFolderParentName, isDirectory: true)
+    }
+
+    /// Creates `~/Projects/<name>` or `~/Workspaces/<name>` (or a unique sibling)
+    /// and inserts a container + primary ChatThread.
     @discardableResult
     static func createEmpty(
         named name: String,
+        kind: WorkspaceContainerKind = .project,
         in context: ModelContext
     ) throws -> WorkspaceProject {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let safeName = trimmed.isEmpty ? "Untitled Project" : trimmed
+        let fallback = kind == .workspace ? "Untitled Workspace" : "Untitled Project"
+        let safeName = trimmed.isEmpty ? fallback : trimmed
         let folderURL = try ensureUniqueFolder(
-            under: defaultProjectsRoot,
+            under: defaultRoot(for: kind),
             preferredName: safeName
         )
         return insertProject(
@@ -28,16 +39,18 @@ enum ProjectFactory {
             folderPath: folderURL.path,
             isQuickChat: false,
             isHiddenFromSidebar: false,
+            kind: kind,
             in: context
         )
     }
 
-    /// Binds a Project to an existing directory chosen via the folder picker.
+    /// Binds a Project/Workspace to an existing directory chosen via the folder picker.
     /// Name defaults to the folder's last path component when `name` is empty.
     @discardableResult
     static func createFromExistingFolder(
         url: URL,
         name: String?,
+        kind: WorkspaceContainerKind = .project,
         in context: ModelContext
     ) -> WorkspaceProject {
         let folderName = url.lastPathComponent
@@ -48,6 +61,7 @@ enum ProjectFactory {
             folderPath: url.path,
             isQuickChat: false,
             isHiddenFromSidebar: false,
+            kind: kind,
             in: context
         )
     }
@@ -62,6 +76,7 @@ enum ProjectFactory {
             folderPath: home,
             isQuickChat: true,
             isHiddenFromSidebar: true,
+            kind: .project,
             in: context
         )
     }
@@ -85,13 +100,15 @@ enum ProjectFactory {
         folderPath: String,
         isQuickChat: Bool,
         isHiddenFromSidebar: Bool,
+        kind: WorkspaceContainerKind,
         in context: ModelContext
     ) -> WorkspaceProject {
         let project = WorkspaceProject(
             name: name,
             folderPath: folderPath,
             isHiddenFromSidebar: isHiddenFromSidebar,
-            isQuickChat: isQuickChat
+            isQuickChat: isQuickChat,
+            kind: kind
         )
         let thread = ChatThread(title: "Chat", project: project)
         project.threads = [thread]
