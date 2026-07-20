@@ -78,30 +78,37 @@ struct CenterPaneView: View {
     }
 
     var body: some View {
-        // Always keep terminal/browser views in the tree (even on Dashboard)
-        // so switching Project/Workspace/chat never kills PTYs or WKWebViews.
-        ZStack {
-            persistentSurfacesLayer
-
+        // Tab bar must stay above Safari/Terminal content. Persistent surfaces
+        // only fill the content area under the tab bar — never cover the strip
+        // (that made chat/other tabs look like they disappeared when opening Safari).
+        Group {
             if selection.activeSurface == .dashboard {
-                DashboardView(
-                    selection: selection,
-                    onCreateProject: onCreateProject
-                )
-                .zIndex(20)
+                ZStack {
+                    // Keep PTYs / WKWebViews mounted while dashboard is up.
+                    persistentSurfacesLayer
+                        .opacity(0)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                    DashboardView(
+                        selection: selection,
+                        onCreateProject: onCreateProject
+                    )
+                }
             } else {
-                // sc2 empty / sc4 active chat: tab bar + thread + composer.
                 VStack(spacing: 0) {
                     tabBar
+                        .zIndex(30)
 
-                    ephemeralLayer
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    ZStack {
+                        persistentSurfacesLayer
+                        ephemeralLayer
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                     if case .chat = selection.activeSurface {
                         composerBar
                     }
                 }
-                .zIndex(5)
             }
         }
         // Fill the full middle column — only the 1pt split hairlines separate sides.
@@ -462,15 +469,13 @@ struct CenterPaneView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Sit under dashboard / chat chrome; only the active terminal/browser
-        // receives hits via allowsHitTesting above.
-        .zIndex(isShowingPersistentSurface ? 15 : 0)
     }
 
     @ViewBuilder
     private var ephemeralLayer: some View {
         if isShowingPersistentSurface {
-            // Active terminal/browser is drawn in `persistentSurfacesLayer`.
+            // Active terminal/browser is drawn in `persistentSurfacesLayer`
+            // (same content area, under the tab bar).
             Color.clear
         } else {
             ephemeralContentBody
