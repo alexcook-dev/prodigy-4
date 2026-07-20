@@ -75,10 +75,29 @@ fi
 
 echo "==> Staging app + Applications symlink"
 ditto "$BUILT_APP" "$APP_PATH"
-# Sign once for the release artifact with a stable bundle identifier.
-# Installers must NOT re-sign — that resets TCC (folder/photo prompts every update).
-if ! codesign --force --deep --sign - --identifier "dev.alexcook.Prodigy" "$APP_PATH" 2>/dev/null; then
-  codesign --force --deep --sign - "$APP_PATH" 2>/dev/null || true
+
+# Stable codesign identity (NOT ad-hoc). Ad-hoc DR is pure CDHash → every
+# release looks like a new app to TCC and re-prompts Folders/Calendar/Mail.
+# Installers must NOT re-sign; they only strip quarantine.
+IDENTITY="${CODESIGN_IDENTITY:-}"
+if [[ -z "$IDENTITY" || "$IDENTITY" == "-" ]]; then
+  IDENTITY="$("$ROOT/scripts/ensure-codesign-identity.sh")"
+fi
+echo "==> Codesigning with identity: ${IDENTITY}"
+codesign \
+  --force \
+  --deep \
+  --sign "$IDENTITY" \
+  --identifier "$BUNDLE_ID" \
+  --timestamp=none \
+  "$APP_PATH"
+# Verify the designated requirement is certificate-based (not pure cdhash).
+# codesign -d writes requirement lines to stderr.
+DR="$(codesign -d -r- "$APP_PATH" 2>&1 | sed -n 's/.*designated => //p' | head -1 || true)"
+echo "    designated => ${DR:-unknown}"
+if [[ "$DR" == cdhash* ]] || [[ -z "$DR" ]]; then
+  echo "warning: designated requirement looks CDHash-only or empty; TCC may re-prompt on update" >&2
+  echo "         ensure CODESIGN_IDENTITY is a real certificate, not ad-hoc (-)" >&2
 fi
 xattr -dr com.apple.quarantine "$APP_PATH" 2>/dev/null || true
 
@@ -111,5 +130,6 @@ echo "    DMG:  $DMG_PATH"
 echo "    SHA:  ${DMG_PATH}.sha256"
 plutil -p "${APP_PATH}/Contents/Info.plist" | grep -E 'CFBundle(Identifier|Name|ShortVersionString|Version|DisplayName)' || true
 echo ""
-echo "Install locally:  ditto \"$APP_PATH\" ~/Applications/Prodigy.app && xattr -cr ~/Applications/Prodigy.app"
+echo "Install locally:  ditto \"$APP_PATH\" /Applications/Prodigy.app && xattr -dr com.apple.quarantine /Applications/Prodigy.app"
+echo "  (in-place ditto — do not rm -rf first; preserves TCC grants)"
 echo "Release upload:   gh release create \"v${VERSION}\" \"$DMG_PATH\" --title \"Prodigy v${VERSION}\" --generate-notes"

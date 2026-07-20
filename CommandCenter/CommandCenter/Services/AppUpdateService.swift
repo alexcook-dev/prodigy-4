@@ -400,13 +400,20 @@ final class AppUpdateService: ObservableObject {
         }
 
         let dest = apps.appendingPathComponent("Prodigy.app")
-        if FileManager.default.fileExists(atPath: dest.path) {
-            try FileManager.default.removeItem(at: dest)
+        // In-place ditto (no rm -rf first). Deleting the bundle can drop
+        // path-based TCC grants. ditto overwrites contents and preserves the
+        // release signature from the DMG — never ad-hoc re-sign here.
+        // Ad-hoc `codesign -s -` sets DR to pure CDHash so every update re-prompts
+        // for Folders / Calendar / Reminders / Automation.
+        do {
+            _ = try run("/usr/bin/ditto", arguments: [src.path, dest.path])
+        } catch {
+            // If something is locked (rare), fall back to replace.
+            if FileManager.default.fileExists(atPath: dest.path) {
+                try FileManager.default.removeItem(at: dest)
+            }
+            _ = try run("/usr/bin/ditto", arguments: [src.path, dest.path])
         }
-        // ditto preserves the signature from the DMG. Do NOT ad-hoc re-sign —
-        // each `codesign -s -` creates a new CDHash and macOS re-prompts for
-        // Folders / Photos / Automation every update.
-        _ = try run("/usr/bin/ditto", arguments: [src.path, dest.path])
         // Drop quarantine only; leave other xattrs/signature alone.
         _ = try? run(
             "/usr/bin/xattr",
