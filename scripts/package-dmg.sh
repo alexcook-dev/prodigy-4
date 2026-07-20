@@ -75,8 +75,12 @@ fi
 
 echo "==> Staging app + Applications symlink"
 ditto "$BUILT_APP" "$APP_PATH"
-codesign --force --deep --sign - "$APP_PATH" 2>/dev/null || true
-xattr -cr "$APP_PATH" 2>/dev/null || true
+# Sign once for the release artifact with a stable bundle identifier.
+# Installers must NOT re-sign — that resets TCC (folder/photo prompts every update).
+if ! codesign --force --deep --sign - --identifier "dev.alexcook.Prodigy" "$APP_PATH" 2>/dev/null; then
+  codesign --force --deep --sign - "$APP_PATH" 2>/dev/null || true
+fi
+xattr -dr com.apple.quarantine "$APP_PATH" 2>/dev/null || true
 
 ditto "$APP_PATH" "${STAGE}/${APP_NAME}.app"
 ln -s /Applications "${STAGE}/Applications"
