@@ -361,9 +361,7 @@ final class ChatController {
         // Keep the composer focused after send so terminal doesn't steal the caret.
         composerFocusToken &+= 1
 
-        let systemPrompt = (agent?.systemPrompt.isEmpty == false)
-            ? agent!.systemPrompt
-            : ClaudeCLIDefaults.generalAssistantSystemPrompt
+        let systemPrompt = Self.composeSystemPrompt(agent: agent)
 
         let request = ModelTurnRequest(
             projectID: project.id,
@@ -625,5 +623,21 @@ final class ChatController {
             modelPart = selectedModel.messageLabel
         }
         return "\(modelPart) · \(selectedEffort.messageSuffix)"
+    }
+
+    /// Base persona (agent or access-mode default) + shared skills catalog.
+    /// Skills are injected for **both** Claude and Grok so they stay in sync.
+    static func composeSystemPrompt(agent: Agent?) -> String {
+        let base: String
+        if let agent, !agent.systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            base = agent.systemPrompt
+        } else if UserDefaults.standard.bool(forKey: AppStorageKey.fullMacAccess) {
+            base = ProdigyAccessSettings.fullAccessSystemPrompt
+        } else {
+            base = ProdigyAccessSettings.restrictedSystemPrompt
+        }
+        let skills = ProdigySkillsService.shared.systemPromptSkillsBlock()
+        if skills.isEmpty { return base }
+        return base + "\n" + skills
     }
 }

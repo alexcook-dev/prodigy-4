@@ -416,15 +416,7 @@ final class WorkspaceSelection: FilePreviewPresenting {
             provider.setFocusedProject(project.id)
             return
         }
-        let systemPrompt: String
-        if let agent = thread.agent {
-            let persona = agent.systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
-            systemPrompt = persona.isEmpty
-                ? ClaudeCLIDefaults.generalAssistantSystemPrompt
-                : persona
-        } else {
-            systemPrompt = ClaudeCLIDefaults.generalAssistantSystemPrompt
-        }
+        let systemPrompt = ChatController.composeSystemPrompt(agent: thread.agent)
         provider.prepareLaunchResume(
             projectID: project.id,
             workingDirectory: project.folderPath,
