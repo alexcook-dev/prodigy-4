@@ -4,26 +4,37 @@ Native macOS workspace shell (Command Center) — chat, files, terminal, Safari,
 
 ## Install production app (terminal)
 
-This repo is **private**. Authenticate once with [GitHub CLI](https://cli.github.com/):
+`scripts/install.sh` bootstraps a clean Mac as needed:
+
+| Dependency | What the script does |
+|---|---|
+| **bash** | Uses `/bin/bash` (re-exec if needed) |
+| **Xcode CLT** | Installs if missing (`xcode-select`) |
+| **Homebrew** | Official installer if missing |
+| **GitHub CLI (`gh`)** | `brew install gh` if missing |
+| **GitHub auth** | `gh auth login` (or use `GH_TOKEN`) for this private repo |
+| **python3** | `brew install python` only if missing |
+
+Then downloads the latest **Prodigy-*.dmg** release and installs to `~/Applications/Prodigy.app`.
+
+### First install (from this repo)
 
 ```bash
-gh auth login
+git clone https://github.com/alexcook-dev/prodigy-4.git
+cd prodigy-4
+./scripts/install.sh
 ```
 
-Then install / update production Prodigy from the latest GitHub Release:
+Pin a version: `./scripts/install.sh --version v0.1.1`
+
+### Later / no clone (private repo, after `gh` exists)
 
 ```bash
-# Recommended (works on private repos via gh):
 bash <(gh api repos/alexcook-dev/prodigy-4/contents/scripts/install.sh --jq .content | base64 -d)
 ```
 
-From a clone of this repo:
-
-```bash
-./scripts/install.sh
-# pin a version:
-./scripts/install.sh --version v0.1.0
-```
+Unattended (CI): `NONINTERACTIVE=1 GH_TOKEN=… ./scripts/install.sh`  
+Skip brew/gh bootstrap: `./scripts/install.sh --skip-deps`
 
 Installs **`~/Applications/Prodigy.app`** (`dev.alexcook.Prodigy`).
 
