@@ -2,14 +2,17 @@ import AppKit
 import SwiftData
 import SwiftUI
 
-/// Project creation flow (T11): folder picker + "start empty" fallback.
+/// Project / Workspace creation flow (T11): folder picker + "start empty" fallback.
 ///
-/// - Choose any existing directory → Project name defaults to folder name (editable).
-/// - Or start empty → creates a fresh folder under `~/Projects/<name>`.
+/// - Choose any existing directory → name defaults to folder name (editable).
+/// - Or start empty → creates a fresh folder under `~/Projects/<name>` or
+///   `~/Workspaces/<name>` depending on `kind`.
 struct ProjectCreationSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
+    /// Whether this sheet creates a Project or a Workspace (same behavior).
+    var kind: WorkspaceContainerKind = .project
     var onCreated: (WorkspaceProject) -> Void
 
     @State private var name: String = ""
@@ -24,11 +27,11 @@ struct ProjectCreationSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("New Project")
+            Text("New \(kind.singularTitle)")
                 .font(Font.headline.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
 
-            Text("Group chats and files by what you're working on. Pick an existing folder, or start empty under ~/Projects.")
+            Text(subtitle)
                 .font(Font.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -40,7 +43,7 @@ struct ProjectCreationSheet: View {
                     .textCase(.uppercase)
                     .tracking(0.6)
 
-                TextField("Project name", text: $name)
+                TextField("\(kind.singularTitle) name", text: $name)
                     .textFieldStyle(.plain)
                     .font(Font.callout)
                     .foregroundStyle(Theme.textPrimary)
@@ -110,7 +113,7 @@ struct ProjectCreationSheet: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
 
-                Button("Create Project") { create() }
+                Button("Create \(kind.singularTitle)") { create() }
                     .buttonStyle(.plain)
                     .font(Font.callout.weight(.medium))
                     .foregroundStyle(Theme.textOnAccent)
@@ -130,6 +133,15 @@ struct ProjectCreationSheet: View {
         .background(Theme.appBackground)
     }
 
+    private var subtitle: String {
+        switch kind {
+        case .project:
+            return "Group chats and files by what you're working on. Pick an existing folder, or start empty under ~/Projects."
+        case .workspace:
+            return "Same as a Project — chats, files, and terminals. Pick an existing folder, or start empty under ~/Workspaces."
+        }
+    }
+
     private var canCreate: Bool {
         switch mode {
         case .empty:
@@ -144,7 +156,7 @@ struct ProjectCreationSheet: View {
         case .empty:
             let n = name.trimmingCharacters(in: .whitespacesAndNewlines)
             let leaf = n.isEmpty ? "<name>" : n
-            return "Will create ~/Projects/\(leaf)"
+            return "Will create ~/\(kind.defaultFolderParentName)/\(leaf)"
         case .existingFolder:
             if let folderPath {
                 return folderPath
@@ -186,7 +198,7 @@ struct ProjectCreationSheet: View {
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = true
         panel.prompt = "Choose"
-        panel.message = "Choose the working folder for this Project"
+        panel.message = "Choose the working folder for this \(kind.singularTitle)"
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
         mode = .existingFolder
@@ -202,7 +214,11 @@ struct ProjectCreationSheet: View {
             let project: WorkspaceProject
             switch mode {
             case .empty:
-                project = try ProjectFactory.createEmpty(named: name, in: modelContext)
+                project = try ProjectFactory.createEmpty(
+                    named: name,
+                    kind: kind,
+                    in: modelContext
+                )
             case .existingFolder:
                 guard let folderPath else {
                     errorMessage = "Choose a folder first."
@@ -211,6 +227,7 @@ struct ProjectCreationSheet: View {
                 project = ProjectFactory.createFromExistingFolder(
                     url: URL(fileURLWithPath: folderPath),
                     name: name,
+                    kind: kind,
                     in: modelContext
                 )
             }
@@ -218,13 +235,23 @@ struct ProjectCreationSheet: View {
             onCreated(project)
             dismiss()
         } catch {
-            errorMessage = "Couldn't create project: \(error.localizedDescription)"
+            errorMessage = "Couldn't create \(kind.singularTitle.lowercased()): \(error.localizedDescription)"
         }
     }
 }
 
-#Preview {
-    ProjectCreationSheet(onCreated: { _ in })
+#Preview("Project") {
+    ProjectCreationSheet(kind: .project, onCreated: { _ in })
+        .modelContainer(for: [
+            WorkspaceProject.self,
+            Agent.self,
+            ChatThread.self,
+            Message.self,
+        ], inMemory: true)
+}
+
+#Preview("Workspace") {
+    ProjectCreationSheet(kind: .workspace, onCreated: { _ in })
         .modelContainer(for: [
             WorkspaceProject.self,
             Agent.self,

@@ -78,24 +78,30 @@ struct CenterPaneView: View {
     }
 
     var body: some View {
-        Group {
+        // Always keep terminal/browser views in the tree (even on Dashboard)
+        // so switching Project/Workspace/chat never kills PTYs or WKWebViews.
+        ZStack {
+            persistentSurfacesLayer
+
             if selection.activeSurface == .dashboard {
                 DashboardView(
                     selection: selection,
                     onCreateProject: onCreateProject
                 )
+                .zIndex(20)
             } else {
                 // sc2 empty / sc4 active chat: tab bar + thread + composer.
                 VStack(spacing: 0) {
                     tabBar
 
-                    contentBody
+                    ephemeralLayer
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                     if case .chat = selection.activeSurface {
                         composerBar
                     }
                 }
+                .zIndex(5)
             }
         }
         // Fill the full middle column — only the 1pt split hairlines separate sides.
@@ -396,7 +402,7 @@ struct CenterPaneView: View {
 
     // MARK: - Body
 
-    /// Surfaces whose views stay mounted while other tabs are active (PTY / WKWebView).
+    /// Surfaces whose views stay mounted while other tabs / projects are active.
     private var isShowingPersistentSurface: Bool {
         switch selection.activeSurface {
         case .terminal, .browser: return true
@@ -404,12 +410,12 @@ struct CenterPaneView: View {
         }
     }
 
+    /// Mount **all** terminal/browser sessions (including those belonging to
+    /// other Projects/Workspaces) so switching containers never kills a PTY.
     @ViewBuilder
-    private var contentBody: some View {
-        // Terminals and Safari tabs stay mounted (hidden) so switching Chat ↔
-        // Safari/Terminal does not destroy the PTY or WKWebView history/state.
+    private var persistentSurfacesLayer: some View {
         ZStack {
-            ForEach(selection.terminalTabs) { tab in
+            ForEach(selection.mountedTerminalTabs) { tab in
                 let isActiveTerminal: Bool = {
                     if case .terminal(let openID) = selection.activeSurface {
                         return openID == tab.id
@@ -432,7 +438,7 @@ struct CenterPaneView: View {
                 .zIndex(isActiveTerminal ? 10 : 0)
             }
 
-            ForEach(selection.browserTabs) { tab in
+            ForEach(selection.mountedBrowserTabs) { tab in
                 let isActiveBrowser: Bool = {
                     if case .browser(let openID) = selection.activeSurface {
                         return openID == tab.id
@@ -454,12 +460,21 @@ struct CenterPaneView: View {
                 .accessibilityHidden(!isActiveBrowser)
                 .zIndex(isActiveBrowser ? 10 : 0)
             }
-
-            if !isShowingPersistentSurface {
-                ephemeralContentBody
-            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Sit under dashboard / chat chrome; only the active terminal/browser
+        // receives hits via allowsHitTesting above.
+        .zIndex(isShowingPersistentSurface ? 15 : 0)
+    }
+
+    @ViewBuilder
+    private var ephemeralLayer: some View {
+        if isShowingPersistentSurface {
+            // Active terminal/browser is drawn in `persistentSurfacesLayer`.
+            Color.clear
+        } else {
+            ephemeralContentBody
+        }
     }
 
     @ViewBuilder
@@ -485,7 +500,7 @@ struct CenterPaneView: View {
                 onClose: { selection.closeAppleCalendarTab() }
             )
         case .browser, .terminal:
-            // Hosted persistently above in `contentBody` so sessions survive tab switches.
+            // Hosted persistently in `persistentSurfacesLayer`.
             EmptyView()
         }
     }

@@ -1,11 +1,12 @@
 import SwiftData
 import SwiftUI
 
-/// Left sidebar: single flush column (sc1) — Projects / Agents / Settings
-/// stacked edge-to-edge with hairline dividers, not floating glass cards.
+/// Left sidebar: single flush column (sc1) — Projects / Workspaces / Agents /
+/// Settings stacked edge-to-edge with hairline dividers, not floating glass cards.
 ///
 /// T3: SwiftData-backed lists. T11: creation sheets. T12: archive filter + action.
 /// T17: status-dot a11y labels + keyboard-reachable Archive.
+/// Projects and Workspaces are collapsible sections with identical behavior.
 struct SidebarView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var selection: WorkspaceSelection
@@ -14,17 +15,21 @@ struct SidebarView: View {
 
     var isFocused: Bool = false
 
-    /// T12: default shows active Projects; toggle reveals archived.
+    /// T12: default shows active containers; toggle reveals archived.
     @State private var showArchived = false
-    @State private var showProjectSheet = false
+    @State private var creationKind: WorkspaceContainerKind?
     @State private var showAgentSheet = false
     @State private var showSettings = false
     @State private var renameTarget: WorkspaceProject?
     @State private var renameText = ""
-    /// Top (Projects) fraction of free height between Projects + Agents.
+    /// Top (Projects + Workspaces) fraction of free height vs Agents.
     // Key bumped so sc1 default wins over the old 0.55 store.
     @AppStorage("prodigy.sidebar.projectsFraction.v2")
     private var projectsFraction = LayoutMetrics.sidebarProjectsDefaultFraction
+    @AppStorage("prodigy.sidebar.projectsExpanded")
+    private var projectsExpanded = true
+    @AppStorage("prodigy.sidebar.workspacesExpanded")
+    private var workspacesExpanded = true
 
     @Query(sort: \WorkspaceProject.lastActiveAt, order: .reverse)
     private var allProjects: [WorkspaceProject]
@@ -33,14 +38,23 @@ struct SidebarView: View {
     private var agents: [Agent]
 
     private var visibleProjects: [WorkspaceProject] {
+        visibleContainers(kind: .project)
+    }
+
+    private var visibleWorkspaces: [WorkspaceProject] {
+        visibleContainers(kind: .workspace)
+    }
+
+    private func visibleContainers(kind: WorkspaceContainerKind) -> [WorkspaceProject] {
         allProjects.filter { project in
+            guard project.kind == kind else { return false }
             guard !project.isHiddenFromSidebar else { return false }
             return showArchived ? project.archived : !project.archived
         }
     }
 
     var body: some View {
-        // Continuous column: Dashboard + Projects | Agents | Settings (sc1–sc4 shell).
+        // Continuous column: Dashboard + Projects/Workspaces | Agents | Settings.
         VStack(spacing: 0) {
             dashboardRow
                 .padding(.top, 8)
@@ -53,9 +67,9 @@ struct SidebarView: View {
                 maxTopFraction: LayoutMetrics.nestedPaneMaxFraction,
                 maxBottomFraction: LayoutMetrics.nestedPaneMaxFraction,
                 gap: LiquidGlassMetrics.columnDividerWidth,
-                tooltip: "Drag to resize Projects and Agents"
+                tooltip: "Drag to resize Projects/Workspaces and Agents"
             ) {
-                projectsSection
+                containersColumn
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } bottom: {
                 agentsSection
@@ -72,8 +86,8 @@ struct SidebarView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Theme.sidebarBackground)
-        .sheet(isPresented: $showProjectSheet) {
-            ProjectCreationSheet { project in
+        .sheet(item: $creationKind) { kind in
+            ProjectCreationSheet(kind: kind) { project in
                 selection.selectProject(project)
             }
         }
@@ -96,7 +110,8 @@ struct SidebarView: View {
         .sheet(item: $renameTarget) { project in
             RenameProjectSheet(
                 name: $renameText,
-                isQuickChat: project.isQuickChat || project.isHiddenFromSidebar
+                isQuickChat: project.isQuickChat || project.isHiddenFromSidebar,
+                kind: project.kind
             ) {
                 let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !trimmed.isEmpty else { return }
@@ -110,6 +125,147 @@ struct SidebarView: View {
                 renameTarget = nil
             }
         }
+    }
+
+    // MARK: - Projects + Workspaces column
+
+    private var containersColumn: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Shared Active / Archived filter for both lists.
+            HStack(spacing: 0) {
+                filterChip(title: "Active", selected: !showArchived) {
+                    showArchived = false
+                }
+                filterChip(title: "Archived", selected: showArchived) {
+                    showArchived = true
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+            .padding(.bottom, 4)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    collapsibleContainerSection(
+                        kind: .project,
+                        isExpanded: $projectsExpanded,
+                        items: visibleProjects
+                    )
+                    collapsibleContainerSection(
+                        kind: .workspace,
+                        isExpanded: $workspacesExpanded,
+                        items: visibleWorkspaces
+                    )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 8)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 4)
+    }
+
+    @ViewBuilder
+    private func collapsibleContainerSection(
+        kind: WorkspaceContainerKind,
+        isExpanded: Binding<Bool>,
+        items: [WorkspaceProject]
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            collapsibleSectionHeader(
+                title: kind.sectionTitle,
+                isExpanded: isExpanded.wrappedValue,
+                onToggle: { isExpanded.wrappedValue.toggle() },
+                onAdd: { creationKind = kind }
+            )
+
+            if isExpanded.wrappedValue {
+                if items.isEmpty {
+                    emptyContainersHint(kind: kind)
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(items, id: \.id) { project in
+                            projectRow(project)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func collapsibleSectionHeader(
+        title: String,
+        isExpanded: Bool,
+        onToggle: @escaping () -> Void,
+        onAdd: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 4) {
+            Button(action: onToggle) {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.right")
+                        .font(AppTypography.caption2.weight(.semibold))
+                        .foregroundStyle(Theme.textTertiary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                        .frame(width: 12)
+                        .accessibilityHidden(true)
+
+                    Text(title)
+                        .font(AppTypography.section)
+                        .foregroundStyle(Theme.textSecondary)
+                        .textCase(.uppercase)
+                        .tracking(0.4)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(title)
+            .accessibilityHint(isExpanded ? "Collapse section" : "Expand section")
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+
+            Spacer(minLength: 0)
+
+            Button(action: onAdd) {
+                Image(systemName: "plus")
+                    .font(AppTypography.callout.weight(.medium))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            .buttonStyle(.plain)
+            .help("New \(title.dropLast())")
+            .accessibilityLabel("New \(title.dropLast())")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .animation(.easeInOut(duration: 0.15), value: isExpanded)
+    }
+
+    private func emptyContainersHint(kind: WorkspaceContainerKind) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(
+                showArchived
+                    ? "No archived \(kind.sectionTitle.lowercased())."
+                    : kind == .project
+                        ? "Group chats and files by what you're working on."
+                        : "Same as projects — for long-lived work folders."
+            )
+            .font(AppTypography.secondary)
+            .foregroundStyle(Theme.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            if !showArchived {
+                Button {
+                    creationKind = kind
+                } label: {
+                    Text("New \(kind.singularTitle)")
+                        .font(AppTypography.secondary.weight(.medium))
+                }
+                .buttonStyle(.glass)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
     }
 
     // MARK: - Dashboard (sc3)
@@ -181,52 +337,14 @@ struct SidebarView: View {
         .accessibilityHint("Opens appearance and app preferences")
     }
 
-    // MARK: - Projects
-
-    private var projectsSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(title: "Projects") {
-                showProjectSheet = true
-            }
-
-            // Active / Archived filter toggle (T12) — same pattern as Claude/ChatGPT.
-            HStack(spacing: 0) {
-                filterChip(title: "Active", selected: !showArchived) {
-                    showArchived = false
-                }
-                filterChip(title: "Archived", selected: showArchived) {
-                    showArchived = true
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 4)
-
-            if visibleProjects.isEmpty {
-                emptyProjectsHint
-                Spacer(minLength: 0)
-            } else {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(visibleProjects, id: \.id) { project in
-                            projectRow(project)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.vertical, 6)
-        .padding(.horizontal, 4)
-    }
+    // MARK: - Project / Workspace rows
 
     @ViewBuilder
     private func projectRow(_ project: WorkspaceProject) -> some View {
         HStack(spacing: 0) {
             SidebarRowView(
                 title: project.name,
-                icon: "square.on.square",
+                icon: project.kind.systemImage,
                 status: status(for: project),
                 isSelected: selection.selectedProjectID == project.id
                     && selection.selectedAgentID == nil
@@ -267,7 +385,8 @@ struct SidebarView: View {
     private func archiveButton(for project: WorkspaceProject) -> some View {
         ProjectArchiveButton(
             projectName: project.name,
-            isArchived: project.archived
+            isArchived: project.archived,
+            kindLabel: project.kind.singularTitle.lowercased()
         ) {
             if project.archived {
                 unarchive(project)
@@ -276,31 +395,6 @@ struct SidebarView: View {
             }
         }
         .padding(.trailing, 6)
-    }
-
-    private var emptyProjectsHint: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(
-                showArchived
-                    ? "No archived projects."
-                    : "Group chats and files by what you're working on."
-            )
-            .font(AppTypography.secondary)
-            .foregroundStyle(Theme.textSecondary)
-            .fixedSize(horizontal: false, vertical: true)
-
-            if !showArchived {
-                Button {
-                    showProjectSheet = true
-                } label: {
-                    Text("New Project")
-                        .font(AppTypography.secondary.weight(.medium))
-                }
-                .buttonStyle(.glass)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 6)
     }
 
     // MARK: - Agents
@@ -386,13 +480,21 @@ struct SidebarView: View {
     private func archive(_ project: WorkspaceProject) {
         project.archived = true
         if selection.selectedProjectID == project.id {
-            selection.selectedProjectID = visibleProjects
-                .first { $0.id != project.id && !$0.archived }?
-                .id
-                ?? allProjects.first { !$0.archived && !$0.isHiddenFromSidebar && $0.id != project.id }?
-                .id
-            selection.selectedAgentID = nil
-            selection.showChat()
+            // Prefer another container of the same kind, then any active container.
+            let sameKind = allProjects.first {
+                $0.id != project.id
+                    && $0.kind == project.kind
+                    && !$0.archived
+                    && !$0.isHiddenFromSidebar
+            }
+            let anyActive = allProjects.first {
+                $0.id != project.id && !$0.archived && !$0.isHiddenFromSidebar
+            }
+            if let next = sameKind ?? anyActive {
+                selection.selectProject(next)
+            } else {
+                selection.showDashboard()
+            }
         }
         try? modelContext.save()
     }
@@ -451,22 +553,23 @@ struct SidebarView: View {
 private struct RenameProjectSheet: View {
     @Binding var name: String
     var isQuickChat: Bool
+    var kind: WorkspaceContainerKind = .project
     var onSave: () -> Void
     var onCancel: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(isQuickChat ? "Name this Project" : "Rename Project")
+            Text(isQuickChat ? "Name this \(kind.singularTitle)" : "Rename \(kind.singularTitle)")
                 .font(Font.headline.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
 
             if isQuickChat {
-                Text("Quick Chat projects stay hidden until you give them a name.")
+                Text("Quick Chat \(kind.sectionTitle.lowercased()) stay hidden until you give them a name.")
                     .font(Font.subheadline)
                     .foregroundStyle(Theme.textSecondary)
             }
 
-            TextField("Project name", text: $name)
+            TextField("\(kind.singularTitle) name", text: $name)
                 .textFieldStyle(.plain)
                 .font(Font.callout)
                 .foregroundStyle(Theme.textPrimary)
@@ -571,6 +674,7 @@ struct StatusDot: View {
 struct ProjectArchiveButton: View {
     let projectName: String
     let isArchived: Bool
+    var kindLabel: String = "project"
     let action: () -> Void
 
     @FocusState private var isFocused: Bool
@@ -593,8 +697,8 @@ struct ProjectArchiveButton: View {
         .accessibilityLabel(isArchived ? "Unarchive \(projectName)" : "Archive \(projectName)")
         .accessibilityHint(
             isArchived
-                ? "Moves this project back to the active list"
-                : "Hides this project from the active list"
+                ? "Moves this \(kindLabel) back to the active list"
+                : "Hides this \(kindLabel) from the active list"
         )
         .accessibilityAddTraits(.isButton)
     }

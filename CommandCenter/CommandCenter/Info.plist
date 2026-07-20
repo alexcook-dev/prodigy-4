@@ -31,6 +31,11 @@
 	<string>Prodigy shows your upcoming events from Apple Calendar inside the app.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Prodigy shows your upcoming events from Apple Calendar inside the app.</string>
+	<!-- Apple Reminders / To-Do (EventKit) -->
+	<key>NSRemindersUsageDescription</key>
+	<string>Prodigy shows and updates your Apple Reminders (To-Do) in the right sidebar.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Prodigy shows and updates your Apple Reminders (To-Do) in the right sidebar.</string>
 	<!-- Apple Mail scripting (Automation) -->
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Prodigy reads your Mail inbox so you can view messages inside the app.</string>

@@ -80,16 +80,33 @@ struct TerminalTab: Hashable, Identifiable {
     var title: String
     /// Working directory for the shell (defaults to user home).
     var workingDirectory: String
+    /// Owning Project/Workspace — used to restore the right tabs on re-select.
+    var ownerProjectID: UUID?
 
     init(
         id: UUID = UUID(),
         title: String = "Terminal",
-        workingDirectory: String = FileManager.default.homeDirectoryForCurrentUser.path
+        workingDirectory: String = FileManager.default.homeDirectoryForCurrentUser.path,
+        ownerProjectID: UUID? = nil
     ) {
         self.id = id
         self.title = title
         self.workingDirectory = workingDirectory
+        self.ownerProjectID = ownerProjectID
     }
+}
+
+/// Snapshot of open center tabs for one Project/Workspace.
+/// Restored when the user switches back so terminals/Safari/chat stay as left.
+private struct ProjectOpenSession: Equatable {
+    var chatTabs: [ChatTab] = []
+    var filePreviewTabs: [FilePreviewTab] = []
+    var browserTabIDs: [UUID] = []
+    var terminalTabIDs: [UUID] = []
+    var isAppleMailTabOpen: Bool = false
+    var isAppleCalendarTabOpen: Bool = false
+    var activeSurface: CenterSurface = .empty
+    var selectedAgentID: UUID?
 }
 
 /// Preset destinations for in-app web tabs (+ menu / Open With).
@@ -127,20 +144,28 @@ final class WorkspaceSelection: FilePreviewPresenting {
     var selectedAgentID: UUID?
     /// Active center surface (chat thread, Safari, file preview, or empty).
     var activeSurface: CenterSurface = .empty
-    /// Open chat tabs (multiple threads). Closable; re-open / new via + menu / ⌘2.
+    /// Open chat tabs for the **current** Project/Workspace.
     var chatTabs: [ChatTab] = []
-    /// Open file-preview tabs.
+    /// Open file-preview tabs for the current Project/Workspace.
     var filePreviewTabs: [FilePreviewTab] = []
-    /// In-app Safari browser tabs.
+    /// Visible Safari tabs for the current Project/Workspace.
     var browserTabs: [BrowserTab] = []
-    /// In-app terminal tabs (center column).
+    /// Visible center terminal tabs for the current Project/Workspace.
     var terminalTabs: [TerminalTab] = []
+    /// All browser tabs still mounted (any Project) — keep WKWebView alive.
+    private(set) var mountedBrowserTabs: [BrowserTab] = []
+    /// All terminal tabs still mounted (any Project) — keep PTYs alive until
+    /// the user closes the tab or the shell exits.
+    private(set) var mountedTerminalTabs: [TerminalTab] = []
     /// Whether the Apple Mail tab is open.
     var isAppleMailTabOpen: Bool = false
     /// Whether the Apple Calendar tab is open.
     var isAppleCalendarTabOpen: Bool = false
     /// Set once launch auto-resume (T14) has run for this session.
     private(set) var didPerformLaunchResume = false
+
+    /// Per Project/Workspace open-tab snapshots (in-memory for the app session).
+    private var sessionsByProjectID: [UUID: ProjectOpenSession] = [:]
 
     func markLaunchResumeComplete() {
         didPerformLaunchResume = true
@@ -155,18 +180,105 @@ final class WorkspaceSelection: FilePreviewPresenting {
         return nil
     }
 
+    /// Select a Project or Workspace. Saves the previous container's open tabs
+    /// and restores this one's — **without** killing terminal/browser processes.
     func selectProject(_ project: WorkspaceProject) {
+        // Re-selecting the same container: just clear unread + touch activity.
+        if selectedProjectID == project.id {
+            project.lastActiveAt = .now
+            project.hasUnviewedActivity = false
+            selectedAgentID = nil
+            return
+        }
+
+        // Persist outgoing open-tab state before switching.
+        if let previousID = selectedProjectID {
+            sessionsByProjectID[previousID] = captureSession()
+        }
+
         selectedProjectID = project.id
-        selectedAgentID = nil
         project.lastActiveAt = .now
         project.hasUnviewedActivity = false
-        // Chat tabs are project-scoped — reset when switching projects.
-        chatTabs = []
-        if let thread = project.primaryThread ?? project.threads.first {
-            openChatTab(thread: thread)
-        } else if browserTabs.isEmpty && filePreviewTabs.isEmpty {
-            activeSurface = .empty
+
+        if let saved = sessionsByProjectID[project.id] {
+            applySession(saved)
+        } else {
+            // First visit this session: open primary chat; leave prior terminals
+            // mounted but not visible in this container's tab bar.
+            chatTabs = []
+            filePreviewTabs = []
+            browserTabs = []
+            terminalTabs = []
+            isAppleMailTabOpen = false
+            isAppleCalendarTabOpen = false
+            selectedAgentID = nil
+            if let thread = project.primaryThread ?? project.threads.first {
+                openChatTab(thread: thread)
+            } else {
+                activeSurface = .empty
+            }
         }
+    }
+
+    private func captureSession() -> ProjectOpenSession {
+        ProjectOpenSession(
+            chatTabs: chatTabs,
+            filePreviewTabs: filePreviewTabs,
+            browserTabIDs: browserTabs.map(\.id),
+            terminalTabIDs: terminalTabs.map(\.id),
+            isAppleMailTabOpen: isAppleMailTabOpen,
+            isAppleCalendarTabOpen: isAppleCalendarTabOpen,
+            activeSurface: activeSurface,
+            selectedAgentID: selectedAgentID
+        )
+    }
+
+    private func applySession(_ session: ProjectOpenSession) {
+        chatTabs = session.chatTabs
+        filePreviewTabs = session.filePreviewTabs
+        // Rebuild visible browser/terminal lists from the global mount registries
+        // so title/URL updates from background tabs stay current.
+        browserTabs = session.browserTabIDs.compactMap { id in
+            mountedBrowserTabs.first { $0.id == id }
+        }
+        terminalTabs = session.terminalTabIDs.compactMap { id in
+            mountedTerminalTabs.first { $0.id == id }
+        }
+        isAppleMailTabOpen = session.isAppleMailTabOpen
+        isAppleCalendarTabOpen = session.isAppleCalendarTabOpen
+        selectedAgentID = session.selectedAgentID
+
+        // Prefer the saved surface if it still exists; otherwise fall back.
+        if isSurfaceAvailable(session.activeSurface) {
+            activeSurface = session.activeSurface
+        } else {
+            activeSurface = fallBackSurfaceAfterClose()
+        }
+    }
+
+    private func isSurfaceAvailable(_ surface: CenterSurface) -> Bool {
+        switch surface {
+        case .empty, .dashboard:
+            return true
+        case .chat(let id):
+            return chatTabs.contains(where: { $0.id == id })
+        case .filePreview(let tab):
+            return filePreviewTabs.contains(where: { $0.id == tab.id })
+        case .browser(let id):
+            return browserTabs.contains(where: { $0.id == id })
+        case .terminal(let id):
+            return terminalTabs.contains(where: { $0.id == id })
+        case .appleMail:
+            return isAppleMailTabOpen
+        case .appleCalendar:
+            return isAppleCalendarTabOpen
+        }
+    }
+
+    /// Keep the current Project/Workspace session bag in sync (after open/close).
+    private func syncCurrentSessionBag() {
+        guard let id = selectedProjectID else { return }
+        sessionsByProjectID[id] = captureSession()
     }
 
     func selectAgent(_ agent: Agent, in project: WorkspaceProject?, context: ModelContext) {
@@ -255,19 +367,28 @@ final class WorkspaceSelection: FilePreviewPresenting {
             selectedProjectID = nil
             selectedAgentID = nil
             chatTabs = []
+            browserTabs = []
+            terminalTabs = []
+            filePreviewTabs = []
             activeSurface = .empty
             return nil
         }
         let project = projects.first(where: { !$0.archived }) ?? projects[0]
         let thread = Self.mostRecentThread(in: project)
         selectProject(project)
-        if let thread {
+        // Launch resume prefers the most recent thread even if a prior session
+        // bag was empty; open it when no chat tabs were restored.
+        if chatTabs.isEmpty, let thread {
             if let agent = thread.agent {
                 selectedAgentID = agent.id
                 agent.lastActiveAt = .now
                 agent.hasUnviewedActivity = false
             }
             openChatTab(thread: thread)
+        } else if let thread, let agent = thread.agent, selectedAgentID == nil {
+            selectedAgentID = agent.id
+            agent.lastActiveAt = .now
+            agent.hasUnviewedActivity = false
         }
         didPerformLaunchResume = true
         return (project, thread)
@@ -348,12 +469,14 @@ final class WorkspaceSelection: FilePreviewPresenting {
             selectedAgentID = agentID
         }
         activeSurface = .chat(thread.id)
+        syncCurrentSessionBag()
         return tab
     }
 
     func selectChatTab(id: UUID) {
         guard chatTabs.contains(where: { $0.id == id }) else { return }
         activeSurface = .chat(id)
+        syncCurrentSessionBag()
     }
 
     /// Close one chat tab. Thread + history stay in SwiftData.
@@ -362,6 +485,7 @@ final class WorkspaceSelection: FilePreviewPresenting {
         if case .chat(let openID) = activeSurface, openID == id {
             activeSurface = fallBackSurfaceAfterClose()
         }
+        syncCurrentSessionBag()
     }
 
     /// Create a brand-new general (non-agent) chat thread and open it as a tab.
@@ -435,11 +559,13 @@ final class WorkspaceSelection: FilePreviewPresenting {
     func openFilePreview(fileName: String, filePath: String) {
         if let existing = filePreviewTabs.first(where: { $0.filePath == filePath }) {
             activeSurface = .filePreview(existing)
+            syncCurrentSessionBag()
             return
         }
         let tab = FilePreviewTab(fileName: fileName, filePath: filePath)
         filePreviewTabs.append(tab)
         activeSurface = .filePreview(tab)
+        syncCurrentSessionBag()
     }
 
     func closeFilePreview(_ tab: FilePreviewTab) {
@@ -451,12 +577,25 @@ final class WorkspaceSelection: FilePreviewPresenting {
         if case .filePreview(let open) = activeSurface, open.id == id {
             activeSurface = fallBackSurfaceAfterClose()
         }
+        syncCurrentSessionBag()
     }
 
-    /// sc3 Dashboard — project board over the center column (files/terminal stay).
+    /// sc3 Dashboard — project board over the center column.
+    /// Saves the current Project/Workspace session so terminals stay alive
+    /// and restore when leaving the dashboard.
     func showDashboard() {
+        if let previousID = selectedProjectID {
+            sessionsByProjectID[previousID] = captureSession()
+        }
         selectedProjectID = nil
         selectedAgentID = nil
+        // Clear *visible* tabs only — mounted terminal/browser processes stay alive.
+        chatTabs = []
+        filePreviewTabs = []
+        browserTabs = []
+        terminalTabs = []
+        isAppleMailTabOpen = false
+        isAppleCalendarTabOpen = false
         activeSurface = .dashboard
     }
 
@@ -466,8 +605,10 @@ final class WorkspaceSelection: FilePreviewPresenting {
     @discardableResult
     func openWebTab(title: String, urlString: String) -> BrowserTab {
         let tab = BrowserTab(title: title, urlString: urlString)
+        mountedBrowserTabs.append(tab)
         browserTabs.append(tab)
         activeSurface = .browser(tab.id)
+        syncCurrentSessionBag()
         return tab
     }
 
@@ -488,6 +629,7 @@ final class WorkspaceSelection: FilePreviewPresenting {
     func openAppleMailTab() {
         isAppleMailTabOpen = true
         activeSurface = .appleMail
+        syncCurrentSessionBag()
     }
 
     func closeAppleMailTab() {
@@ -495,11 +637,13 @@ final class WorkspaceSelection: FilePreviewPresenting {
         if case .appleMail = activeSurface {
             activeSurface = fallBackSurfaceAfterClose()
         }
+        syncCurrentSessionBag()
     }
 
     func openAppleCalendarTab() {
         isAppleCalendarTabOpen = true
         activeSurface = .appleCalendar
+        syncCurrentSessionBag()
     }
 
     func closeAppleCalendarTab() {
@@ -507,10 +651,12 @@ final class WorkspaceSelection: FilePreviewPresenting {
         if case .appleCalendar = activeSurface {
             activeSurface = fallBackSurfaceAfterClose()
         }
+        syncCurrentSessionBag()
     }
 
     func selectBrowserTab(_ tab: BrowserTab) {
         activeSurface = .browser(tab.id)
+        syncCurrentSessionBag()
     }
 
     func closeBrowserTab(_ tab: BrowserTab) {
@@ -518,15 +664,26 @@ final class WorkspaceSelection: FilePreviewPresenting {
     }
 
     func closeBrowserTab(id: UUID) {
+        // User closed the tab → unmount WKWebView (only close kills the session).
         browserTabs.removeAll { $0.id == id }
+        mountedBrowserTabs.removeAll { $0.id == id }
+        // Drop from any saved project sessions so restore won't resurrect a closed tab.
+        for key in Array(sessionsByProjectID.keys) {
+            guard var session = sessionsByProjectID[key] else { continue }
+            session.browserTabIDs.removeAll { $0 == id }
+            sessionsByProjectID[key] = session
+        }
         if case .browser(let openID) = activeSurface, openID == id {
             activeSurface = fallBackSurfaceAfterClose()
         }
+        syncCurrentSessionBag()
     }
 
     // MARK: - Center terminal tabs
 
     /// Open a new terminal tab in the center column (independent PTY session).
+    /// The PTY stays mounted when switching Project/Workspace/chat until the
+    /// user closes this tab or exits the shell.
     @discardableResult
     func openTerminalTab(workingDirectory: String? = nil) -> TerminalTab {
         let cwd = workingDirectory
@@ -534,20 +691,25 @@ final class WorkspaceSelection: FilePreviewPresenting {
         let index = terminalTabs.count + 1
         let tab = TerminalTab(
             title: index == 1 ? "Terminal" : "Terminal \(index)",
-            workingDirectory: cwd
+            workingDirectory: cwd,
+            ownerProjectID: selectedProjectID
         )
+        mountedTerminalTabs.append(tab)
         terminalTabs.append(tab)
         activeSurface = .terminal(tab.id)
+        syncCurrentSessionBag()
         return tab
     }
 
     func selectTerminalTab(_ tab: TerminalTab) {
         activeSurface = .terminal(tab.id)
+        syncCurrentSessionBag()
     }
 
     func selectTerminalTab(id: UUID) {
         guard terminalTabs.contains(where: { $0.id == id }) else { return }
         activeSurface = .terminal(id)
+        syncCurrentSessionBag()
     }
 
     func closeTerminalTab(_ tab: TerminalTab) {
@@ -555,36 +717,59 @@ final class WorkspaceSelection: FilePreviewPresenting {
     }
 
     func closeTerminalTab(id: UUID) {
+        // User closed the tab → unmount / kill the PTY (only close does this).
         terminalTabs.removeAll { $0.id == id }
+        mountedTerminalTabs.removeAll { $0.id == id }
+        for key in Array(sessionsByProjectID.keys) {
+            guard var session = sessionsByProjectID[key] else { continue }
+            session.terminalTabIDs.removeAll { $0 == id }
+            sessionsByProjectID[key] = session
+        }
         if case .terminal(let openID) = activeSurface, openID == id {
             activeSurface = fallBackSurfaceAfterClose()
         }
+        syncCurrentSessionBag()
     }
 
     func terminalTab(id: UUID) -> TerminalTab? {
-        terminalTabs.first { $0.id == id }
+        mountedTerminalTabs.first { $0.id == id } ?? terminalTabs.first { $0.id == id }
     }
 
     func updateTerminalTab(id: UUID, title: String) {
-        guard let idx = terminalTabs.firstIndex(where: { $0.id == id }) else { return }
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, terminalTabs[idx].title != trimmed else { return }
-        terminalTabs[idx].title = trimmed
+        guard !trimmed.isEmpty else { return }
+        if let idx = mountedTerminalTabs.firstIndex(where: { $0.id == id }),
+           mountedTerminalTabs[idx].title != trimmed {
+            mountedTerminalTabs[idx].title = trimmed
+        }
+        if let idx = terminalTabs.firstIndex(where: { $0.id == id }),
+           terminalTabs[idx].title != trimmed {
+            terminalTabs[idx].title = trimmed
+        }
     }
 
     /// Update title/URL for a browser tab **without** changing `activeSurface`.
     func updateBrowserTab(id: UUID, title: String? = nil, urlString: String? = nil) {
-        guard let idx = browserTabs.firstIndex(where: { $0.id == id }) else { return }
-        if let title, browserTabs[idx].title != title {
-            browserTabs[idx].title = title
+        if let idx = mountedBrowserTabs.firstIndex(where: { $0.id == id }) {
+            if let title, mountedBrowserTabs[idx].title != title {
+                mountedBrowserTabs[idx].title = title
+            }
+            if let urlString, mountedBrowserTabs[idx].urlString != urlString {
+                mountedBrowserTabs[idx].urlString = urlString
+            }
         }
-        if let urlString, browserTabs[idx].urlString != urlString {
-            browserTabs[idx].urlString = urlString
+        if let idx = browserTabs.firstIndex(where: { $0.id == id }) {
+            if let title, browserTabs[idx].title != title {
+                browserTabs[idx].title = title
+            }
+            if let urlString, browserTabs[idx].urlString != urlString {
+                browserTabs[idx].urlString = urlString
+            }
         }
     }
 
     func browserTab(id: UUID) -> BrowserTab? {
-        browserTabs.first { $0.id == id }
+        mountedBrowserTabs.first { $0.id == id } ?? browserTabs.first { $0.id == id }
     }
 
     /// Absolute path for "open with" / copy path — project folder or home.

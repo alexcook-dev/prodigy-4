@@ -107,7 +107,7 @@ struct WorkspaceRootView: View {
             return .handled
         }
         .sheet(isPresented: $showProjectSheet) {
-            ProjectCreationSheet { project in
+            ProjectCreationSheet(kind: .project) { project in
                 selection.selectProject(project)
             }
         }
@@ -388,6 +388,21 @@ enum WorkspacePane: Hashable, CaseIterable {
 
 // MARK: - Right column
 
+/// Top-right stack tabs: Files browser or Apple Reminders (To-Do).
+private enum RightTopTab: String, CaseIterable, Identifiable {
+    case files
+    case todo
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .files: return "Files"
+        case .todo: return "To-Do"
+        }
+    }
+}
+
 private struct RightColumnView: View {
     @ObservedObject var fileBrowser: FileBrowserModel
     var previewPresenter: FilePreviewPresenting
@@ -400,13 +415,22 @@ private struct RightColumnView: View {
     let onFocusTerminal: () -> Void
     let onPaneShortcut: (WorkspacePane) -> Void
 
-    /// Top (Files) fraction — sc1 keeps Files larger than Terminal.
+    /// Top (Files/To-Do) fraction — sc1 keeps the top pane larger than Terminal.
     // Key bumped so sc1 default (Files ~68%) wins over the old 0.5 store.
     @AppStorage("prodigy.rightColumn.filesFraction.v2")
     private var filesFraction = LayoutMetrics.rightColumnFilesDefaultFraction
 
+    @AppStorage("prodigy.rightColumn.topTab")
+    private var topTabRaw = RightTopTab.files.rawValue
+
+    @ObservedObject private var reminders = AppleRemindersService.shared
+
+    private var topTab: RightTopTab {
+        RightTopTab(rawValue: topTabRaw) ?? .files
+    }
+
     var body: some View {
-        // Flush stack with 1pt drag handle (sc1 Files over Terminal).
+        // Flush stack with 1pt drag handle (sc1 top pane over Terminal).
         ResizableVStack(
             topFraction: $filesFraction,
             minTop: LayoutMetrics.nestedPaneMinHeight,
@@ -414,23 +438,21 @@ private struct RightColumnView: View {
             maxTopFraction: LayoutMetrics.nestedPaneMaxFraction,
             maxBottomFraction: LayoutMetrics.nestedPaneMaxFraction,
             gap: LiquidGlassMetrics.columnDividerWidth,
-            tooltip: "Drag to resize Files and Terminal"
+            tooltip: "Drag to resize Files/To-Do and Terminal"
         ) {
-            FileBrowserPaneView(
-                model: fileBrowser,
-                previewPresenter: previewPresenter,
-                projectFolderURL: projectFolderURL,
-                isFocused: filesFocused
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
-            .onTapGesture(perform: onFocusFiles)
-            .background(Theme.centerBackground)
+            rightTopPane
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onFocusFiles)
+                .background(Theme.centerBackground)
         } bottom: {
             TerminalPaneView(
                 isFocused: terminalFocused,
                 onPaneShortcut: onPaneShortcut
             )
+            // Stable identity so project/workspace switches never remount the
+            // right-column PTY (only user close / shell exit ends the session).
+            .id("right-column-terminal")
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusTerminal)
@@ -438,6 +460,88 @@ private struct RightColumnView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.centerBackground)
+    }
+
+    private var rightTopPane: some View {
+        VStack(spacing: 0) {
+            rightTopTabBar
+            Group {
+                switch topTab {
+                case .files:
+                    FileBrowserPaneView(
+                        model: fileBrowser,
+                        previewPresenter: previewPresenter,
+                        projectFolderURL: projectFolderURL,
+                        isFocused: filesFocused && topTab == .files,
+                        showsChromeHeader: false
+                    )
+                case .todo:
+                    AppleRemindersPaneView(
+                        reminders: reminders,
+                        isFocused: filesFocused && topTab == .todo
+                    )
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.centerBackground)
+    }
+
+    /// Files | To-Do strip — same chrome language as the bottom Terminal tabs.
+    private var rightTopTabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(RightTopTab.allCases) { tab in
+                Button {
+                    topTabRaw = tab.rawValue
+                    onFocusFiles()
+                    if tab == .todo {
+                        Task { await reminders.refresh() }
+                    }
+                } label: {
+                    Text(tab.title)
+                        .font((topTab == tab ? Font.subheadline.weight(.semibold) : Font.subheadline))
+                        .foregroundStyle(topTab == tab ? Theme.textPrimary : Theme.textSecondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.clear)
+                        .overlay(alignment: .bottom) {
+                            if topTab == tab {
+                                Rectangle()
+                                    .fill(Theme.accent)
+                                    .frame(height: 2)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+                .help(tab == .files ? "Browse files" : "Apple Reminders (To-Do)")
+            }
+
+            Spacer(minLength: 8)
+
+            if topTab == .files {
+                Button {
+                    fileBrowser.reloadRoot()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(Font.caption.weight(.medium))
+                        .foregroundStyle(Theme.textTertiary)
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Reload folder")
+                .disabled(fileBrowser.rootURL == nil)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(Theme.centerBackground)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Theme.borderHairline)
+                .frame(height: 1)
+        }
     }
 }
 
