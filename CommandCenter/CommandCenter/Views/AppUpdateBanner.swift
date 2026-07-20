@@ -1,20 +1,78 @@
 import SwiftUI
 
-/// Floating bottom-left notification when a production update is available.
+/// Floating bottom-left notification when a production update is available
+/// (or when check failed due to private-repo auth).
 struct AppUpdateToast: View {
     @ObservedObject var updates: AppUpdateService
     @State private var showNotes = false
 
     var body: some View {
-        if updates.shouldShowBanner, let update = updates.availableUpdate {
-            toastCard(update: update)
-                .padding(.leading, 14)
-                .padding(.bottom, 14)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .animation(.spring(response: 0.35, dampingFraction: 0.86), value: updates.shouldShowBanner)
-                .sheet(isPresented: $showNotes) {
-                    notesSheet(update: update)
+        Group {
+            if updates.shouldShowBanner, let update = updates.availableUpdate {
+                toastCard(update: update)
+                    .sheet(isPresented: $showNotes) {
+                        notesSheet(update: update)
+                    }
+            } else if updates.shouldShowBanner, let message = updates.failureMessage {
+                authFailureCard(message: message)
+            }
+        }
+        .padding(.leading, 14)
+        .padding(.bottom, 14)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .animation(.spring(response: 0.35, dampingFraction: 0.86), value: updates.shouldShowBanner)
+    }
+
+    private func authFailureCard(message: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Can’t check for updates")
+                        .font(AppTypography.action)
+                        .foregroundStyle(Theme.textPrimary)
+                    Text(message)
+                        .font(AppTypography.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                Spacer(minLength: 4)
+                Button {
+                    updates.dismissFailureToast()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.textTertiary)
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Dismiss")
+            }
+            HStack {
+                Spacer(minLength: 0)
+                Button {
+                    Task { await updates.checkForUpdates(userInitiated: true) }
+                } label: {
+                    Text("Retry")
+                        .font(AppTypography.action)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+        }
+        .padding(14)
+        .frame(width: 320, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Theme.elevatedSurface)
+                .shadow(color: .black.opacity(0.18), radius: 16, x: 0, y: 6)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Theme.borderStructural.opacity(0.55), lineWidth: 1)
         }
     }
 
