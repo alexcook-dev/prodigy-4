@@ -15,3 +15,4 @@ spikes/t4-provider-smoke/.workdir/
 *.xcuserstate
 xcuserdata/
 DerivedData/
+dist/
