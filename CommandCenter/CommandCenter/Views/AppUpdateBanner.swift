@@ -16,7 +16,7 @@ struct AppUpdateBanner: View {
                     Text("Update available — Prodigy \(update.version)")
                         .font(AppTypography.action)
                         .foregroundStyle(Theme.textPrimary)
-                    Text("You’re on \(updates.currentVersion). Install replaces ~/Applications/Prodigy.app.")
+                    Text("You’re on \(updates.currentVersion). Installs the DMG + app into Applications.")
                         .font(AppTypography.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .lineLimit(2)

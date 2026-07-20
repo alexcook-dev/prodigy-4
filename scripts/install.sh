@@ -31,8 +31,11 @@ if [ -z "${BASH_VERSION:-}" ]; then
 fi
 
 REPO="${PRODIGY_REPO:-alexcook-dev/prodigy-4}"
-INSTALL_DIR="${INSTALL_DIR:-$HOME/Applications}"
+# Prefer /Applications (system Applications folder). Override with INSTALL_DIR=...
+INSTALL_DIR="${INSTALL_DIR:-}"
 APP_NAME="Prodigy"
+# Stable DMG name left in Applications after install (versioned file kept too).
+DMG_INSTALL_NAME="${APP_NAME}.dmg"
 ASSET_GLOB="${APP_NAME}-*.dmg"
 NONINTERACTIVE="${NONINTERACTIVE:-0}"
 SKIP_DEPS="${PRODIGY_SKIP_DEPS:-0}"
@@ -357,12 +360,86 @@ PY
   echo "$dest"
 }
 
+# Resolve Applications folder: prefer /Applications, fall back to ~/Applications.
+resolve_install_dir() {
+  if [[ -n "${INSTALL_DIR}" ]]; then
+    echo "${INSTALL_DIR}"
+    return 0
+  fi
+  if [[ -d /Applications ]] && ( touch /Applications/.prodigy-write-test 2>/dev/null ); then
+    rm -f /Applications/.prodigy-write-test
+    echo /Applications
+    return 0
+  fi
+  # /Applications exists but not writable without elevation — still try /Applications
+  # for the DMG path; copy may prompt via ditto failure and we fall back.
+  if [[ -d /Applications ]]; then
+    echo /Applications
+    return 0
+  fi
+  echo "${HOME}/Applications"
+}
+
+# Copy a file into Applications; use sudo only if needed and interactive.
+install_file_to_dir() {
+  local src="$1"
+  local dest="$2"
+  local dest_dir
+  dest_dir="$(dirname "$dest")"
+  mkdir -p "$dest_dir" 2>/dev/null || true
+
+  if cp -f "$src" "$dest" 2>/dev/null; then
+    return 0
+  fi
+  if ditto "$src" "$dest" 2>/dev/null; then
+    return 0
+  fi
+
+  if [[ "$NONINTERACTIVE" == "1" ]]; then
+    die "cannot write ${dest} (no permission). Re-run with write access to Applications or set INSTALL_DIR=\$HOME/Applications"
+  fi
+
+  log "Need administrator permission to write ${dest}"
+  sudo mkdir -p "$dest_dir"
+  sudo cp -f "$src" "$dest"
+}
+
+install_dir_to_dir() {
+  local src="$1"
+  local dest="$2"
+  local dest_dir
+  dest_dir="$(dirname "$dest")"
+  mkdir -p "$dest_dir" 2>/dev/null || true
+
+  if [[ -e "$dest" ]]; then
+    rm -rf "$dest" 2>/dev/null || sudo rm -rf "$dest"
+  fi
+
+  if ditto "$src" "$dest" 2>/dev/null; then
+    return 0
+  fi
+
+  if [[ "$NONINTERACTIVE" == "1" ]]; then
+    die "cannot write ${dest}. Set INSTALL_DIR=\$HOME/Applications or fix permissions."
+  fi
+
+  log "Need administrator permission to install ${dest}"
+  sudo mkdir -p "$dest_dir"
+  sudo rm -rf "$dest"
+  sudo ditto "$src" "$dest"
+}
+
 install_app() {
+  local apps_dir
+  apps_dir="$(resolve_install_dir)"
+  INSTALL_DIR="$apps_dir"
+
   log "Installing production ${APP_NAME} from GitHub (${REPO})"
-  note "destination: ${INSTALL_DIR}/${APP_NAME}.app"
+  note "Applications folder: ${apps_dir}"
+  note "Will place: ${apps_dir}/${DMG_INSTALL_NAME}  (DMG package)"
+  note "       and: ${apps_dir}/${APP_NAME}.app      (runnable app from that DMG)"
   note "Xcode Debug builds use Prodigy Dev — they will not overwrite this."
 
-  mkdir -p "$INSTALL_DIR"
   mkdir -p "$TMPDIR_ROOT/dl"
   refresh_auth_header
 
@@ -378,37 +455,59 @@ install_app() {
 
   [[ -n "$dmg" && -f "$dmg" ]] || die "DMG not downloaded"
 
-  log "Mounting $(basename "$dmg")"
+  local dmg_basename
+  dmg_basename="$(basename "$dmg")"
+  local dmg_in_apps="${apps_dir}/${dmg_basename}"
+  local dmg_stable="${apps_dir}/${DMG_INSTALL_NAME}"
+
+  # 1) Install the DMG itself into Applications (versioned + stable Prodigy.dmg).
+  log "Installing DMG into Applications → ${dmg_in_apps}"
+  install_file_to_dir "$dmg" "$dmg_in_apps"
+  xattr -cr "$dmg_in_apps" 2>/dev/null || true
+  if [[ "$dmg_in_apps" != "$dmg_stable" ]]; then
+    log "Linking stable name → ${dmg_stable}"
+    install_file_to_dir "$dmg" "$dmg_stable"
+    xattr -cr "$dmg_stable" 2>/dev/null || true
+  fi
+
+  # 2) Mount the Applications copy and install Prodigy.app next to it.
+  log "Mounting ${dmg_in_apps}"
   local attach_out
-  attach_out="$(hdiutil attach "$dmg" -nobrowse -readonly)"
+  attach_out="$(hdiutil attach "$dmg_in_apps" -nobrowse -readonly)"
   MOUNT_POINT="$(echo "$attach_out" | awk -F'\t' '/\/Volumes\// {print $NF; exit}')"
   [[ -n "$MOUNT_POINT" && -d "$MOUNT_POINT" ]] || die "failed to mount DMG"
 
   local src_app="${MOUNT_POINT}/${APP_NAME}.app"
   [[ -d "$src_app" ]] || die "${APP_NAME}.app not found inside DMG"
 
-  local dest="${INSTALL_DIR}/${APP_NAME}.app"
+  local dest_app="${apps_dir}/${APP_NAME}.app"
   if pgrep -x "Prodigy" >/dev/null 2>&1; then
     log "Quitting running Prodigy…"
     osascript -e 'tell application "Prodigy" to quit' 2>/dev/null || true
     sleep 1
   fi
 
-  if [[ -d "$dest" ]]; then
-    log "Replacing existing ${dest}"
-    rm -rf "$dest"
+  log "Installing app from DMG → ${dest_app}"
+  install_dir_to_dir "$src_app" "$dest_app"
+  xattr -cr "$dest_app" 2>/dev/null || true
+  codesign --force --deep --sign - "$dest_app" 2>/dev/null || true
+
+  # Detach before we finish so the DMG file isn't busy.
+  if [[ -n "${MOUNT_POINT:-}" && -d "${MOUNT_POINT}" ]]; then
+    hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null || true
+    MOUNT_POINT=""
   fi
 
-  log "Copying app"
-  ditto "$src_app" "$dest"
-  xattr -cr "$dest" 2>/dev/null || true
-  codesign --force --deep --sign - "$dest" 2>/dev/null || true
-
   echo ""
-  log "Installed ${dest}"
-  plutil -p "${dest}/Contents/Info.plist" | grep -E 'CFBundle(Identifier|Name|ShortVersionString|DisplayName)' || true
+  log "Installed package (DMG):  ${dmg_in_apps}"
+  if [[ -f "$dmg_stable" && "$dmg_stable" != "$dmg_in_apps" ]]; then
+    note "Stable alias:             ${dmg_stable}"
+  fi
+  log "Installed application:    ${dest_app}"
+  plutil -p "${dest_app}/Contents/Info.plist" | grep -E 'CFBundle(Identifier|Name|ShortVersionString|DisplayName)' || true
   echo ""
-  note "Open with:  open \"${dest}\""
+  note "Open with:  open \"${dest_app}\""
+  note "Open DMG:   open \"${dmg_in_apps}\""
   note "Dev tip:    Xcode Run builds 'Prodigy Dev' — separate from this install."
 }
 
