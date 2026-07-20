@@ -2,17 +2,30 @@ import SwiftUI
 
 /// Bottom-right terminal panel: SwiftTerm PTY shell (T7) + keyboard passthrough (T10).
 ///
+/// Also reused for **center-column terminal tabs** (`showsChromeHeader: false` hides
+/// the Setup/Run strip so the center tab bar is the only chrome).
+///
 /// Failure state (PLAN.md Constraints / wf-3 #5): exited shell shows a visible
 /// "process ended" bar with Restart — never a frozen pane.
 struct TerminalPaneView: View {
     var isFocused: Bool = false
     var onPaneShortcut: ((WorkspacePane) -> Void)?
+    /// Initial shell cwd (user home by default).
+    var initialWorkingDirectory: String? = nil
+    /// When false, omit the right-column Setup/Run/Terminal strip (center tabs).
+    var showsChromeHeader: Bool = true
+    /// Optional title callback when the shell cwd/title changes (center tab label).
+    var onTitleChange: ((String) -> Void)? = nil
 
     @StateObject private var session = TerminalSessionController()
 
     var body: some View {
         VStack(spacing: 0) {
-            panelHeader
+            if showsChromeHeader {
+                panelHeader
+            } else {
+                centerSessionHeader
+            }
             terminalBody
             if session.showsProcessEndedBar {
                 processEndedBar
@@ -21,7 +34,40 @@ struct TerminalPaneView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.terminalBackground)
         .onAppear {
-            // Clicking the pane focuses the terminal for typing.
+            if let initialWorkingDirectory {
+                session.setInitialWorkingDirectory(initialWorkingDirectory)
+            }
+        }
+        .onChange(of: session.headerTitle) { _, title in
+            onTitleChange?(title)
+        }
+    }
+
+    /// Compact header for center-column terminal tabs.
+    private var centerSessionHeader: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "terminal.fill")
+                .font(Font.caption)
+                .foregroundStyle(Theme.textTertiary)
+            Text(session.headerTitle)
+                .font(Font.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            if session.isProcessRunning {
+                Circle()
+                    .fill(Theme.statusDone)
+                    .frame(width: 6, height: 6)
+                    .help("Shell running")
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Theme.centerBackground)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Theme.borderHairline)
+                .frame(height: 1)
         }
     }
 

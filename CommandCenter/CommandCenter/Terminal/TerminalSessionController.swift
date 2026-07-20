@@ -49,6 +49,13 @@ final class TerminalSessionController: ObservableObject {
         }
     }
 
+    /// Set the initial cwd before the PTY starts (e.g. home or project folder).
+    func setInitialWorkingDirectory(_ path: String) {
+        let standardized = (path as NSString).standardizingPath
+        currentDirectory = standardized
+        headerTitle = Self.abbreviateHome(standardized)
+    }
+
     func requestRestart() {
         restartToken &+= 1
     }

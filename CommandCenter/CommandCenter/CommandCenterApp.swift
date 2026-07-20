@@ -14,6 +14,7 @@ extension Notification.Name {
 struct CommandCenterApp: App {
     @StateObject private var focus = WorkspaceFocusController()
     @AppStorage(AppStorageKey.appearance) private var appearanceRaw = AppAppearance.system.rawValue
+    @AppStorage(AppStorageKey.contentZoom) private var contentZoom = ContentZoom.default
 
     private var preferredScheme: ColorScheme? {
         (AppAppearance(rawValue: appearanceRaw) ?? .system).colorScheme
@@ -45,6 +46,7 @@ struct CommandCenterApp: App {
                 .environmentObject(focus)
                 // Native system type (SF Pro) — no custom point sizes.
                 .preferredColorScheme(preferredScheme)
+                .prodigyContentZoom(contentZoom)
                 .frame(
                     minWidth: LayoutMetrics.minWindowWidth,
                     minHeight: LayoutMetrics.minWindowHeight
@@ -55,10 +57,12 @@ struct CommandCenterApp: App {
                 }
                 .background(Theme.appBackground)
                 .background(LiquidGlassWindowChrome())
+                // Ensure first open sizes to ~92%×88% of the active display.
+                .background(WindowScreenSizer())
         }
         .defaultSize(
-            width: LayoutMetrics.defaultWindowWidth,
-            height: LayoutMetrics.defaultWindowHeight
+            width: LayoutMetrics.defaultWindowSize().width,
+            height: LayoutMetrics.defaultWindowSize().height
         )
         // Titlebar over content so columns reach the top edge (Cursor-style).
         .windowStyle(.hiddenTitleBar)
@@ -95,6 +99,37 @@ struct CommandCenterApp: App {
                         modifiers: .command
                     )
                 }
+            }
+            // Content zoom — browser-style ⌘+/⌘-/⌘0 (also ⌘=).
+            CommandMenu("View") {
+                Button("Zoom In") {
+                    contentZoom = ContentZoom.zoomIn(contentZoom)
+                }
+                .keyboardShortcut("=", modifiers: .command)
+                .disabled(contentZoom >= ContentZoom.maximum - 0.001)
+
+                // Same action for ⌘+ (Shift+= on US keyboards).
+                Button("Zoom In") {
+                    contentZoom = ContentZoom.zoomIn(contentZoom)
+                }
+                .keyboardShortcut("+", modifiers: .command)
+                .disabled(contentZoom >= ContentZoom.maximum - 0.001)
+
+                Button("Zoom Out") {
+                    contentZoom = ContentZoom.zoomOut(contentZoom)
+                }
+                .keyboardShortcut("-", modifiers: .command)
+                .disabled(contentZoom <= ContentZoom.minimum + 0.001)
+
+                Button("Actual Size") {
+                    contentZoom = ContentZoom.default
+                }
+                .keyboardShortcut("0", modifiers: .command)
+                .disabled(abs(contentZoom - ContentZoom.default) < 0.001)
+
+                Divider()
+
+                Text("Zoom: \(ContentZoom.percentLabel(contentZoom))")
             }
         }
     }

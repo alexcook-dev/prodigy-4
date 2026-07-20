@@ -93,37 +93,64 @@ enum Theme {
     static let kbdBackground = Color("KbdBackground")
 }
 
-// MARK: - Layout constants (from sc1/sc2 shell proportions)
+// MARK: - Layout constants (display-relative shell)
 
 enum LayoutMetrics {
-    // MARK: Sidebar
+    // MARK: Main column fractions (of window width after hairline dividers)
 
-    /// Left sidebar ideal width — sc1 / sc2 proportions.
+    /// Left sidebar default share of the split.
+    static let sidebarDefaultFraction: CGFloat = 0.25
+    /// Center (chat / browser) default share.
+    static let centerDefaultFraction: CGFloat = 0.50
+    /// Right files/terminal default share.
+    static let rightColumnDefaultFraction: CGFloat = 0.25
+
+    /// Narrow (2-pane) layout: sidebar / center when right column collapses.
+    static let sidebarNarrowDefaultFraction: CGFloat = 0.25
+    static let centerNarrowDefaultFraction: CGFloat = 0.75
+
+    /// How far a side pane can grow when dragged (still leaves room for center).
+    static let sidePaneMaxFraction: CGFloat = 0.40
+
+    // MARK: Absolute mins (floor so columns stay usable on small displays)
+
+    static let sidebarMinWidth: CGFloat = 160
+    static let centerMinWidth: CGFloat = 280
+    static let rightColumnMinWidth: CGFloat = 160
+
+    /// Legacy absolute ideals (used only as fallbacks when fraction is unavailable).
     static let sidebarWidth: CGFloat = 240
-    static let sidebarMinWidth: CGFloat = 180
-    static let sidebarMaxWidth: CGFloat = 320
-
-    // MARK: Center
-
-    static let centerMinWidth: CGFloat = 360
+    static let rightColumnWidth: CGFloat = 360
+    /// Soft absolute caps — primary limit is `sidePaneMaxFraction`.
+    static let sidebarMaxWidth: CGFloat = 1200
+    static let rightColumnMaxWidth: CGFloat = 1200
 
     /// Max readable width for chat text on large displays (panel still fills).
     static let maxReadingWidth: CGFloat = 920
 
-    // MARK: Right column
-
-    static let rightColumnWidth: CGFloat = 360
-    static let rightColumnMinWidth: CGFloat = 240
-    static let rightColumnMaxWidth: CGFloat = 520
     static let rightColumnDrawerWidth: CGFloat = 360
-    static let rightColumnCollapseBreakpoint: CGFloat = 1000
+    /// Collapse right column below this window width (still scales with small screens).
+    static let rightColumnCollapseBreakpoint: CGFloat = 900
 
-    // MARK: Window
+    // MARK: Window (fraction of the active display’s visible frame)
 
-    static let defaultWindowWidth: CGFloat = 1400
-    static let defaultWindowHeight: CGFloat = 860
+    static let windowWidthScreenFraction: CGFloat = 0.92
+    static let windowHeightScreenFraction: CGFloat = 0.88
     static let minWindowWidth: CGFloat = 640
     static let minWindowHeight: CGFloat = 420
+
+    /// Fallback when no screen is available yet.
+    static let defaultWindowWidth: CGFloat = 1400
+    static let defaultWindowHeight: CGFloat = 860
+
+    /// Size the main window relative to the user’s display.
+    static func defaultWindowSize(for screen: NSScreen? = NSScreen.main) -> (width: CGFloat, height: CGFloat) {
+        let frame = screen?.visibleFrame
+            ?? NSRect(x: 0, y: 0, width: defaultWindowWidth, height: defaultWindowHeight)
+        let width = max(minWindowWidth, floor(frame.width * windowWidthScreenFraction))
+        let height = max(minWindowHeight, floor(frame.height * windowHeightScreenFraction))
+        return (width, height)
+    }
 
     // MARK: Nested resizable stacks
 

@@ -12,7 +12,7 @@ final class FileBrowserModel: ObservableObject {
 
     // MARK: - Published UI state
 
-    /// Directory the tree is rooted at (Project working folder once T3/T11 lands).
+    /// Directory the tree is rooted at. Defaults to the logged-in user's home (`~`).
     @Published private(set) var rootURL: URL?
 
     /// Immediate children of the root (populated lazily on `reloadRoot`).
@@ -44,13 +44,53 @@ final class FileBrowserModel: ObservableObject {
     /// Generation token so stale async loads are dropped after root changes.
     private var loadGeneration: UInt64 = 0
 
+    // MARK: - Init
+
+    /// Always starts at the logged-in user's home (`/Users/<name>`), not a project folder.
+    init() {
+        // Seed root immediately so the UI never shows "no folder" on first paint.
+        let home = Self.userHomeURL
+        rootURL = home
+        isRootLoading = true
+        // Defer enumeration so ObservableObject is fully constructed.
+        Task { @MainActor [weak self] in
+            self?.setRoot(home)
+        }
+    }
+
     // MARK: - Root
 
-    /// Bind the browser to a project working directory (or any folder).
-    /// Replaces the tree; does not walk descendants.
+    /// Logged-in user's home directory (`/Users/<name>`). Default Files root.
+    static var userHomeURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL
+    }
+
+    /// True when the tree is rooted at the current user's home folder.
+    var isAtUserHome: Bool {
+        guard let rootURL else { return false }
+        return rootURL.standardizedFileURL.path == Self.userHomeURL.path
+    }
+
+    /// Can navigate to the parent of the current root (not above filesystem root).
+    var canGoUp: Bool {
+        guard let rootURL else { return false }
+        let parent = rootURL.deletingLastPathComponent().standardizedFileURL
+        return parent.path != rootURL.path && !parent.path.isEmpty
+    }
+
+    /// Bind the browser to a directory. Replaces the tree; does not walk descendants.
+    /// Passing `nil` roots at the logged-in user's home folder.
     func setRoot(_ url: URL?) {
+        let resolved = (url ?? Self.userHomeURL).standardizedFileURL
+        // Skip no-op rebinds so project switches / onAppear don't thrash the tree
+        // when we're already at the requested path.
+        if rootURL?.path == resolved.path,
+           !rootChildren.isEmpty || isRootLoading,
+           rootError == nil {
+            return
+        }
         loadGeneration &+= 1
-        rootURL = url?.standardizedFileURL
+        rootURL = resolved
         rootChildren = []
         expandedPaths = []
         loadingPaths = []
@@ -58,12 +98,33 @@ final class FileBrowserModel: ObservableObject {
         childrenByPath = [:]
         selectedURL = nil
         rootError = nil
-
-        guard url != nil else {
-            isRootLoading = false
-            return
-        }
+        isRootLoading = true
         reloadRoot()
+    }
+
+    /// Jump to the logged-in user's home folder.
+    func goHome() {
+        setRoot(Self.userHomeURL)
+    }
+
+    /// Move the tree root up one directory (e.g. from `~/Documents` → `~`).
+    func goUp() {
+        guard canGoUp, let rootURL else { return }
+        setRoot(rootURL.deletingLastPathComponent())
+    }
+
+    /// Common places under the user's home for the location picker.
+    static var commonLocations: [(title: String, url: URL)] {
+        let home = userHomeURL
+        let fm = FileManager.default
+        let candidates: [(String, URL)] = [
+            ("Home", home),
+            ("Desktop", home.appendingPathComponent("Desktop", isDirectory: true)),
+            ("Documents", home.appendingPathComponent("Documents", isDirectory: true)),
+            ("Downloads", home.appendingPathComponent("Downloads", isDirectory: true)),
+            ("Projects", home.appendingPathComponent("Projects", isDirectory: true)),
+        ]
+        return candidates.filter { fm.fileExists(atPath: $0.1.path) }
     }
 
     /// Copy dropped / imported files into `directory` (or root / selection).

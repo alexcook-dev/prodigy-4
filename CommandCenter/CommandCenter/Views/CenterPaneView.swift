@@ -263,7 +263,24 @@ struct CenterPaneView: View {
                 }
             }
 
-            // "+" : New Chat, file, Safari, Apple Mail, Apple Calendar.
+            ForEach(selection.terminalTabs) { tab in
+                CenterTab(
+                    title: tab.title,
+                    isActive: {
+                        if case .terminal(let openID) = selection.activeSurface {
+                            return openID == tab.id
+                        }
+                        return false
+                    }(),
+                    showsClose: true,
+                    onClose: { selection.closeTerminalTab(id: tab.id) }
+                ) {
+                    selection.selectTerminalTab(tab)
+                    focus.focus(.chat)
+                }
+            }
+
+            // "+" : New Chat, file, Safari, Terminal, Apple Mail, Apple Calendar.
             Menu {
                 Button("New Chat") {
                     openNewChat()
@@ -284,6 +301,11 @@ struct CenterPaneView: View {
                     Label("Safari", systemImage: "safari")
                 }
                 Button {
+                    openCenterTerminal()
+                } label: {
+                    Label("Terminal", systemImage: "terminal")
+                }
+                Button {
                     selection.openAppleMailTab()
                 } label: {
                     Label("Mail", systemImage: "envelope.fill")
@@ -301,7 +323,7 @@ struct CenterPaneView: View {
                     .padding(.vertical, 6)
             }
             .menuStyle(.borderlessButton)
-            .help("Open New Chat, file, Safari, Mail, or Calendar")
+            .help("Open Chat, file, Safari, Terminal, Mail, or Calendar")
 
             Spacer()
 
@@ -320,11 +342,12 @@ struct CenterPaneView: View {
             .help(showReasoningStored ? "Hide reasoning" : "Show reasoning")
             .foregroundStyle(showReasoningStored ? Theme.accent : Theme.textSecondary)
 
-            // sc8 open-with dropdown (Finder, VS Code, Safari, Mail, Calendar…).
+            // sc8 open-with dropdown (Finder, VS Code, Safari, Terminal, Mail, Calendar…).
             Menu {
                 OpenWithMenuContent(
                     workspacePath: selection.workspacePath(from: Array(allProjects)),
                     onOpenSafari: { selection.openSafariTab() },
+                    onOpenTerminal: { openCenterTerminal() },
                     onOpenMail: { selection.openAppleMailTab() },
                     onOpenCalendar: { selection.openAppleCalendarTab() }
                 )
@@ -416,10 +439,36 @@ struct CenterPaneView: View {
                         openOrFocusChat()
                     }
             }
+        case .terminal(let tabID):
+            if let tab = selection.terminalTab(id: tabID) {
+                TerminalPaneView(
+                    isFocused: isFocused,
+                    onPaneShortcut: { focus.focus($0) },
+                    initialWorkingDirectory: tab.workingDirectory,
+                    showsChromeHeader: false,
+                    onTitleChange: { title in
+                        selection.updateTerminalTab(id: tabID, title: title)
+                    }
+                )
+                // Stable identity so each tab keeps its own PTY session.
+                .id(tabID)
+            } else {
+                Color.clear
+                    .onAppear {
+                        openOrFocusChat()
+                    }
+            }
         }
     }
 
-    /// Shown when every center tab was closed — invite re-open Chat or Safari.
+    private func openCenterTerminal() {
+        let cwd = selectedProject.map(\.folderPath)
+            ?? FileManager.default.homeDirectoryForCurrentUser.path
+        _ = selection.openTerminalTab(workingDirectory: cwd)
+        focus.focus(.chat)
+    }
+
+    /// Shown when every center tab was closed — invite re-open Chat, Safari, or Terminal.
     private var emptyTabsBody: some View {
         VStack(spacing: 16) {
             Image(systemName: "square.on.square")
@@ -428,7 +477,7 @@ struct CenterPaneView: View {
             Text("No tabs open")
                 .font(Font.title3.weight(.medium))
                 .foregroundStyle(Theme.textPrimary)
-            Text("Open Chat, Safari, Mail, or Calendar to continue.")
+            Text("Open Chat, Safari, Terminal, Mail, or Calendar to continue.")
                 .font(Font.subheadline)
                 .foregroundStyle(Theme.textSecondary)
             HStack(spacing: 12) {
@@ -442,6 +491,11 @@ struct CenterPaneView: View {
 
                 Button("Safari") {
                     selection.openSafariTab()
+                }
+                .buttonStyle(.bordered)
+
+                Button("Terminal") {
+                    openCenterTerminal()
                 }
                 .buttonStyle(.bordered)
 
