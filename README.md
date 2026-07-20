@@ -40,6 +40,12 @@ They are **different apps**. Running in Xcode updates *Prodigy Dev* only — it 
 
 Preferences, SwiftData, and dock icons stay separate because the bundle IDs differ.
 
+### In-app updates (production)
+
+Production **Prodigy** checks GitHub Releases on launch (every ~6 hours) and shows an **Update** banner when a newer `Prodigy-*.dmg` is available. Also: **Prodigy → Check for Updates…** and **Settings → Updates**.
+
+Uses `gh auth token` (or `GH_TOKEN`) because the repo is private. Tap **Update** to download the DMG and replace `~/Applications/Prodigy.app`.
+
 ## Ship a new production build
 
 ```bash
