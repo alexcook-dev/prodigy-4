@@ -187,9 +187,8 @@ install_dir_to_dir() {
   local src="$1" dest="$2" dest_dir
   dest_dir="$(dirname "$dest")"
   mkdir -p "$dest_dir" 2>/dev/null || true
-  if [[ -e "$dest" ]]; then
-    rm -rf "$dest" 2>/dev/null || sudo rm -rf "$dest"
-  fi
+  # Prefer in-place ditto over rm -rf + copy. Replacing the bundle path
+  # outright can drop path-based TCC grants even with a stable signature.
   if ditto "$src" "$dest" 2>/dev/null; then
     return 0
   fi
@@ -198,8 +197,11 @@ install_dir_to_dir() {
   fi
   log "Need administrator permission to install ${dest}"
   sudo mkdir -p "$dest_dir"
-  sudo rm -rf "$dest"
-  sudo ditto "$src" "$dest"
+  # Fallback: only remove if in-place sudo ditto fails.
+  if ! sudo ditto "$src" "$dest" 2>/dev/null; then
+    sudo rm -rf "$dest"
+    sudo ditto "$src" "$dest"
+  fi
 }
 
 install_app() {
