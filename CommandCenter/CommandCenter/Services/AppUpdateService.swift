@@ -114,7 +114,7 @@ final class AppUpdateService: ObservableObject {
         defaults.set(u.version, forKey: dismissedKey)
     }
 
-    /// Download the release DMG, replace ~/Applications/Prodigy.app, offer relaunch.
+    /// Download the release DMG into Applications, install Prodigy.app from it, offer relaunch.
     func installAvailableUpdate() async {
         guard case .available(let update) = phase else { return }
         do {
@@ -126,13 +126,15 @@ final class AppUpdateService: ObservableObject {
                 }
             }
             phase = .installing
-            try installDMG(at: dmgURL)
-            try? FileManager.default.removeItem(at: dmgURL)
-            // Clear dismissed state for next version.
+            let installedApp = try installDMG(at: dmgURL, releaseFileName: update.dmgName)
+            // Temp download can go; permanent copies live in Applications.
+            if dmgURL.path.hasPrefix(FileManager.default.temporaryDirectory.path) {
+                try? FileManager.default.removeItem(at: dmgURL)
+            }
             defaults.removeObject(forKey: dismissedKey)
             bannerDismissedForVersion = nil
             phase = .upToDate
-            offerRelaunch(installedVersion: update.version)
+            offerRelaunch(installedVersion: update.version, appURL: installedApp)
         } catch {
             phase = .failed(error.localizedDescription)
         }
@@ -242,10 +244,50 @@ final class AppUpdateService: ObservableObject {
         return dest
     }
 
-    private func installDMG(at dmgURL: URL) throws {
+    /// Prefer `/Applications`, fall back to `~/Applications`.
+    private func applicationsDirectory() throws -> URL {
+        let system = URL(fileURLWithPath: "/Applications", isDirectory: true)
+        let home = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Applications", isDirectory: true)
+        if FileManager.default.isWritableFile(atPath: system.path) {
+            return system
+        }
+        // isWritableFile can lie for directories; probe with a temp file.
+        let probe = system.appendingPathComponent(".prodigy-write-test")
+        if FileManager.default.createFile(atPath: probe.path, contents: Data()) {
+            try? FileManager.default.removeItem(at: probe)
+            return system
+        }
+        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+        return home
+    }
+
+    /// Copies the DMG into Applications, mounts it, installs Prodigy.app next to it.
+    /// Returns the installed `.app` URL.
+    private func installDMG(at dmgURL: URL, releaseFileName: String) throws -> URL {
+        let apps = try applicationsDirectory()
+        try FileManager.default.createDirectory(at: apps, withIntermediateDirectories: true)
+
+        // Permanent DMG in Applications (versioned + stable Prodigy.dmg).
+        let versionedDMG = apps.appendingPathComponent(releaseFileName)
+        let stableDMG = apps.appendingPathComponent("Prodigy.dmg")
+        if FileManager.default.fileExists(atPath: versionedDMG.path) {
+            try FileManager.default.removeItem(at: versionedDMG)
+        }
+        try FileManager.default.copyItem(at: dmgURL, to: versionedDMG)
+        _ = try? run("/usr/bin/xattr", arguments: ["-cr", versionedDMG.path])
+
+        if versionedDMG.path != stableDMG.path {
+            if FileManager.default.fileExists(atPath: stableDMG.path) {
+                try? FileManager.default.removeItem(at: stableDMG)
+            }
+            try FileManager.default.copyItem(at: versionedDMG, to: stableDMG)
+            _ = try? run("/usr/bin/xattr", arguments: ["-cr", stableDMG.path])
+        }
+
         let attach = try run(
             "/usr/bin/hdiutil",
-            arguments: ["attach", dmgURL.path, "-nobrowse", "-readonly", "-plist"]
+            arguments: ["attach", versionedDMG.path, "-nobrowse", "-readonly", "-plist"]
         )
         guard let mount = parseMountPoint(fromPlistXML: attach.stdout) else {
             throw UpdateError.install("Could not mount DMG")
@@ -259,31 +301,25 @@ final class AppUpdateService: ObservableObject {
             throw UpdateError.install("Prodigy.app not found inside DMG")
         }
 
-        let apps = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Applications", isDirectory: true)
-        try FileManager.default.createDirectory(at: apps, withIntermediateDirectories: true)
         let dest = apps.appendingPathComponent("Prodigy.app")
-
-        // Prefer ditto for preserving code signature layout.
         if FileManager.default.fileExists(atPath: dest.path) {
             try FileManager.default.removeItem(at: dest)
         }
         _ = try run("/usr/bin/ditto", arguments: [src.path, dest.path])
         _ = try? run("/usr/bin/xattr", arguments: ["-cr", dest.path])
         _ = try? run("/usr/bin/codesign", arguments: ["--force", "--deep", "--sign", "-", dest.path])
+        return dest
     }
 
-    private func offerRelaunch(installedVersion: String) {
+    private func offerRelaunch(installedVersion: String, appURL: URL) {
         let alert = NSAlert()
         alert.messageText = "Prodigy \(installedVersion) installed"
-        alert.informativeText = "Restart Prodigy to use the new version."
+        alert.informativeText = "The DMG is in Applications. Restart Prodigy to use the new version."
         alert.alertStyle = .informational
         alert.addButton(withTitle: "Relaunch")
         alert.addButton(withTitle: "Later")
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            let appURL = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Applications/Prodigy.app")
             NSWorkspace.shared.openApplication(at: appURL, configuration: NSWorkspace.OpenConfiguration()) { _, _ in
                 DispatchQueue.main.async {
                     NSApp.terminate(nil)

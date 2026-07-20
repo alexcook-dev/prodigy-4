@@ -15,7 +15,13 @@ Native macOS workspace shell (Command Center) — chat, files, terminal, Safari,
 | **GitHub auth** | `gh auth login` (or use `GH_TOKEN`) for this private repo |
 | **python3** | `brew install python` only if missing |
 
-Then downloads the latest **Prodigy-*.dmg** release and installs to `~/Applications/Prodigy.app`.
+Then downloads the latest **Prodigy-*.dmg** release and installs into **Applications**:
+
+- `/Applications/Prodigy-<version>.dmg` (package kept on disk)
+- `/Applications/Prodigy.dmg` (stable name, same file)
+- `/Applications/Prodigy.app` (app extracted from that DMG)
+
+Falls back to `~/Applications` if `/Applications` is not writable. Override with `INSTALL_DIR=...`.
 
 ### First install (from this repo)
 
@@ -36,7 +42,7 @@ bash <(gh api repos/alexcook-dev/prodigy-4/contents/scripts/install.sh --jq .con
 Unattended (CI): `NONINTERACTIVE=1 GH_TOKEN=… ./scripts/install.sh`  
 Skip brew/gh bootstrap: `./scripts/install.sh --skip-deps`
 
-Installs **`~/Applications/Prodigy.app`** (`dev.alexcook.Prodigy`).
+Installs the **DMG + app** into Applications (`dev.alexcook.Prodigy`).
 
 Releases: https://github.com/alexcook-dev/prodigy-4/releases
 
