@@ -224,10 +224,10 @@ install_app() {
 
   log "Installing DMG into Applications → ${dmg_in_apps}"
   install_file_to_dir "$dmg" "$dmg_in_apps"
-  xattr -cr "$dmg_in_apps" 2>/dev/null || true
+  xattr -dr com.apple.quarantine "$dmg_in_apps" 2>/dev/null || true
   if [[ "$dmg_in_apps" != "$dmg_stable" ]]; then
     install_file_to_dir "$dmg" "$dmg_stable"
-    xattr -cr "$dmg_stable" 2>/dev/null || true
+    xattr -dr com.apple.quarantine "$dmg_stable" 2>/dev/null || true
   fi
 
   log "Mounting ${dmg_in_apps}"
@@ -248,8 +248,9 @@ install_app() {
 
   log "Installing app from DMG → ${dest_app}"
   install_dir_to_dir "$src_app" "$dest_app"
-  xattr -cr "$dest_app" 2>/dev/null || true
-  codesign --force --deep --sign - "$dest_app" 2>/dev/null || true
+  # Preserve the app's code signature from the DMG. Ad-hoc re-signing on every
+  # install forces macOS to re-prompt for Folders / Photos / Automation (TCC).
+  xattr -dr com.apple.quarantine "$dest_app" 2>/dev/null || true
 
   if [[ -n "${MOUNT_POINT:-}" && -d "${MOUNT_POINT}" ]]; then
     hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null || true

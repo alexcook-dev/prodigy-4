@@ -367,14 +367,20 @@ final class AppUpdateService: ObservableObject {
             try FileManager.default.removeItem(at: versionedDMG)
         }
         try FileManager.default.copyItem(at: dmgURL, to: versionedDMG)
-        _ = try? run("/usr/bin/xattr", arguments: ["-cr", versionedDMG.path])
+        _ = try? run(
+            "/usr/bin/xattr",
+            arguments: ["-dr", "com.apple.quarantine", versionedDMG.path]
+        )
 
         if versionedDMG.path != stableDMG.path {
             if FileManager.default.fileExists(atPath: stableDMG.path) {
                 try? FileManager.default.removeItem(at: stableDMG)
             }
             try FileManager.default.copyItem(at: versionedDMG, to: stableDMG)
-            _ = try? run("/usr/bin/xattr", arguments: ["-cr", stableDMG.path])
+            _ = try? run(
+                "/usr/bin/xattr",
+                arguments: ["-dr", "com.apple.quarantine", stableDMG.path]
+            )
         }
 
         let attach = try run(
@@ -397,26 +403,65 @@ final class AppUpdateService: ObservableObject {
         if FileManager.default.fileExists(atPath: dest.path) {
             try FileManager.default.removeItem(at: dest)
         }
+        // ditto preserves the signature from the DMG. Do NOT ad-hoc re-sign —
+        // each `codesign -s -` creates a new CDHash and macOS re-prompts for
+        // Folders / Photos / Automation every update.
         _ = try run("/usr/bin/ditto", arguments: [src.path, dest.path])
-        _ = try? run("/usr/bin/xattr", arguments: ["-cr", dest.path])
-        _ = try? run("/usr/bin/codesign", arguments: ["--force", "--deep", "--sign", "-", dest.path])
+        // Drop quarantine only; leave other xattrs/signature alone.
+        _ = try? run(
+            "/usr/bin/xattr",
+            arguments: ["-dr", "com.apple.quarantine", dest.path]
+        )
         return dest
     }
 
     private func offerRelaunch(installedVersion: String, appURL: URL) {
         let alert = NSAlert()
         alert.messageText = "Prodigy \(installedVersion) installed"
-        alert.informativeText = "The DMG is in Applications. Restart Prodigy to use the new version."
+        alert.informativeText = "Relaunch to use the new version. Folder and Photos access should stay granted."
         alert.alertStyle = .informational
         alert.addButton(withTitle: "Relaunch")
         alert.addButton(withTitle: "Later")
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            NSWorkspace.shared.openApplication(at: appURL, configuration: NSWorkspace.OpenConfiguration()) { _, _ in
-                DispatchQueue.main.async {
-                    NSApp.terminate(nil)
-                }
-            }
+            relaunchAfterQuit(appURL: appURL)
+        }
+    }
+
+    /// Quit this process, then open the newly installed app once we're gone.
+    /// Opening first then terminating often fails to open (same bundle already running).
+    private func relaunchAfterQuit(appURL: URL) {
+        let path = appURL.path
+        let pid = ProcessInfo.processInfo.processIdentifier
+        // Escape single quotes for the shell.
+        let escaped = path.replacingOccurrences(of: "'", with: "'\\''")
+        let script = """
+        pid=\(pid)
+        app='\(escaped)'
+        # Wait until the current Prodigy process exits (max ~15s).
+        for i in $(seq 1 75); do
+          if ! kill -0 "$pid" 2>/dev/null; then
+            break
+          fi
+          sleep 0.2
+        done
+        sleep 0.4
+        /usr/bin/open "$app"
+        """
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = ["-c", script]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+        } catch {
+            // Fallback: try open now, then quit.
+            NSWorkspace.shared.open(appURL)
+        }
+        // Terminate after the reopener is running so it can detect our exit.
+        DispatchQueue.main.async {
+            NSApp.terminate(nil)
         }
     }
 
