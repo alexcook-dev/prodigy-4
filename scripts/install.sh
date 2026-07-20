@@ -1,201 +1,72 @@
 #!/usr/bin/env bash
-# Install or update production Prodigy.app from the latest GitHub Release.
+# Install or update production Prodigy.app from the latest public GitHub Release.
+# No GitHub login required — the repo and releases are public.
 #
-# Bootstraps anything needed on a clean Mac:
-#   - macOS + bash
-#   - Xcode Command Line Tools (if missing; may open a GUI installer)
-#   - Homebrew
-#   - GitHub CLI (`gh`)
-#   - gh authentication (private repo) unless GH_TOKEN / GITHUB_TOKEN is set
+# Bootstraps only what macOS may lack for a clean machine:
+#   - bash, curl, hdiutil, ditto (system)
+#   - Xcode CLT if missing (needed only if Homebrew is installed later)
+#   - python3 if missing (JSON parse; usually preinstalled on macOS)
 #
 # Usage:
-#   # From a clone:
+#   curl -fsSL https://raw.githubusercontent.com/alexcook-dev/prodigy-4/main/scripts/install.sh | bash
 #   ./scripts/install.sh
 #   ./scripts/install.sh --version v0.1.1
-#
-#   # Recommended private-repo one-liner (after first clone or with gh available):
-#   bash <(gh api repos/alexcook-dev/prodigy-4/contents/scripts/install.sh --jq .content | base64 -d)
-#
-#   INSTALL_DIR=/Applications ./scripts/install.sh
-#   NONINTERACTIVE=1 GH_TOKEN=... ./scripts/install.sh   # CI / unattended
+#   INSTALL_DIR=$HOME/Applications ./scripts/install.sh
+#   NONINTERACTIVE=1 ./scripts/install.sh
 #
 set -euo pipefail
 
-# Prefer a real bash if we were launched under a minimal sh (Homebrew install needs bash).
 if [ -z "${BASH_VERSION:-}" ]; then
   if [ -x /bin/bash ]; then
     exec /bin/bash "$0" "$@"
   fi
-  echo "error: bash is required. Install bash and re-run." >&2
+  echo "error: bash is required." >&2
   exit 1
 fi
 
 REPO="${PRODIGY_REPO:-alexcook-dev/prodigy-4}"
-# Prefer /Applications (system Applications folder). Override with INSTALL_DIR=...
 INSTALL_DIR="${INSTALL_DIR:-}"
 APP_NAME="Prodigy"
-# Stable DMG name left in Applications after install (versioned file kept too).
 DMG_INSTALL_NAME="${APP_NAME}.dmg"
-ASSET_GLOB="${APP_NAME}-*.dmg"
 NONINTERACTIVE="${NONINTERACTIVE:-0}"
 SKIP_DEPS="${PRODIGY_SKIP_DEPS:-0}"
 
 REQUESTED_VERSION=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --version)
-      REQUESTED_VERSION="${2:-}"
-      shift 2
-      ;;
-    --skip-deps)
-      SKIP_DEPS=1
-      shift
-      ;;
+    --version) REQUESTED_VERSION="${2:-}"; shift 2 ;;
+    --skip-deps) SKIP_DEPS=1; shift ;;
     -h|--help)
-      sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     -*)
       echo "Unknown flag: $1" >&2
       exit 2
       ;;
-    *)
-      REQUESTED_VERSION="$1"
-      shift
-      ;;
+    *) REQUESTED_VERSION="$1"; shift ;;
   esac
 done
 
 log()  { printf '==> %s\n' "$*"; }
 note() { printf '    %s\n' "$*"; }
 die()  { printf 'error: %s\n' "$*" >&2; exit 1; }
-
-# ---------------------------------------------------------------------------
-# Platform + core tools that ship with (or alongside) macOS
-# ---------------------------------------------------------------------------
+have_cmd() { command -v "$1" >/dev/null 2>&1; }
 
 ensure_macos() {
   [[ "$(uname -s)" == "Darwin" ]] || die "Prodigy install is only supported on macOS."
 }
 
 ensure_bash() {
-  if ! command -v bash >/dev/null 2>&1; then
-    die "bash not found. macOS always includes /bin/bash — is PATH broken?"
-  fi
-  # Homebrew's bash is nicer for scripts, but system bash is enough.
-  note "bash: $(command -v bash) (${BASH_VERSION})"
+  have_cmd bash || die "bash not found"
+  note "bash: $(command -v bash)"
 }
 
-have_cmd() { command -v "$1" >/dev/null 2>&1; }
-
-# ---------------------------------------------------------------------------
-# Xcode Command Line Tools (git, clang — required by Homebrew)
-# ---------------------------------------------------------------------------
-
-ensure_xcode_clt() {
-  if xcode-select -p >/dev/null 2>&1; then
-    note "Xcode CLT: $(xcode-select -p)"
-    return 0
-  fi
-
-  log "Installing Xcode Command Line Tools (needed for Homebrew/git)"
-  if [[ "$NONINTERACTIVE" == "1" ]]; then
-    # Touch the softwareupdate flag file and try CLI install path.
-    touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress 2>/dev/null || true
-    local label
-    label="$(softwareupdate -l 2>/dev/null | awk -F'*' '/Command Line Tools/{print $2}' | sed 's/^ *//' | tail -1)" || true
-    if [[ -n "${label:-}" ]]; then
-      softwareupdate -i "$label" --verbose || true
-    fi
-    rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress 2>/dev/null || true
-    xcode-select -p >/dev/null 2>&1 || die "Xcode CLT still missing. Run: xcode-select --install  then re-run this script."
-    return 0
-  fi
-
-  echo ""
-  echo "A macOS dialog will open to install Command Line Tools."
-  echo "Finish that installer, then press Enter here to continue."
-  xcode-select --install 2>/dev/null || true
-  read -r -p "Press Enter after Command Line Tools are installed… " _
-  xcode-select -p >/dev/null 2>&1 || die "Xcode CLT still not found. Install them and re-run."
-}
-
-# ---------------------------------------------------------------------------
-# Homebrew
-# ---------------------------------------------------------------------------
-
-brew_prefix_guess() {
-  if [[ -x /opt/homebrew/bin/brew ]]; then
-    echo /opt/homebrew
-  elif [[ -x /usr/local/bin/brew ]]; then
-    echo /usr/local
-  else
-    echo ""
-  fi
-}
-
-load_brew_env() {
-  local prefix
-  prefix="$(brew_prefix_guess)"
-  if [[ -n "$prefix" && -x "${prefix}/bin/brew" ]]; then
-    # shellcheck disable=SC1091
-    eval "$("${prefix}/bin/brew" shellenv)"
-  fi
-  if have_cmd brew; then
-    return 0
-  fi
-  return 1
-}
-
-ensure_homebrew() {
-  if load_brew_env; then
-    note "Homebrew: $(command -v brew) ($(brew --version 2>/dev/null | head -1))"
-    return 0
-  fi
-
-  log "Installing Homebrew"
-  if [[ "$NONINTERACTIVE" == "1" ]]; then
-    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  else
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  fi
-
-  load_brew_env || die "Homebrew installed but not on PATH. Open a new terminal or add brew to PATH, then re-run."
-  note "Homebrew: $(command -v brew)"
-
-  # Persist shellenv hint for the user (do not silently rewrite their rc without asking).
-  local prefix
-  prefix="$(brew_prefix_guess)"
-  if [[ -n "$prefix" ]]; then
-    note "Add to your shell profile if brew is missing later:"
-    note "  eval \"\$(${prefix}/bin/brew shellenv)\""
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# Formulae: gh (required for private releases), curl is system
-# ---------------------------------------------------------------------------
-
-brew_install_if_missing() {
-  local formula="$1"
-  if have_cmd "$formula"; then
-    note "$formula: $(command -v "$formula")"
-    return 0
-  fi
-  # Some tools use different binary names than formulae.
-  case "$formula" in
-    gh)
-      if have_cmd gh; then note "gh: $(command -v gh)"; return 0; fi
-      ;;
-  esac
-  log "Installing $formula via Homebrew"
-  brew install "$formula"
-}
-
-ensure_gh() {
-  brew_install_if_missing gh
-  have_cmd gh || die "gh CLI not available after brew install"
-  note "gh: $(gh --version 2>/dev/null | head -1)"
+ensure_macos_utils() {
+  for c in curl hdiutil ditto plutil xattr codesign osascript pgrep open mktemp; do
+    have_cmd "$c" || die "missing required macOS tool: $c"
+  done
+  note "macOS tools OK (curl, hdiutil, ditto, …)"
 }
 
 ensure_python3() {
@@ -203,74 +74,22 @@ ensure_python3() {
     note "python3: $(command -v python3)"
     return 0
   fi
-  log "Installing python3 via Homebrew (JSON parsing fallback)"
-  brew install python
-  have_cmd python3 || die "python3 still missing"
+  # Rare on modern macOS — try CLT / leave a clear message (no brew/gh required).
+  die "python3 not found. Install Xcode Command Line Tools (xcode-select --install) and re-run."
 }
-
-ensure_macos_utils() {
-  # These are built into macOS; fail clearly if something is very wrong.
-  for c in curl hdiutil ditto plutil xattr codesign osascript pgrep open mktemp; do
-    have_cmd "$c" || die "missing required macOS tool: $c"
-  done
-  note "macOS tools: curl, hdiutil, ditto, plutil OK"
-}
-
-# ---------------------------------------------------------------------------
-# GitHub auth (private repo)
-# ---------------------------------------------------------------------------
-
-ensure_github_auth() {
-  if [[ -n "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]]; then
-    export GH_TOKEN="${GH_TOKEN:-$GITHUB_TOKEN}"
-    note "Using GH_TOKEN / GITHUB_TOKEN for GitHub API"
-    return 0
-  fi
-
-  if gh auth status >/dev/null 2>&1; then
-    note "gh auth: already logged in"
-    return 0
-  fi
-
-  log "GitHub login required (private repo: ${REPO})"
-  if [[ "$NONINTERACTIVE" == "1" ]]; then
-    die "Not authenticated. Set GH_TOKEN or run interactively: gh auth login"
-  fi
-
-  echo ""
-  echo "Opening GitHub CLI login. Choose HTTPS and authenticate in the browser."
-  echo ""
-  gh auth login -h github.com -p https -w || die "gh auth login failed"
-  gh auth status >/dev/null 2>&1 || die "Still not authenticated after gh auth login"
-  note "gh auth: OK"
-}
-
-# ---------------------------------------------------------------------------
-# Bootstrap all deps
-# ---------------------------------------------------------------------------
 
 bootstrap_deps() {
   if [[ "$SKIP_DEPS" == "1" ]]; then
-    log "Skipping dependency bootstrap (PRODIGY_SKIP_DEPS / --skip-deps)"
-    load_brew_env || true
+    log "Skipping dependency checks (--skip-deps)"
     return 0
   fi
-
-  log "Checking / installing dependencies"
+  log "Checking dependencies (no GitHub login required)"
   ensure_macos
   ensure_bash
   ensure_macos_utils
-  ensure_xcode_clt
-  ensure_homebrew
-  ensure_gh
   ensure_python3
-  ensure_github_auth
   log "Dependencies ready"
 }
-
-# ---------------------------------------------------------------------------
-# Download + install app
-# ---------------------------------------------------------------------------
 
 TMPDIR_ROOT="$(mktemp -d -t prodigy-install)"
 MOUNT_POINT=""
@@ -282,51 +101,23 @@ cleanup() {
 }
 trap cleanup EXIT
 
-auth_header=()
-refresh_auth_header() {
-  auth_header=()
-  if [[ -n "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]]; then
-    auth_header=(-H "Authorization: Bearer ${GH_TOKEN:-$GITHUB_TOKEN}")
-  elif have_cmd gh && gh auth status >/dev/null 2>&1; then
-    local tok
-    tok="$(gh auth token 2>/dev/null || true)"
-    if [[ -n "$tok" ]]; then
-      auth_header=(-H "Authorization: Bearer ${tok}")
-    fi
-  fi
-}
-
+# Public GitHub API — no Authorization header.
 api() {
   local path="$1"
   curl -fsSL \
     -H "Accept: application/vnd.github+json" \
     -H "X-GitHub-Api-Version: 2022-11-28" \
-    "${auth_header[@]}" \
     "https://api.github.com/repos/${REPO}${path}"
 }
 
-download_with_gh() {
-  local tag="$1"
-  local out="$2"
-  if [[ -n "$tag" ]]; then
-    # Accept tag with or without leading v
-    if [[ "$tag" != v* ]]; then
-      tag="v${tag}"
-    fi
-    gh release download "$tag" -R "$REPO" -p "$ASSET_GLOB" -D "$out"
-  else
-    gh release download -R "$REPO" -p "$ASSET_GLOB" -D "$out"
-  fi
-}
-
-download_with_api() {
+# Download Prodigy-*.dmg via public browser_download_url (no auth).
+download_dmg() {
   local tag="$1"
   local out_dir="$2"
   local json_file="${out_dir}/release.json"
+
   if [[ -n "$tag" ]]; then
-    if [[ "$tag" != v* ]]; then
-      tag="v${tag}"
-    fi
+    [[ "$tag" == v* ]] || tag="v${tag}"
     api "/releases/tags/${tag}" > "$json_file"
   else
     api "/releases/latest" > "$json_file"
@@ -340,39 +131,36 @@ with open(sys.argv[1], encoding="utf-8") as f:
 for a in data.get("assets") or []:
     name = a.get("name") or ""
     if name.startswith("Prodigy-") and name.endswith(".dmg"):
-        print(a["url"] + "\t" + name)
-        raise SystemExit(0)
+        url = a.get("browser_download_url") or ""
+        if url:
+            print(url + "\t" + name)
+            raise SystemExit(0)
 raise SystemExit(1)
 PY
-)" || die "no Prodigy-*.dmg asset on release ${tag:-latest}"
+)" || die "no public Prodigy-*.dmg on release ${tag:-latest}"
 
-  local asset_api_url asset_name
-  asset_api_url="${parsed%%$'\t'*}"
+  local download_url asset_name
+  download_url="${parsed%%$'\t'*}"
   asset_name="${parsed#*$'\t'}"
-  [[ -n "$asset_api_url" && -n "$asset_name" ]] || die "could not resolve DMG asset URL"
+  [[ -n "$download_url" && -n "$asset_name" ]] || die "could not resolve DMG download URL"
 
   local dest="${out_dir}/${asset_name}"
-  curl -fsSL \
-    -H "Accept: application/octet-stream" \
-    "${auth_header[@]}" \
-    -o "$dest" \
-    "$asset_api_url"
+  log "Downloading ${asset_name} (public release, no login)"
+  note "$download_url"
+  curl -fL --progress-bar -o "$dest" "$download_url"
   echo "$dest"
 }
 
-# Resolve Applications folder: prefer /Applications, fall back to ~/Applications.
 resolve_install_dir() {
   if [[ -n "${INSTALL_DIR}" ]]; then
     echo "${INSTALL_DIR}"
     return 0
   fi
-  if [[ -d /Applications ]] && ( touch /Applications/.prodigy-write-test 2>/dev/null ); then
+  if [[ -d /Applications ]] && touch /Applications/.prodigy-write-test 2>/dev/null; then
     rm -f /Applications/.prodigy-write-test
     echo /Applications
     return 0
   fi
-  # /Applications exists but not writable without elevation — still try /Applications
-  # for the DMG path; copy may prompt via ditto failure and we fall back.
   if [[ -d /Applications ]]; then
     echo /Applications
     return 0
@@ -380,49 +168,34 @@ resolve_install_dir() {
   echo "${HOME}/Applications"
 }
 
-# Copy a file into Applications; use sudo only if needed and interactive.
 install_file_to_dir() {
-  local src="$1"
-  local dest="$2"
-  local dest_dir
+  local src="$1" dest="$2" dest_dir
   dest_dir="$(dirname "$dest")"
   mkdir -p "$dest_dir" 2>/dev/null || true
-
-  if cp -f "$src" "$dest" 2>/dev/null; then
+  if cp -f "$src" "$dest" 2>/dev/null || ditto "$src" "$dest" 2>/dev/null; then
     return 0
   fi
-  if ditto "$src" "$dest" 2>/dev/null; then
-    return 0
-  fi
-
   if [[ "$NONINTERACTIVE" == "1" ]]; then
-    die "cannot write ${dest} (no permission). Re-run with write access to Applications or set INSTALL_DIR=\$HOME/Applications"
+    die "cannot write ${dest}. Try INSTALL_DIR=\$HOME/Applications"
   fi
-
   log "Need administrator permission to write ${dest}"
   sudo mkdir -p "$dest_dir"
   sudo cp -f "$src" "$dest"
 }
 
 install_dir_to_dir() {
-  local src="$1"
-  local dest="$2"
-  local dest_dir
+  local src="$1" dest="$2" dest_dir
   dest_dir="$(dirname "$dest")"
   mkdir -p "$dest_dir" 2>/dev/null || true
-
   if [[ -e "$dest" ]]; then
     rm -rf "$dest" 2>/dev/null || sudo rm -rf "$dest"
   fi
-
   if ditto "$src" "$dest" 2>/dev/null; then
     return 0
   fi
-
   if [[ "$NONINTERACTIVE" == "1" ]]; then
-    die "cannot write ${dest}. Set INSTALL_DIR=\$HOME/Applications or fix permissions."
+    die "cannot write ${dest}. Try INSTALL_DIR=\$HOME/Applications"
   fi
-
   log "Need administrator permission to install ${dest}"
   sudo mkdir -p "$dest_dir"
   sudo rm -rf "$dest"
@@ -434,43 +207,29 @@ install_app() {
   apps_dir="$(resolve_install_dir)"
   INSTALL_DIR="$apps_dir"
 
-  log "Installing production ${APP_NAME} from GitHub (${REPO})"
+  log "Installing production ${APP_NAME} from public GitHub releases (${REPO})"
   note "Applications folder: ${apps_dir}"
   note "Will place: ${apps_dir}/${DMG_INSTALL_NAME}  (DMG package)"
-  note "       and: ${apps_dir}/${APP_NAME}.app      (runnable app from that DMG)"
-  note "Xcode Debug builds use Prodigy Dev — they will not overwrite this."
+  note "       and: ${apps_dir}/${APP_NAME}.app      (app from that DMG)"
 
   mkdir -p "$TMPDIR_ROOT/dl"
-  refresh_auth_header
-
-  local dmg=""
-  if have_cmd gh && gh auth status >/dev/null 2>&1; then
-    log "Downloading with gh"
-    download_with_gh "${REQUESTED_VERSION}" "$TMPDIR_ROOT/dl"
-    dmg="$(find "$TMPDIR_ROOT/dl" -maxdepth 1 -name 'Prodigy-*.dmg' | head -1)"
-  else
-    log "Downloading with GitHub API"
-    dmg="$(download_with_api "${REQUESTED_VERSION}" "$TMPDIR_ROOT/dl")"
-  fi
-
+  local dmg
+  dmg="$(download_dmg "${REQUESTED_VERSION}" "$TMPDIR_ROOT/dl")"
   [[ -n "$dmg" && -f "$dmg" ]] || die "DMG not downloaded"
 
-  local dmg_basename
+  local dmg_basename dmg_in_apps dmg_stable
   dmg_basename="$(basename "$dmg")"
-  local dmg_in_apps="${apps_dir}/${dmg_basename}"
-  local dmg_stable="${apps_dir}/${DMG_INSTALL_NAME}"
+  dmg_in_apps="${apps_dir}/${dmg_basename}"
+  dmg_stable="${apps_dir}/${DMG_INSTALL_NAME}"
 
-  # 1) Install the DMG itself into Applications (versioned + stable Prodigy.dmg).
   log "Installing DMG into Applications → ${dmg_in_apps}"
   install_file_to_dir "$dmg" "$dmg_in_apps"
   xattr -cr "$dmg_in_apps" 2>/dev/null || true
   if [[ "$dmg_in_apps" != "$dmg_stable" ]]; then
-    log "Linking stable name → ${dmg_stable}"
     install_file_to_dir "$dmg" "$dmg_stable"
     xattr -cr "$dmg_stable" 2>/dev/null || true
   fi
 
-  # 2) Mount the Applications copy and install Prodigy.app next to it.
   log "Mounting ${dmg_in_apps}"
   local attach_out
   attach_out="$(hdiutil attach "$dmg_in_apps" -nobrowse -readonly)"
@@ -492,7 +251,6 @@ install_app() {
   xattr -cr "$dest_app" 2>/dev/null || true
   codesign --force --deep --sign - "$dest_app" 2>/dev/null || true
 
-  # Detach before we finish so the DMG file isn't busy.
   if [[ -n "${MOUNT_POINT:-}" && -d "${MOUNT_POINT}" ]]; then
     hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null || true
     MOUNT_POINT=""
@@ -500,20 +258,13 @@ install_app() {
 
   echo ""
   log "Installed package (DMG):  ${dmg_in_apps}"
-  if [[ -f "$dmg_stable" && "$dmg_stable" != "$dmg_in_apps" ]]; then
-    note "Stable alias:             ${dmg_stable}"
-  fi
+  [[ -f "$dmg_stable" && "$dmg_stable" != "$dmg_in_apps" ]] && note "Stable alias: ${dmg_stable}"
   log "Installed application:    ${dest_app}"
   plutil -p "${dest_app}/Contents/Info.plist" | grep -E 'CFBundle(Identifier|Name|ShortVersionString|DisplayName)' || true
   echo ""
   note "Open with:  open \"${dest_app}\""
-  note "Open DMG:   open \"${dmg_in_apps}\""
-  note "Dev tip:    Xcode Run builds 'Prodigy Dev' — separate from this install."
+  note "No GitHub account or login is required for installs or updates."
 }
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 bootstrap_deps
 install_app

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Package a DMG and publish a GitHub Release (private repo OK via gh auth).
+# Package a DMG and publish a GitHub Release (public assets — no end-user auth).
 #
 # Usage:
 #   ./scripts/release.sh              # VERSION file
@@ -45,17 +45,13 @@ Production macOS app (separate from Xcode **Prodigy Dev** builds).
 
 ### Install (terminal)
 
-\`scripts/install.sh\` bootstraps Homebrew, \`gh\`, and GitHub auth if needed, then installs the DMG:
+No GitHub login required for end users:
 
 \`\`\`bash
-# from a clone
-./scripts/install.sh
-
-# or after gh is available
-bash <(gh api repos/alexcook-dev/prodigy-4/contents/scripts/install.sh --jq .content | base64 -d)
+curl -fsSL https://raw.githubusercontent.com/alexcook-dev/prodigy-4/main/scripts/install.sh | bash
 \`\`\`
 
-Installs to \`~/Applications/Prodigy.app\` (\`dev.alexcook.Prodigy\`).
+Installs the DMG + app into \`/Applications\` (\`dev.alexcook.Prodigy\`).
 
 ### Manual
 

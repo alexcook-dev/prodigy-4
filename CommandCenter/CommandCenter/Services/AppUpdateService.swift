@@ -1,11 +1,11 @@
 import AppKit
 import Foundation
 
-/// Checks GitHub Releases for a newer production Prodigy build and can install
-/// the DMG in-place (private repo via `gh auth token` / `GH_TOKEN`).
+/// Checks public GitHub Releases for a newer production Prodigy build and can
+/// install the DMG in-place. **No GitHub login** — assets use public download URLs.
 ///
 /// Only the production app (`dev.alexcook.Prodigy`) auto-checks and shows the
-/// update banner. Dev builds (`Prodigy Dev`) skip auto-check so Xcode runs stay quiet.
+/// update toast. Dev builds (`Prodigy Dev`) skip auto-check so Xcode runs stay quiet.
 @MainActor
 final class AppUpdateService: ObservableObject {
     static let shared = AppUpdateService()
@@ -19,7 +19,8 @@ final class AppUpdateService: ObservableObject {
         let version: String
         let tag: String
         let notes: String
-        let dmgAPIURL: URL
+        /// Public `browser_download_url` (no auth).
+        let dmgDownloadURL: URL
         let dmgName: String
         let htmlURL: URL?
     }
@@ -88,8 +89,7 @@ final class AppUpdateService: ObservableObject {
 
         phase = .checking
         do {
-            let token = try await resolveGitHubToken()
-            let release = try await fetchLatestRelease(token: token)
+            let release = try await fetchLatestRelease()
             lastCheckedAt = Date()
             defaults.set(lastCheckedAt, forKey: lastCheckKey)
 
@@ -99,9 +99,6 @@ final class AppUpdateService: ObservableObject {
                 phase = .available(release)
             } else {
                 phase = .upToDate
-                if userInitiated {
-                    // Keep upToDate so Settings can show "You're on the latest".
-                }
             }
         } catch {
             phase = .failed(error.localizedDescription)
@@ -118,9 +115,8 @@ final class AppUpdateService: ObservableObject {
     func installAvailableUpdate() async {
         guard case .available(let update) = phase else { return }
         do {
-            let token = try await resolveGitHubToken()
             phase = .downloading(fraction: nil)
-            let dmgURL = try await downloadDMG(update: update, token: token) { [weak self] fraction in
+            let dmgURL = try await downloadDMG(update: update) { [weak self] fraction in
                 Task { @MainActor in
                     self?.phase = .downloading(fraction: fraction)
                 }
@@ -165,23 +161,16 @@ final class AppUpdateService: ObservableObject {
         let browser_download_url: String?
     }
 
-    private func fetchLatestRelease(token: String?) async throws -> AvailableUpdate {
+    private func fetchLatestRelease() async throws -> AvailableUpdate {
         let url = URL(string: "https://api.github.com/repos/\(Self.repoSlug)/releases/latest")!
         var request = URLRequest(url: url)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
-        if let token, !token.isEmpty {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        // Public repo — no Authorization header.
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw UpdateError.network("Invalid response from GitHub")
-        }
-        if http.statusCode == 401 || http.statusCode == 403 {
-            throw UpdateError.auth(
-                "GitHub auth required (private repo). Run `gh auth login` in Terminal, then try again."
-            )
         }
         if http.statusCode == 404 {
             throw UpdateError.network("No releases found for \(Self.repoSlug).")
@@ -198,14 +187,16 @@ final class AppUpdateService: ObservableObject {
         }) else {
             throw UpdateError.network("Release \(dto.tag_name) has no Prodigy-*.dmg asset.")
         }
-        guard let apiURL = URL(string: asset.url) else {
+        // Prefer public browser URL so downloads never need auth.
+        let downloadString = asset.browser_download_url ?? asset.url
+        guard let downloadURL = URL(string: downloadString) else {
             throw UpdateError.network("Invalid asset URL")
         }
         return AvailableUpdate(
             version: version,
             tag: dto.tag_name,
             notes: (dto.body ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
-            dmgAPIURL: apiURL,
+            dmgDownloadURL: downloadURL,
             dmgName: asset.name,
             htmlURL: dto.html_url.flatMap(URL.init(string:))
         )
@@ -213,14 +204,11 @@ final class AppUpdateService: ObservableObject {
 
     private func downloadDMG(
         update: AvailableUpdate,
-        token: String?,
         onProgress: @escaping @Sendable (Double?) -> Void
     ) async throws -> URL {
-        var request = URLRequest(url: update.dmgAPIURL)
+        var request = URLRequest(url: update.dmgDownloadURL)
+        // Public asset CDN — plain GET, no Authorization.
         request.setValue("application/octet-stream", forHTTPHeaderField: "Accept")
-        if let token, !token.isEmpty {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
 
         onProgress(nil)
         let (tempURL, response) = try await URLSession.shared.download(for: request)
@@ -326,40 +314,6 @@ final class AppUpdateService: ObservableObject {
                 }
             }
         }
-    }
-
-    // MARK: - Auth
-
-    private func resolveGitHubToken() async throws -> String? {
-        if let env = ProcessInfo.processInfo.environment["GH_TOKEN"] ?? ProcessInfo.processInfo.environment["GITHUB_TOKEN"],
-           !env.isEmpty {
-            return env
-        }
-        if let fromGh = try? await runGhAuthToken(), !fromGh.isEmpty {
-            return fromGh
-        }
-        // Private repo will fail without token; still try unauthenticated for public forks.
-        return nil
-    }
-
-    private func runGhAuthToken() async throws -> String {
-        try await Task.detached(priority: .userInitiated) {
-            let gh = AppUpdateService.whichGh()
-            let result = try AppUpdateService.runProcess(gh, arguments: ["auth", "token"])
-            return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-        }.value
-    }
-
-    nonisolated private static func whichGh() -> String {
-        let candidates = [
-            "/opt/homebrew/bin/gh",
-            "/usr/local/bin/gh",
-            "/usr/bin/gh",
-        ]
-        for path in candidates where FileManager.default.isExecutableFile(atPath: path) {
-            return path
-        }
-        return "gh"
     }
 
     // MARK: - Process helpers

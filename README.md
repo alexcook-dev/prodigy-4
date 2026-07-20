@@ -4,47 +4,31 @@ Native macOS workspace shell (Command Center) — chat, files, terminal, Safari,
 
 ## Install production app (terminal)
 
-`scripts/install.sh` bootstraps a clean Mac as needed:
+**No GitHub account or login required.** The repo and release assets are public.
 
-| Dependency | What the script does |
-|---|---|
-| **bash** | Uses `/bin/bash` (re-exec if needed) |
-| **Xcode CLT** | Installs if missing (`xcode-select`) |
-| **Homebrew** | Official installer if missing |
-| **GitHub CLI (`gh`)** | `brew install gh` if missing |
-| **GitHub auth** | `gh auth login` (or use `GH_TOKEN`) for this private repo |
-| **python3** | `brew install python` only if missing |
+One-liner:
 
-Then downloads the latest **Prodigy-*.dmg** release and installs into **Applications**:
+```bash
+curl -fsSL https://raw.githubusercontent.com/alexcook-dev/prodigy-4/main/scripts/install.sh | bash
+```
+
+Or from a clone:
+
+```bash
+./scripts/install.sh
+# pin a version:
+./scripts/install.sh --version v0.1.1
+```
+
+Installs into **Applications**:
 
 - `/Applications/Prodigy-<version>.dmg` (package kept on disk)
-- `/Applications/Prodigy.dmg` (stable name, same file)
-- `/Applications/Prodigy.app` (app extracted from that DMG)
+- `/Applications/Prodigy.dmg` (stable name)
+- `/Applications/Prodigy.app` (app from that DMG)
 
-Falls back to `~/Applications` if `/Applications` is not writable. Override with `INSTALL_DIR=...`.
+Falls back to `~/Applications` if needed. Override with `INSTALL_DIR=...`.
 
-### First install (from this repo)
-
-```bash
-git clone https://github.com/alexcook-dev/prodigy-4.git
-cd prodigy-4
-./scripts/install.sh
-```
-
-Pin a version: `./scripts/install.sh --version v0.1.1`
-
-### Later / no clone (private repo, after `gh` exists)
-
-```bash
-bash <(gh api repos/alexcook-dev/prodigy-4/contents/scripts/install.sh --jq .content | base64 -d)
-```
-
-Unattended (CI): `NONINTERACTIVE=1 GH_TOKEN=… ./scripts/install.sh`  
-Skip brew/gh bootstrap: `./scripts/install.sh --skip-deps`
-
-Installs the **DMG + app** into Applications (`dev.alexcook.Prodigy`).
-
-Releases: https://github.com/alexcook-dev/prodigy-4/releases
+Manual download: https://github.com/alexcook-dev/prodigy-4/releases
 
 ## Dev vs production (important)
 
@@ -59,9 +43,9 @@ Preferences, SwiftData, and dock icons stay separate because the bundle IDs diff
 
 ### In-app updates (production)
 
-Production **Prodigy** checks GitHub Releases on launch (every ~6 hours) and shows an **Update** banner when a newer `Prodigy-*.dmg` is available. Also: **Prodigy → Check for Updates…** and **Settings → Updates**.
+Production **Prodigy** checks public GitHub Releases on launch (every ~6 hours) and shows a **bottom-left toast** when a newer DMG is available. Also: **Check for Updates…** and **Settings → Updates**.
 
-Uses `gh auth token` (or `GH_TOKEN`) because the repo is private. Tap **Update** to download the DMG and replace `~/Applications/Prodigy.app`.
+No login required — tap **Update** to download and install into Applications.
 
 ## Ship a new production build
 
