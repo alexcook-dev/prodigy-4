@@ -45,13 +45,15 @@ Production macOS app (separate from Xcode **Prodigy Dev** builds).
 
 ### Install (terminal)
 
-Private repo — use GitHub CLI auth (\`gh auth login\` once):
+\`scripts/install.sh\` bootstraps Homebrew, \`gh\`, and GitHub auth if needed, then installs the DMG:
 
 \`\`\`bash
+# from a clone
+./scripts/install.sh
+
+# or after gh is available
 bash <(gh api repos/alexcook-dev/prodigy-4/contents/scripts/install.sh --jq .content | base64 -d)
 \`\`\`
-
-Or from a clone: \`./scripts/install.sh\`
 
 Installs to \`~/Applications/Prodigy.app\` (\`dev.alexcook.Prodigy\`).
 
