@@ -98,11 +98,9 @@ struct CenterPaneView: View {
                 }
             }
         }
+        // Fill the full middle column — only the 1pt split hairlines separate sides.
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.centerBackground)
-        // Cap chat reading width on large displays; column still fills.
-        .frame(maxWidth: LayoutMetrics.maxReadingWidth)
-        .frame(maxWidth: .infinity)
         // ⌘L focuses composer (sc4); ⌘⏎ discuss-in-chat stages a path ref.
         .onKeyPress(KeyEquivalent("l"), phases: .down) { press in
             guard press.modifiers.contains(.command) else { return .ignored }
