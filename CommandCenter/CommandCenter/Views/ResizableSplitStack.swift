@@ -1,9 +1,9 @@
 import AppKit
 import SwiftUI
 
-/// Two stacked panes with a **gap handle** between them (not a drawn line).
-/// Drag the handle to resize; min/max heights prevent overlap. Hover shows a
-/// tooltip and a vertical-resize cursor (Finder / Xcode pattern).
+/// Two stacked panes with a **hairline drag handle** between them (sc1).
+/// Drag to resize; min/max heights prevent overlap. Hover shows a tooltip and
+/// vertical-resize cursor.
 struct ResizableVStack<Top: View, Bottom: View>: View {
     /// Fraction of available height given to the top pane (0…1), excluding gap.
     @Binding var topFraction: Double
@@ -14,7 +14,7 @@ struct ResizableVStack<Top: View, Bottom: View>: View {
     var maxTopFraction: Double = LayoutMetrics.nestedPaneMaxFraction
     /// Cap how large the bottom pane can grow (symmetric clamp on top).
     var maxBottomFraction: Double = LayoutMetrics.nestedPaneMaxFraction
-    var gap: CGFloat = LiquidGlassMetrics.interPaneGap
+    var gap: CGFloat = LiquidGlassMetrics.columnDividerWidth
     var tooltip: String = "Drag to resize"
 
     @ViewBuilder var top: () -> Top
@@ -23,7 +23,9 @@ struct ResizableVStack<Top: View, Bottom: View>: View {
     var body: some View {
         GeometryReader { geo in
             let total = max(geo.size.height, 1)
-            let free = max(total - gap, 1)
+            // Hit target is slightly thicker than the drawn hairline for usability.
+            let hit = max(gap, 5)
+            let free = max(total - hit, 1)
             let clamped = Self.clampFraction(
                 topFraction,
                 free: free,
@@ -40,22 +42,29 @@ struct ResizableVStack<Top: View, Bottom: View>: View {
                     .frame(width: geo.size.width, height: topH, alignment: .top)
                     .clipped()
 
-                ResizeHandle(
-                    axis: .vertical,
-                    tooltip: tooltip,
-                    onDrag: { delta in
-                        let next = topFraction + Double(delta / free)
-                        topFraction = Self.clampFraction(
-                            next,
-                            free: free,
-                            minTop: minTop,
-                            minBottom: minBottom,
-                            maxTopFraction: maxTopFraction,
-                            maxBottomFraction: maxBottomFraction
-                        )
-                    }
-                )
-                .frame(width: geo.size.width, height: gap)
+                ZStack {
+                    // Drawn 1pt hairline (sc1 / Cursor separator).
+                    Rectangle()
+                        .fill(Theme.borderHairline)
+                        .frame(height: 1)
+                    ResizeHandle(
+                        axis: .vertical,
+                        tooltip: tooltip,
+                        onDrag: { delta in
+                            let next = topFraction + Double(delta / free)
+                            topFraction = Self.clampFraction(
+                                next,
+                                free: free,
+                                minTop: minTop,
+                                minBottom: minBottom,
+                                maxTopFraction: maxTopFraction,
+                                maxBottomFraction: maxBottomFraction
+                            )
+                        }
+                    )
+                }
+                .frame(width: geo.size.width, height: hit)
+                .contentShape(Rectangle())
 
                 bottom()
                     .frame(width: geo.size.width, height: bottomH, alignment: .top)

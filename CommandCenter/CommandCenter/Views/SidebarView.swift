@@ -1,8 +1,8 @@
 import SwiftData
 import SwiftUI
 
-/// Left sidebar: independent glass cards for Projects, Agents, and Settings —
-/// same card language as Files / Terminal (no dividing line, only uniform gap).
+/// Left sidebar: single flush column (sc1) — Projects / Agents / Settings
+/// stacked edge-to-edge with hairline dividers, not floating glass cards.
 ///
 /// T3: SwiftData-backed lists. T11: creation sheets. T12: archive filter + action.
 /// T17: status-dot a11y labels + keyboard-reachable Archive.
@@ -22,7 +22,9 @@ struct SidebarView: View {
     @State private var renameTarget: WorkspaceProject?
     @State private var renameText = ""
     /// Top (Projects) fraction of free height between Projects + Agents.
-    @AppStorage("prodigy.sidebar.projectsFraction") private var projectsFraction = 0.55
+    // Key bumped so sc1 default wins over the old 0.55 store.
+    @AppStorage("prodigy.sidebar.projectsFraction.v2")
+    private var projectsFraction = LayoutMetrics.sidebarProjectsDefaultFraction
 
     @Query(sort: \WorkspaceProject.lastActiveAt, order: .reverse)
     private var allProjects: [WorkspaceProject]
@@ -38,34 +40,38 @@ struct SidebarView: View {
     }
 
     var body: some View {
-        // Projects + Agents: two glass cards with a **gap handle** (no line).
-        // Settings sits below in its own card. Uniform spacing everywhere.
-        VStack(spacing: LiquidGlassMetrics.interPaneGap) {
+        // Continuous column: Dashboard + Projects | Agents | Settings (sc1–sc4 shell).
+        VStack(spacing: 0) {
+            dashboardRow
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
             ResizableVStack(
                 topFraction: $projectsFraction,
                 minTop: LayoutMetrics.nestedPaneMinHeight,
                 minBottom: LayoutMetrics.nestedPaneMinHeight,
                 maxTopFraction: LayoutMetrics.nestedPaneMaxFraction,
                 maxBottomFraction: LayoutMetrics.nestedPaneMaxFraction,
-                gap: LiquidGlassMetrics.interPaneGap,
+                gap: LiquidGlassMetrics.columnDividerWidth,
                 tooltip: "Drag to resize Projects and Agents"
             ) {
                 projectsSection
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .liquidGlassNested()
             } bottom: {
                 agentsSection
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .liquidGlassNested()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
+            Rectangle()
+                .fill(Theme.borderHairline)
+                .frame(height: 1)
+
             settingsCard
                 .frame(height: LayoutMetrics.settingsCardHeight)
-                .liquidGlassNested()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color.clear)
+        .background(Theme.sidebarBackground)
         .sheet(isPresented: $showProjectSheet) {
             ProjectCreationSheet { project in
                 selection.selectProject(project)
@@ -102,7 +108,42 @@ struct SidebarView: View {
         }
     }
 
-    // MARK: - Settings card (own glass box)
+    // MARK: - Dashboard (sc3)
+
+    private var dashboardRow: some View {
+        let selected = selection.activeSurface == .dashboard
+        return Button {
+            selection.showDashboard()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "square.grid.2x2")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(selected ? Theme.textPrimary : Theme.textSecondary)
+                    .frame(width: 18)
+                    .accessibilityHidden(true)
+
+                Text("Dashboard")
+                    .font(.system(size: 13, weight: selected ? .semibold : .regular))
+                    .foregroundStyle(Theme.textPrimary)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(selected ? Theme.selectionFill : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 8)
+        .accessibilityLabel("Dashboard")
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .help("Project board (sc3)")
+    }
+
+    // MARK: - Settings
 
     private var settingsCard: some View {
         Button {

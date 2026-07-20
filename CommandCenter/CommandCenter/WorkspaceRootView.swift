@@ -27,21 +27,17 @@ struct WorkspaceRootView: View {
     }
 
     var body: some View {
-        // GlassEffectContainer lets neighboring glass shapes share a coherent
-        // sampling layer (WWDC25 Liquid Glass composition).
-        GlassEffectContainer(spacing: LiquidGlassMetrics.interPaneGap) {
-            ZStack(alignment: .trailing) {
-                mainSplit
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(LiquidGlassMetrics.windowInset)
+        // sc1 shell: flush edge-to-edge columns, no outer window padding.
+        ZStack(alignment: .trailing) {
+            mainSplit
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                if isNarrow && isRightColumnDrawerPresented {
-                    rightColumnDrawer
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
-                }
+            if isNarrow && isRightColumnDrawerPresented {
+                rightColumnDrawer
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
-        .background(Color.clear)
+        .background(Theme.appBackground)
         .background(
             GeometryReader { geo in
                 Color.clear
@@ -139,7 +135,7 @@ struct WorkspaceRootView: View {
         Group {
             if isNarrow {
                 PersistableHSplitView(
-                    autosaveName: "CommandCenter.MainSplit.Narrow",
+                    autosaveName: "CommandCenter.MainSplit.Narrow.sc1",
                     panes: [
                         .init(
                             minWidth: LayoutMetrics.sidebarMinWidth,
@@ -159,7 +155,7 @@ struct WorkspaceRootView: View {
                 )
             } else {
                 PersistableHSplitView(
-                    autosaveName: "CommandCenter.MainSplit.Wide",
+                    autosaveName: "CommandCenter.MainSplit.Wide.sc1",
                     panes: [
                         .init(
                             minWidth: LayoutMetrics.sidebarMinWidth,
@@ -190,8 +186,6 @@ struct WorkspaceRootView: View {
     }
 
     private var sidebarPane: some View {
-        // No outer glass slab — Projects and Agents are separate nested cards
-        // (same pattern as Files / Terminal on the right).
         SidebarView(
             selection: selection,
             chat: chat,
@@ -199,12 +193,11 @@ struct WorkspaceRootView: View {
         )
         .contentShape(Rectangle())
         .onTapGesture { focus.focus(.sidebar) }
-        .padding(LiquidGlassMetrics.slotInset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.sidebarBackground)
     }
 
     private var centerPane: some View {
-        // Center is a lighter shell: glass frame with clear reading well so
-        // the message stream stays sharp (Apple guidance: glass = chrome).
         CenterPaneView(
             selection: selection,
             chat: chat,
@@ -216,8 +209,7 @@ struct WorkspaceRootView: View {
         .contentShape(Rectangle())
         .onTapGesture { focus.focus(.chat) }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .liquidGlassCard(cornerRadius: LiquidGlassMetrics.paneCorner)
-        .padding(LiquidGlassMetrics.slotInset)
+        .background(Theme.centerBackground)
     }
 
     private var rightColumn: some View {
@@ -231,19 +223,24 @@ struct WorkspaceRootView: View {
             onFocusTerminal: { focus.focus(.terminal) },
             onPaneShortcut: { focus.focus($0) }
         )
-        .padding(LiquidGlassMetrics.slotInset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // sc1/sc2: right column matches center (not sidebar gray).
+        .background(Theme.centerBackground)
     }
 
     private var rightColumnDrawer: some View {
         HStack(spacing: 0) {
-            Color.black.opacity(0.18)
+            Color.black.opacity(0.28)
                 .contentShape(Rectangle())
                 .onTapGesture { isRightColumnDrawerPresented = false }
 
             rightColumn
                 .frame(width: LayoutMetrics.rightColumnDrawerWidth)
-                .padding(.vertical, LiquidGlassMetrics.windowInset)
-                .padding(.trailing, LiquidGlassMetrics.windowInset)
+                .overlay(alignment: .leading) {
+                    Rectangle()
+                        .fill(Theme.borderHairline)
+                        .frame(width: 1)
+                }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -359,18 +356,20 @@ private struct RightColumnView: View {
     let onFocusTerminal: () -> Void
     let onPaneShortcut: (WorkspacePane) -> Void
 
-    /// Top (Files) fraction of free height between Files + Terminal.
-    @AppStorage("prodigy.rightColumn.filesFraction") private var filesFraction = 0.5
+    /// Top (Files) fraction — sc1 keeps Files larger than Terminal.
+    // Key bumped so sc1 default (Files ~68%) wins over the old 0.5 store.
+    @AppStorage("prodigy.rightColumn.filesFraction.v2")
+    private var filesFraction = LayoutMetrics.rightColumnFilesDefaultFraction
 
     var body: some View {
-        // Two stacked glass cards with a gap handle (min/max, hover tooltip).
+        // Flush stack with 1pt drag handle (sc1 Files over Terminal).
         ResizableVStack(
             topFraction: $filesFraction,
             minTop: LayoutMetrics.nestedPaneMinHeight,
             minBottom: LayoutMetrics.nestedPaneMinHeight,
             maxTopFraction: LayoutMetrics.nestedPaneMaxFraction,
             maxBottomFraction: LayoutMetrics.nestedPaneMaxFraction,
-            gap: LiquidGlassMetrics.interPaneGap,
+            gap: LiquidGlassMetrics.columnDividerWidth,
             tooltip: "Drag to resize Files and Terminal"
         ) {
             FileBrowserPaneView(
@@ -381,7 +380,7 @@ private struct RightColumnView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusFiles)
-            .liquidGlassNested()
+            .background(Theme.centerBackground)
         } bottom: {
             TerminalPaneView(
                 isFocused: terminalFocused,
@@ -390,10 +389,10 @@ private struct RightColumnView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusTerminal)
-            .liquidGlassNested()
+            .background(Theme.terminalBackground)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.clear)
+        .background(Theme.centerBackground)
     }
 }
 

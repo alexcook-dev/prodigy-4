@@ -2,15 +2,17 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-/// Center-pane surface: the active chat thread, or a file-preview tab.
+/// Center-pane surface: chat, file preview, or the project Dashboard (sc3).
 /// V1: tab bar "+" only ever opens file previews — never a second chat thread.
 enum CenterSurface: Hashable, Identifiable {
     case chat
+    case dashboard
     case filePreview(FilePreviewTab)
 
     var id: String {
         switch self {
         case .chat: "chat"
+        case .dashboard: "dashboard"
         case .filePreview(let tab): tab.id.uuidString
         }
     }
@@ -158,6 +160,13 @@ final class WorkspaceSelection: FilePreviewPresenting {
     /// Unconditional "go to Chat tab" (⌘2). Preview tabs stay open in the background.
     func showChat() {
         activeSurface = .chat
+    }
+
+    /// sc3 Dashboard — project board over the center column (files/terminal stay).
+    func showDashboard() {
+        selectedProjectID = nil
+        selectedAgentID = nil
+        activeSurface = .dashboard
     }
 
     // MARK: FilePreviewPresenting (file browser → center pane)

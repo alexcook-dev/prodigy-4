@@ -14,14 +14,15 @@ struct StreamingMarkdownView: View {
     var isPartial: Bool = false
 
     var body: some View {
+        // sc4: readable body on light/dark center well.
         VStack(alignment: .leading, spacing: 6) {
             Text(rendered)
-                .font(.system(size: 13))
+                .font(.system(size: 14))
                 .foregroundStyle(Theme.textPrimary)
                 .tint(Theme.accentText)
                 .textSelection(.enabled)
-                .lineSpacing(3)
-                .frame(maxWidth: 720, alignment: .leading)
+                .lineSpacing(4)
+                .frame(maxWidth: LayoutMetrics.maxReadingWidth, alignment: .leading)
 
             if isPartial {
                 Text("[partial — kept]")

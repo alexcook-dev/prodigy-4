@@ -2,6 +2,11 @@ import SwiftUI
 
 /// User-facing appearance preference (persisted).
 /// Matches System Settings language: System / Light / Dark.
+///
+/// Visual references (Desktop):
+/// - **Dark** → `sc1.png` (workspace shell)
+/// - **Light** → `sc2.png` (workspace empty), `sc3.png` (dashboard),
+///   `sc4.png` (active chat)
 enum AppAppearance: String, CaseIterable, Identifiable {
     case system
     case light

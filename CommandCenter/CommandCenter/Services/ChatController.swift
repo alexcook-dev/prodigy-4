@@ -216,8 +216,9 @@ final class ChatController {
     // MARK: - Error CTA (T13)
 
     enum ErrorCTAAction {
-        /// authentication_failed — switch to terminal so the user can re-auth.
-        case openTerminalToReauth
+        /// authentication_failed — open Terminal with `claude auth login --claudeai`
+        /// so the user signs in with Max/Pro (Claude.ai subscription).
+        case signInWithClaude
         /// billing_error — toggle Details expansion.
         case showDetails
         /// rate_limit / overloaded — Retry the last user turn.
@@ -229,7 +230,7 @@ final class ChatController {
     func ctaAction(for error: ProviderError) -> ErrorCTAAction {
         switch error.category {
         case .authenticationFailed:
-            return .openTerminalToReauth
+            return .signInWithClaude
         case .billingError:
             return .showDetails
         case .rateLimit, .overloaded, .unknown:
@@ -248,7 +249,10 @@ final class ChatController {
         focusTerminal: () -> Void
     ) {
         switch action {
-        case .openTerminalToReauth:
+        case .signInWithClaude:
+            // Prefer a dedicated Terminal.app window with the Max/Pro login
+            // command; still focus the in-app terminal as a secondary cue.
+            _ = ClaudeAuthService.shared.openClaudeAILogin()
             focusTerminal()
         case .showDetails:
             errorDetailsExpanded.toggle()

@@ -19,8 +19,7 @@ struct TerminalPaneView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Nested glass card wraps this view; keep buffer slightly tinted for contrast.
-        .background(Theme.terminalBackground.opacity(0.35))
+        .background(Theme.terminalBackground)
         .onAppear {
             // Clicking the pane focuses the terminal for typing.
         }
@@ -29,23 +28,34 @@ struct TerminalPaneView: View {
     // MARK: - Header
 
     private var panelHeader: some View {
-        HStack {
-            Text(headerLabel)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Theme.textSecondary)
-                .textCase(.uppercase)
-                .tracking(0.6)
-                .lineLimit(1)
+        // sc1-style tab strip: Terminal is the active tab; Setup/Run are chrome placeholders.
+        HStack(spacing: 0) {
+            terminalTab(title: "Setup", selected: false)
+            terminalTab(title: "Run", selected: false)
+            terminalTab(title: "Terminal", selected: true)
 
-            Spacer()
+            Button {
+                // Reserved for multi-terminal sessions later.
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.textTertiary)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("New terminal (coming soon)")
 
-            Image(systemName: "chevron.up")
-                .font(.system(size: 10, weight: .semibold))
+            Spacer(minLength: 8)
+
+            Text(session.headerTitle)
+                .font(.system(size: 11))
                 .foregroundStyle(Theme.textTertiary)
+                .lineLimit(1)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Theme.terminalBackground)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(Theme.centerBackground)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(Theme.borderHairline)
@@ -53,8 +63,20 @@ struct TerminalPaneView: View {
         }
     }
 
-    private var headerLabel: String {
-        "Terminal — \(session.headerTitle)"
+    private func terminalTab(title: String, selected: Bool) -> some View {
+        Text(title)
+            .font(.system(size: 12, weight: selected ? .semibold : .regular))
+            .foregroundStyle(selected ? Theme.textPrimary : Theme.textSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(Color.clear)
+            .overlay(alignment: .bottom) {
+                if selected {
+                    Rectangle()
+                        .fill(Theme.accent)
+                        .frame(height: 2)
+                }
+            }
     }
 
     // MARK: - Terminal body

@@ -1,159 +1,129 @@
 import AppKit
 import SwiftUI
 
-/// Semantic color tokens mapped to **Apple system colors**.
+/// Semantic color tokens for Prodigy’s shell.
 ///
-/// Light and Dark automatically follow the system (or the user’s Prodigy
-/// appearance setting) via `NSColor` dynamic providers — no custom Light/Dark
-/// hex pairs. Matches standard macOS apps (Mail, Notes, Finder lists).
+/// ## Design references (Desktop)
+/// | File | Mode | View |
+/// |------|------|------|
+/// | `sc1.png` | **Dark** | Workspace: chat + files + terminal |
+/// | `sc2.png` | **Light** | Workspace: empty/minimal chat |
+/// | `sc3.png` | **Light** | **Dashboard** — project board columns |
+/// | `sc4.png` | **Light** | Workspace: **active chat** (markdown, composer focus) |
+/// | `sc5.png` | **Light** | File preview: **HTML** rendered + Preview/Edit |
+/// | `sc6.png` | **Light** | File preview: **image** centered canvas |
+/// | `sc7.png` | **Light** | File preview: **text/code** with line numbers |
 ///
-/// Views should use these tokens (or SwiftUI `Color.primary` / `.secondary`)
-/// rather than hard-coded RGB.
+/// Dark palette tracks sc1; light palette tracks sc2/sc3/sc4 (same chrome).
+/// Tokens resolve through the asset catalog so Settings → Appearance works.
 enum Theme {
-    // MARK: - Surfaces
+    // MARK: - Surfaces (sc1 dark / sc2 light)
 
-    /// App chrome / outer window background.
-    static let appBackground = Color(nsColor: .windowBackgroundColor)
+    /// Outer chrome / window fill.
+    static let appBackground = Color("AppBackground")
 
-    /// Dominant center chat/preview surface (document/text well).
-    static let centerBackground = Color(nsColor: .textBackgroundColor)
+    /// Dominant center chat/preview surface (sc2 pure white / sc1 near-black).
+    static let centerBackground = Color("CenterBackground")
 
-    /// Deepest edge / hairline companion.
-    static let deepest = Color(nsColor: .separatorColor)
+    /// Deepest edge companion.
+    static let deepest = Color("Deepest")
 
-    /// Sidebar / list chrome.
-    static let sidebarBackground = Color(nsColor: .controlBackgroundColor)
+    /// Sidebar list chrome (sc2 cool gray / sc1 elevated charcoal).
+    static let sidebarBackground = Color("SidebarBackground")
 
-    /// Elevated controls (fields, chips, sheets).
-    static let elevatedSurface = Color(nsColor: .controlBackgroundColor)
+    /// Elevated controls (composer card, chips, sheets).
+    static let elevatedSurface = Color("ElevatedSurface")
 
-    /// Terminal panel background (system text well — adapts in Light/Dark).
-    static let terminalBackground = Color(nsColor: .textBackgroundColor)
+    /// Terminal panel background (matches center in both modes).
+    static let terminalBackground = Color("TerminalBackground")
 
     // MARK: - Text
 
-    /// Body / primary labels.
-    static let textPrimary = Color(nsColor: .labelColor)
-
-    /// Secondary captions, section headers.
-    static let textSecondary = Color(nsColor: .secondaryLabelColor)
-
-    /// Tertiary / decorative chrome.
-    static let textTertiary = Color(nsColor: .tertiaryLabelColor)
-
-    /// Default list row label (unselected).
-    static let textRow = Color(nsColor: .labelColor)
-
-    /// Text drawn on accent / selected fills.
-    static let textOnAccent = Color(nsColor: .alternateSelectedControlTextColor)
+    static let textPrimary = Color("TextPrimary")
+    static let textSecondary = Color("TextSecondary")
+    static let textTertiary = Color("TextTertiary")
+    static let textRow = Color("TextRow")
+    static let textOnAccent = Color("TextOnAccent")
 
     // MARK: - Accent
 
-    /// System control accent (user’s accent color from System Settings).
+    /// System control accent (still follows the user’s accent color).
     static let accent = Color(nsColor: .controlAccentColor)
-
-    /// Links / accent text — system accent (adapts for contrast).
     static let accentText = Color(nsColor: .controlAccentColor)
-
-    /// Keyboard focus indicator.
-    static let focusRing = Color(nsColor: .keyboardFocusIndicatorColor)
+    static let focusRing = Color("FocusRing")
 
     // MARK: - Status
 
-    /// Actively streaming tokens.
-    static let statusBusy = Color(nsColor: .systemOrange)
-
-    /// Unread completed activity.
-    static let statusDone = Color(nsColor: .systemGreen)
+    static let statusBusy = Color("StatusBusy")
+    static let statusDone = Color("StatusDone")
 
     // MARK: - Error
 
-    static let errorBackground = Color(nsColor: .systemRed).opacity(0.12)
-    static let errorBorder = Color(nsColor: .systemRed).opacity(0.45)
-    static let errorText = Color(nsColor: .systemRed)
+    static let errorBackground = Color("ErrorBackground")
+    static let errorBorder = Color("ErrorBorder")
+    static let errorText = Color("ErrorText")
 
-    // MARK: - Borders
+    // MARK: - Borders (hairlines between flush columns)
 
-    static let borderStructural = Color(nsColor: .separatorColor)
-    static let borderHairline = Color(nsColor: .separatorColor)
-    static let controlBorder = Color(nsColor: .separatorColor)
+    static let borderStructural = Color("BorderStructural")
+    static let borderHairline = Color("BorderHairline")
+    static let controlBorder = Color("ControlBorder")
 
     // MARK: - Selection / messages
 
-    /// Selected list row / control (system blue or user accent).
-    static let selectionFill = Color(nsColor: .selectedContentBackgroundColor)
-
-    /// File tree selection.
-    static let fileSelectionFill = Color(nsColor: .selectedContentBackgroundColor)
-
-    /// User chat bubble fill — subtle system fill (not a custom brand color).
-    static let userMessageFill = Color(nsColor: .quaternaryLabelColor).opacity(0.35)
-
-    static let userMessageBorder = Color(nsColor: .separatorColor)
+    static let selectionFill = Color("SelectionFill")
+    static let fileSelectionFill = Color("FileSelectionFill")
+    static let userMessageFill = Color("UserMessageFill")
+    static let userMessageBorder = Color("UserMessageBorder")
 
     // MARK: - Terminal
 
-    static let terminalText = Color(nsColor: .textColor)
-    static let terminalPrompt = Color(nsColor: .controlAccentColor)
+    static let terminalText = Color("TerminalText")
+    static let terminalPrompt = Color("TerminalPrompt")
 
     // MARK: - Chrome
 
-    static let chipBackground = Color(nsColor: .quaternaryLabelColor).opacity(0.25)
-    static let kbdBackground = Color(nsColor: .quaternaryLabelColor).opacity(0.20)
+    static let chipBackground = Color("ChipBackground")
+    static let kbdBackground = Color("KbdBackground")
 }
 
-// MARK: - Layout constants (from wireframe proportions + T16 window behavior)
+// MARK: - Layout constants (from sc1/sc2 shell proportions)
 
 enum LayoutMetrics {
     // MARK: Sidebar
 
-    /// Left sidebar ideal width (wf-1 `224px`).
-    static let sidebarWidth: CGFloat = 224
-    static let sidebarMinWidth: CGFloat = 160
+    /// Left sidebar ideal width — sc1 / sc2 proportions.
+    static let sidebarWidth: CGFloat = 240
+    static let sidebarMinWidth: CGFloat = 180
     static let sidebarMaxWidth: CGFloat = 320
 
     // MARK: Center
 
-    /// Center pane must stay usable when tiled; no hard floor on the window itself.
-    static let centerMinWidth: CGFloat = 280
+    static let centerMinWidth: CGFloat = 360
 
-    /// Max readable width for center-pane chat content on large/external displays
-    /// (PLAN.md Responsive & Accessibility: ~900–1000px).
-    static let maxReadingWidth: CGFloat = 960
+    /// Max readable width for chat text on large displays (panel still fills).
+    static let maxReadingWidth: CGFloat = 920
 
     // MARK: Right column
 
-    /// Right column ideal width (wf-1 `320px`).
-    static let rightColumnWidth: CGFloat = 320
-    static let rightColumnMinWidth: CGFloat = 200
-    static let rightColumnMaxWidth: CGFloat = 480
-
-    /// Overlay drawer width when the right column is collapsed at narrow widths.
-    static let rightColumnDrawerWidth: CGFloat = 320
-
-    /// Below this window width the right column (Files/Terminal) collapses to an
-    /// overlay/drawer — Mail.app / Xcode pattern. No hard minimum window size;
-    /// ~650–700px tiles are daily use. 3-col needs roughly 224+360+320 ≈ 900.
-    static let rightColumnCollapseBreakpoint: CGFloat = 960
+    static let rightColumnWidth: CGFloat = 360
+    static let rightColumnMinWidth: CGFloat = 240
+    static let rightColumnMaxWidth: CGFloat = 520
+    static let rightColumnDrawerWidth: CGFloat = 360
+    static let rightColumnCollapseBreakpoint: CGFloat = 1000
 
     // MARK: Window
 
-    static let defaultWindowWidth: CGFloat = 1200
-    static let defaultWindowHeight: CGFloat = 760
+    static let defaultWindowWidth: CGFloat = 1400
+    static let defaultWindowHeight: CGFloat = 860
+    static let minWindowWidth: CGFloat = 640
+    static let minWindowHeight: CGFloat = 420
 
-    /// Soft platform floor only — deliberately low so windows can tile to ~650–700.
-    /// PLAN.md: "No hard minimum window size."
-    static let minWindowWidth: CGFloat = 480
-    static let minWindowHeight: CGFloat = 360
+    // MARK: Nested resizable stacks
 
-    // MARK: - Nested resizable cards (Projects/Agents, Files/Terminal)
-
-    /// Neither nested pane may shrink below this height (prevents overlap/collapse).
-    static let nestedPaneMinHeight: CGFloat = 96
-
-    /// Cap either nested pane at this fraction of free height (keeps both usable).
-    static let nestedPaneMaxFraction: Double = 0.78
-
-    /// Settings card fixed height (not part of the resizable pair).
-    static let settingsCardHeight: CGFloat = 44
+    static let nestedPaneMinHeight: CGFloat = 120
+    static let nestedPaneMaxFraction: Double = 0.82
+    static let rightColumnFilesDefaultFraction: Double = 0.68
+    static let sidebarProjectsDefaultFraction: Double = 0.62
+    static let settingsCardHeight: CGFloat = 40
 }
