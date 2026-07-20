@@ -207,6 +207,43 @@ final class WorkspaceSelection: FilePreviewPresenting {
         return .empty
     }
 
+    /// Whether the active center surface is a closable tab (⌘W).
+    var canCloseActiveTab: Bool {
+        switch activeSurface {
+        case .chat, .filePreview, .browser, .terminal, .appleMail, .appleCalendar:
+            return true
+        case .empty, .dashboard:
+            return false
+        }
+    }
+
+    /// Close the currently active center tab (⌘W). No-op when empty/dashboard.
+    @discardableResult
+    func closeActiveTab() -> Bool {
+        switch activeSurface {
+        case .chat(let id):
+            closeChatTab(id: id)
+            return true
+        case .filePreview(let tab):
+            closeFilePreview(id: tab.id)
+            return true
+        case .browser(let id):
+            closeBrowserTab(id: id)
+            return true
+        case .terminal(let id):
+            closeTerminalTab(id: id)
+            return true
+        case .appleMail:
+            closeAppleMailTab()
+            return true
+        case .appleCalendar:
+            closeAppleCalendarTab()
+            return true
+        case .empty, .dashboard:
+            return false
+        }
+    }
+
     // MARK: - Launch resume (T14 / design review D6)
 
     /// Auto-select the most-recently-active Project and its most recent thread.

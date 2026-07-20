@@ -29,6 +29,10 @@ final class KeyPassthroughTerminalView: LocalProcessTerminalView {
         if Self.isContentZoomShortcut(event) {
             return false
         }
+        // ⌘W Close Tab — let Navigate menu handle it (do not send to shell).
+        if Self.isCloseTabShortcut(event) {
+            return false
+        }
         // Forward everything else (Esc, Ctrl-C, arrows, printable keys, …)
         // to TerminalView / AppKit default handling.
         return super.performKeyEquivalent(with: event)
@@ -75,6 +79,19 @@ final class KeyPassthroughTerminalView: LocalProcessTerminalView {
         default:
             return false
         }
+    }
+
+    /// ⌘W — Close Tab (Navigate menu).
+    static func isCloseTabShortcut(_ event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard flags == .command,
+              let chars = event.charactersIgnoringModifiers,
+              chars.count == 1,
+              let ch = chars.first
+        else {
+            return false
+        }
+        return ch == "w" || ch == "W"
     }
 
     // MARK: - Main-thread data feed (T7)
