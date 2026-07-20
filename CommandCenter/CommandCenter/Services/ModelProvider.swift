@@ -101,6 +101,8 @@ enum ModelStreamEvent: Sendable, Equatable {
     case sessionStarted(sessionID: String, model: String?, capabilities: [String])
     /// Model is thinking (no visible text yet). UI shows pulsing "Thinking…".
     case thinking
+    /// Extended thinking / reasoning text delta (toggleable in the UI).
+    case thinkingDelta(String)
     /// Visible assistant text delta (`event.delta.type == "text_delta"`).
     case textDelta(String)
     /// Advisory rate-window signal (D5.4 / Step 10); not a hard failure.
@@ -128,17 +130,17 @@ enum ProviderErrorCategory: String, Sendable, Equatable, CaseIterable {
     var bannerMessage: String {
         switch self {
         case .authenticationFailed:
-            return "You're logged out of Claude. Sign in with your Claude Max or Pro subscription."
+            return "You're logged out. Sign in via Settings (Claude Max/Pro or Grok)."
         case .billingError:
-            return "Billing issue with your Claude subscription."
+            return "Billing issue with your AI subscription."
         case .rateLimit:
-            return "Claude hit its usage window."
+            return "Usage limit hit for this model."
         case .overloaded:
-            return "Claude is temporarily overloaded."
+            return "The model is temporarily overloaded."
         case .processDied:
-            return "Lost connection to Claude."
+            return "Lost connection to the model."
         case .unknown:
-            return "Something went wrong talking to Claude."
+            return "Something went wrong talking to the model."
         }
     }
 
@@ -146,7 +148,7 @@ enum ProviderErrorCategory: String, Sendable, Equatable, CaseIterable {
     var bannerCTA: String? {
         switch self {
         case .authenticationFailed:
-            return "Sign in with Claude"
+            return "Open Settings"
         case .billingError:
             return "Details"
         case .rateLimit, .overloaded:

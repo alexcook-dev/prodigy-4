@@ -52,17 +52,14 @@ enum ProjectFactory {
         )
     }
 
-    /// "Quick chat" entry point: real Project under `~/Projects/Quick Chat`,
-    /// initially hidden from the sidebar (T11 / Pass 7 #13).
+    /// "Quick chat" entry point: real Project rooted at the user's home folder
+    /// so Files defaults to `~` until a Project with its own folder is selected.
     @discardableResult
     static func createQuickChat(in context: ModelContext) throws -> WorkspaceProject {
-        let folderURL = try ensureUniqueFolder(
-            under: defaultProjectsRoot,
-            preferredName: "Quick Chat"
-        )
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
         return insertProject(
             name: "Quick Chat",
-            folderPath: folderURL.path,
+            folderPath: home,
             isQuickChat: true,
             isHiddenFromSidebar: true,
             in: context

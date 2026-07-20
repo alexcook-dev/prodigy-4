@@ -29,12 +29,16 @@ struct TerminalViewRepresentable: NSViewRepresentable {
             onPaneShortcut?(pane)
         }
 
-        // Focus: when workspace says terminal owns focus, make NSView first responder.
-        if isFocused {
-            DispatchQueue.main.async {
-                if terminal.window?.firstResponder !== terminal {
-                    terminal.window?.makeFirstResponder(terminal)
+        // Focus: only grab the caret when Terminal is the focused pane.
+        // When Chat is focused, resign so the composer keeps first responder.
+        DispatchQueue.main.async {
+            guard let window = terminal.window else { return }
+            if isFocused {
+                if window.firstResponder !== terminal {
+                    window.makeFirstResponder(terminal)
                 }
+            } else if window.firstResponder === terminal {
+                window.makeFirstResponder(nil)
             }
         }
 

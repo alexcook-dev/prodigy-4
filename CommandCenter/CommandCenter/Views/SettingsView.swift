@@ -1,12 +1,13 @@
 import SwiftUI
 
-/// Settings surface — native Form layout (HIG).
-/// Appearance + Claude Max/Pro subscription status (Claude Code CLI auth).
+/// Settings — appearance + Claude + Grok authentication.
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(AppStorageKey.appearance) private var appearanceRaw = AppAppearance.system.rawValue
-    @State private var auth = ClaudeAuthService.shared
-    @State private var isRefreshing = false
+    @State private var claudeAuth = ClaudeAuthService.shared
+    @State private var grokAuth = GrokAuthService.shared
+    @State private var isRefreshingClaude = false
+    @State private var isRefreshingGrok = false
 
     private var appearance: Binding<AppAppearance> {
         Binding(
@@ -20,6 +21,7 @@ struct SettingsView: View {
             Form {
                 appearanceSection
                 claudeSubscriptionSection
+                grokSection
             }
             .formStyle(.grouped)
             .font(AppTypography.body)
@@ -31,10 +33,10 @@ struct SettingsView: View {
                 }
             }
             .task {
-                await refreshAuth()
+                await refreshAll()
             }
         }
-        .frame(minWidth: 440, minHeight: 420)
+        .frame(minWidth: 460, minHeight: 520)
     }
 
     // MARK: - Appearance
@@ -51,166 +53,236 @@ struct SettingsView: View {
         } header: {
             Text("Appearance")
         } footer: {
-            Text("System follows macOS. Light matches the sc2 light shell; Dark matches the sc1 dark shell.")
+            Text("System follows macOS. Light and Dark lock the app independently.")
                 .font(AppTypography.caption)
         }
     }
 
-    // MARK: - Claude Max / Pro subscription
+    // MARK: - Claude
 
     private var claudeSubscriptionSection: some View {
         Section {
-            statusRow
+            authStatusRow(
+                title: claudeStatusTitle,
+                detail: claudeStatusDetail,
+                color: claudeStatusColor,
+                isMax: {
+                    if case .loggedIn(let a) = claudeAuth.snapshot.state { return a.isMax }
+                    return false
+                }()
+            )
 
-            if auth.snapshot.hasAPIKeyInEnvironment {
-                apiKeyWarningRow
+            if claudeAuth.snapshot.hasAPIKeyInEnvironment {
+                Label {
+                    Text("ANTHROPIC_API_KEY is set. Prodigy strips it for Claude turns so Max/Pro OAuth is used.")
+                        .font(AppTypography.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                }
             }
 
-            HStack(spacing: 12) {
+            HStack {
                 Button {
-                    Task { await refreshAuth() }
+                    Task { await refreshClaude() }
                 } label: {
-                    if isRefreshing || auth.snapshot.state == .checking {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Text("Refresh status")
-                    }
+                    if isRefreshingClaude { ProgressView().controlSize(.small) }
+                    else { Text("Refresh") }
                 }
-                .disabled(isRefreshing || auth.snapshot.state == .checking)
+                .disabled(isRefreshingClaude)
 
                 Spacer()
 
-                switch auth.snapshot.state {
-                case .loggedIn:
-                    Button("Re-authenticate…") {
-                        auth.openClaudeAILogin()
-                    }
-                case .loggedOut, .cliMissing, .probeFailed, .idle, .checking:
-                    Button("Sign in with Claude Max…") {
-                        auth.openClaudeAILogin()
-                    }
-                    .keyboardShortcut(.defaultAction)
+                if claudeAuth.snapshot.isLoggedIn {
+                    Button("Re-authenticate…") { claudeAuth.openClaudeAILogin() }
+                } else {
+                    Button("Sign in with Claude…") { claudeAuth.openClaudeAILogin() }
                 }
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         } header: {
-            Text("Claude subscription")
+            Text("Claude")
         } footer: {
-            Text(footerCopy)
+            Text("Claude Code CLI OAuth (`claude auth login --claudeai`). Used for Sonnet, Opus, and Haiku in the model picker.")
                 .font(AppTypography.caption)
         }
     }
 
-    @ViewBuilder
-    private var statusRow: some View {
+    // MARK: - Grok
+
+    private var grokSection: some View {
+        Section {
+            authStatusRow(
+                title: grokStatusTitle,
+                detail: grokStatusDetail,
+                color: grokStatusColor,
+                isMax: false
+            )
+
+            if grokAuth.snapshot.hasAPIKeyInEnvironment {
+                Label {
+                    Text("XAI_API_KEY is set. Grok CLI prefers OAuth session when logged in; API key is a fallback.")
+                        .font(AppTypography.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                }
+            }
+
+            HStack {
+                Button {
+                    Task { await refreshGrok() }
+                } label: {
+                    if isRefreshingGrok { ProgressView().controlSize(.small) }
+                    else { Text("Refresh") }
+                }
+                .disabled(isRefreshingGrok)
+
+                Spacer()
+
+                if grokAuth.snapshot.isLoggedIn {
+                    Button("Log out…") { grokAuth.openLogout() }
+                    Button("Re-authenticate…") { grokAuth.openLogin() }
+                } else {
+                    Button("Sign in with Grok…") { grokAuth.openLogin() }
+                }
+            }
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        } header: {
+            Text("Grok")
+        } footer: {
+            Text("Grok CLI OAuth (`grok login`). Select Grok 4.5 in the chat model picker once signed in. CLI lives at ~/.grok/bin/grok.")
+                .font(AppTypography.caption)
+        }
+    }
+
+    // MARK: - Shared status row
+
+    private func authStatusRow(
+        title: String,
+        detail: String?,
+        color: Color,
+        isMax: Bool
+    ) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            statusDot
+            Circle()
+                .fill(color)
+                .frame(width: 9, height: 9)
                 .padding(.top, 4)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(statusTitle)
+                Text(title)
                     .font(AppTypography.body.weight(.medium))
                     .foregroundStyle(Theme.textPrimary)
-
-                if let detail = statusDetail {
+                if let detail {
                     Text(detail)
                         .font(AppTypography.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .textSelection(.enabled)
                 }
-
-                if case .loggedIn(let account) = auth.snapshot.state, account.isMax {
-                    Text("Max plan — higher usage limits on the same Claude Code login.")
+                if isMax {
+                    Text("Max plan — higher Claude Code usage limits.")
                         .font(AppTypography.caption)
                         .foregroundStyle(Theme.textTertiary)
-                        .padding(.top, 2)
                 }
             }
-
             Spacer(minLength: 0)
         }
         .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(statusTitle). \(statusDetail ?? "")")
     }
 
-    private var apiKeyWarningRow: some View {
-        Label {
-            Text("ANTHROPIC_API_KEY is set in the environment. Prodigy strips it for chat so your Max/Pro subscription is used instead of API billing.")
-                .font(AppTypography.caption)
-                .foregroundStyle(Theme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-        } icon: {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.orange)
+    // MARK: - Claude copy
+
+    private var claudeStatusTitle: String {
+        switch claudeAuth.snapshot.state {
+        case .idle, .checking: return "Checking Claude Code…"
+        case .cliMissing: return "Claude Code CLI not found"
+        case .loggedOut: return "Not signed in"
+        case .loggedIn(let account): return account.planDisplayName
+        case .probeFailed: return "Could not read Claude login"
         }
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
     }
 
-    private var statusDot: some View {
-        Circle()
-            .fill(statusColor)
-            .frame(width: 9, height: 9)
-            .accessibilityHidden(true)
+    private var claudeStatusDetail: String? {
+        switch claudeAuth.snapshot.state {
+        case .idle, .checking: return nil
+        case .cliMissing:
+            return "Install Claude Code, then refresh."
+        case .loggedOut:
+            return "Sign in with your Claude.ai Max or Pro account."
+        case .loggedIn(let account):
+            var parts: [String] = []
+            if let email = account.email, !email.isEmpty { parts.append(email) }
+            if let method = account.authMethod { parts.append("via \(method)") }
+            if let path = claudeAuth.snapshot.executablePath { parts.append(path) }
+            return parts.isEmpty ? "Signed in" : parts.joined(separator: " · ")
+        case .probeFailed(let message): return message
+        }
     }
 
-    private var statusColor: Color {
-        switch auth.snapshot.state {
+    private var claudeStatusColor: Color {
+        switch claudeAuth.snapshot.state {
         case .loggedIn: return Theme.statusDone
         case .checking, .idle: return Theme.textTertiary
         case .loggedOut, .cliMissing, .probeFailed: return Theme.statusBusy
         }
     }
 
-    private var statusTitle: String {
-        switch auth.snapshot.state {
-        case .idle, .checking:
-            return "Checking Claude Code…"
-        case .cliMissing:
-            return "Claude Code CLI not found"
-        case .loggedOut:
-            return "Not signed in"
-        case .loggedIn(let account):
-            return account.planDisplayName
-        case .probeFailed:
-            return "Could not read login status"
+    // MARK: - Grok copy
+
+    private var grokStatusTitle: String {
+        switch grokAuth.snapshot.state {
+        case .idle, .checking: return "Checking Grok…"
+        case .cliMissing: return "Grok CLI not found"
+        case .loggedOut: return "Not signed in"
+        case .loggedIn: return "Grok signed in"
+        case .probeFailed: return "Could not read Grok login"
         }
     }
 
-    private var statusDetail: String? {
-        switch auth.snapshot.state {
-        case .idle, .checking:
-            return nil
+    private var grokStatusDetail: String? {
+        switch grokAuth.snapshot.state {
+        case .idle, .checking: return nil
         case .cliMissing:
-            return "Install Claude Code, then reopen Settings. Prodigy uses the same login as the CLI."
+            return "Install grok (CLI at ~/.grok/bin/grok), then refresh."
         case .loggedOut:
-            return "Sign in with your Claude.ai account (Max or Pro) to chat without an API key."
-        case .loggedIn(let account):
+            return "Sign in with grok.com (SpaceXAI OAuth) to use Grok in chat."
+        case .loggedIn(let email, let mode):
             var parts: [String] = []
-            if let email = account.email, !email.isEmpty {
-                parts.append(email)
-            }
-            if let method = account.authMethod, !method.isEmpty {
-                parts.append("via \(method)")
-            }
-            if let path = auth.snapshot.executablePath {
-                parts.append(path)
-            }
-            return parts.isEmpty ? "Signed in via Claude Code" : parts.joined(separator: " · ")
-        case .probeFailed(let message):
-            return message
+            if let email, !email.isEmpty { parts.append(email) }
+            if let mode, !mode.isEmpty { parts.append("via \(mode)") }
+            if let path = grokAuth.snapshot.executablePath { parts.append(path) }
+            return parts.isEmpty ? "Signed in" : parts.joined(separator: " · ")
+        case .probeFailed(let message): return message
         }
     }
 
-    private var footerCopy: String {
-        "Prodigy chats through the installed Claude Code CLI using your Claude Max or Pro subscription — not Anthropic API keys. Sign-in opens Terminal and runs claude auth login --claudeai."
+    private var grokStatusColor: Color {
+        switch grokAuth.snapshot.state {
+        case .loggedIn: return Theme.statusDone
+        case .checking, .idle: return Theme.textTertiary
+        case .loggedOut, .cliMissing, .probeFailed: return Theme.statusBusy
+        }
     }
 
-    private func refreshAuth() async {
-        isRefreshing = true
-        await auth.refresh()
-        isRefreshing = false
+    // MARK: - Refresh
+
+    private func refreshAll() async {
+        async let c: Void = refreshClaude()
+        async let g: Void = refreshGrok()
+        _ = await (c, g)
+    }
+
+    private func refreshClaude() async {
+        isRefreshingClaude = true
+        await claudeAuth.refresh()
+        isRefreshingClaude = false
+    }
+
+    private func refreshGrok() async {
+        isRefreshingGrok = true
+        await grokAuth.refresh()
+        isRefreshingGrok = false
     }
 }
 

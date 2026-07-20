@@ -4,31 +4,57 @@ import SwiftUI
 
 // MARK: - Model / effort picker options (T5)
 
-/// Claude CLI `--model` values surfaced in the composer. Changes apply on the
-/// next turn only (PLAN.md Step 3).
+/// Models available in the composer picker. Routes to Claude Code CLI or Grok
+/// CLI based on `providerFamily`. Changes apply on the next turn only.
 enum ChatModelOption: String, CaseIterable, Identifiable, Sendable {
     case sonnet
     case opus
     case haiku
+    case grok45
 
     var id: String { rawValue }
+
+    enum Family: String, Sendable {
+        case claude
+        case grok
+    }
+
+    var family: Family {
+        switch self {
+        case .sonnet, .opus, .haiku: return .claude
+        case .grok45: return .grok
+        }
+    }
 
     var displayName: String {
         switch self {
         case .sonnet: return "Sonnet"
         case .opus: return "Opus"
         case .haiku: return "Haiku"
+        case .grok45: return "Grok 4.5"
         }
     }
 
-    /// Composer pill: "Claude · Sonnet"
-    var pillLabel: String { "Claude · \(displayName)" }
+    /// Composer pill: "Claude · Sonnet" / "Grok · 4.5"
+    var pillLabel: String {
+        switch family {
+        case .claude: return "Claude · \(displayName)"
+        case .grok: return displayName
+        }
+    }
 
     /// "from" label on assistant bubbles when the CLI doesn't return a model.
-    var messageLabel: String { "Claude · \(displayName)" }
+    var messageLabel: String { pillLabel }
 
-    /// Value passed as `--model`.
-    var cliValue: String { rawValue }
+    /// Value passed as `--model` to the selected backend.
+    var cliValue: String {
+        switch self {
+        case .sonnet: return "sonnet"
+        case .opus: return "opus"
+        case .haiku: return "haiku"
+        case .grok45: return "grok-4.5"
+        }
+    }
 }
 
 /// Claude Code effort levels (`--effort`). Cross-provider mapping is deferred.
@@ -86,9 +112,14 @@ final class ChatController {
 
     private(set) var streamPhase: StreamPhase = .idle
     private(set) var streamingText: String = ""
+    /// Extended thinking / reasoning text for the in-flight turn.
+    private(set) var streamingReasoning: String = ""
     private(set) var streamingModelLabel: String?
     private(set) var streamingProjectID: UUID?
     private(set) var streamingThreadID: UUID?
+    /// When true, show reasoning blocks on assistant messages / live stream.
+    /// Bound from the chat top-bar toggle (persisted via AppStorage in the view).
+    var showReasoning: Bool = true
 
     // MARK: Error banner (T13) — scoped to the project/thread that failed
 
@@ -110,7 +141,7 @@ final class ChatController {
 
     var isBusy: Bool { streamPhase != .idle }
 
-    init(provider: ModelProvider = ClaudeCLIProvider.shared) {
+    init(provider: ModelProvider = RoutingModelProvider.shared) {
         self.provider = provider
     }
 
@@ -250,9 +281,8 @@ final class ChatController {
     ) {
         switch action {
         case .signInWithClaude:
-            // Prefer a dedicated Terminal.app window with the Max/Pro login
-            // command; still focus the in-app terminal as a secondary cue.
-            _ = ClaudeAuthService.shared.openClaudeAILogin()
+            // Open Settings so the user can auth Claude and/or Grok.
+            NotificationCenter.default.post(name: .prodigyOpenSettings, object: nil)
             focusTerminal()
         case .showDetails:
             errorDetailsExpanded.toggle()
@@ -320,10 +350,13 @@ final class ChatController {
         clearError()
         streamPhase = .thinking
         streamingText = ""
+        streamingReasoning = ""
         streamingModelLabel = makeModelLabel(cliModel: nil)
         streamingProjectID = project.id
         streamingThreadID = thread.id
         lastFailedUserText = userText
+        // Keep the composer focused after send so terminal doesn't steal the caret.
+        composerFocusToken &+= 1
 
         let systemPrompt = (agent?.systemPrompt.isEmpty == false)
             ? agent!.systemPrompt
@@ -419,6 +452,12 @@ final class ChatController {
                 streamPhase = .thinking
             }
 
+        case .thinkingDelta(let delta):
+            if streamPhase == .idle || streamPhase == .thinking {
+                streamPhase = .thinking
+            }
+            streamingReasoning += delta
+
         case .textDelta(let delta):
             streamPhase = .streaming
             streamingText += delta
@@ -435,11 +474,13 @@ final class ChatController {
             let label = modelLabel.map { makeModelLabel(cliModel: $0) }
                 ?? streamingModelLabel
                 ?? selectedModel.messageLabel
+            let reasoning = streamingReasoning.trimmingCharacters(in: .whitespacesAndNewlines)
             let assistant = Message(
                 role: .assistant,
                 content: finalText,
                 isPartial: false,
                 modelLabel: label,
+                reasoning: reasoning.isEmpty ? nil : reasoning,
                 thread: thread
             )
             context.insert(assistant)
@@ -479,11 +520,13 @@ final class ChatController {
 
         if let partial, !partial.isEmpty {
             let label = streamingModelLabel ?? selectedModel.messageLabel
+            let reasoning = streamingReasoning.trimmingCharacters(in: .whitespacesAndNewlines)
             let assistant = Message(
                 role: .assistant,
                 content: partial,
                 isPartial: true,
                 modelLabel: label,
+                reasoning: reasoning.isEmpty ? nil : reasoning,
                 thread: thread
             )
             context.insert(assistant)
@@ -514,6 +557,7 @@ final class ChatController {
     private func finishIdle() {
         streamPhase = .idle
         streamingText = ""
+        streamingReasoning = ""
         streamingModelLabel = nil
         streamingProjectID = nil
         streamingThreadID = nil
