@@ -4,6 +4,8 @@ import SwiftUI
 extension Notification.Name {
     static let prodigyOpenSettings = Notification.Name("prodigy.openSettings")
     static let prodigyCheckForUpdates = Notification.Name("prodigy.checkForUpdates")
+    /// Close the active center tab (⌘W) — handled by `WorkspaceRootView`.
+    static let prodigyCloseActiveTab = Notification.Name("prodigy.closeActiveTab")
 }
 
 /// Personal Mac command center — shell (T2) + colors (T15) + SwiftData (T3/T11/T12)
@@ -99,6 +101,11 @@ struct CommandCenterApp: App {
                         modifiers: .command
                     )
                 }
+                Divider()
+                Button("Close Tab") {
+                    NotificationCenter.default.post(name: .prodigyCloseActiveTab, object: nil)
+                }
+                .keyboardShortcut("w", modifiers: .command)
             }
             // Content zoom — browser-style ⌘+/⌘-/⌘0 (also ⌘=).
             CommandMenu("View") {

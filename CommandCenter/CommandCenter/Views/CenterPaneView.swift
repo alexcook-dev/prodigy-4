@@ -396,16 +396,18 @@ struct CenterPaneView: View {
 
     // MARK: - Body
 
-    /// True when the selected center tab is a terminal (any session).
-    private var isShowingTerminalSurface: Bool {
-        if case .terminal = selection.activeSurface { return true }
-        return false
+    /// Surfaces whose views stay mounted while other tabs are active (PTY / WKWebView).
+    private var isShowingPersistentSurface: Bool {
+        switch selection.activeSurface {
+        case .terminal, .browser: return true
+        default: return false
+        }
     }
 
     @ViewBuilder
     private var contentBody: some View {
-        // Terminals stay mounted (hidden) so switching Chat/Safari and back does
-        // not destroy the PTY / reset the shell.
+        // Terminals and Safari tabs stay mounted (hidden) so switching Chat ↔
+        // Safari/Terminal does not destroy the PTY or WKWebView history/state.
         ZStack {
             ForEach(selection.terminalTabs) { tab in
                 let isActiveTerminal: Bool = {
@@ -430,15 +432,38 @@ struct CenterPaneView: View {
                 .zIndex(isActiveTerminal ? 10 : 0)
             }
 
-            if !isShowingTerminalSurface {
-                nonTerminalContentBody
+            ForEach(selection.browserTabs) { tab in
+                let isActiveBrowser: Bool = {
+                    if case .browser(let openID) = selection.activeSurface {
+                        return openID == tab.id
+                    }
+                    return false
+                }()
+                SafariBrowserView(
+                    tabID: tab.id,
+                    initialURLString: tab.urlString,
+                    defaultTitle: tab.title,
+                    onClose: { selection.closeBrowserTab(id: tab.id) },
+                    onUpdate: { title, url in
+                        selection.updateBrowserTab(id: tab.id, title: title, urlString: url)
+                    }
+                )
+                .id(tab.id)
+                .opacity(isActiveBrowser ? 1 : 0)
+                .allowsHitTesting(isActiveBrowser)
+                .accessibilityHidden(!isActiveBrowser)
+                .zIndex(isActiveBrowser ? 10 : 0)
+            }
+
+            if !isShowingPersistentSurface {
+                ephemeralContentBody
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
-    private var nonTerminalContentBody: some View {
+    private var ephemeralContentBody: some View {
         switch selection.activeSurface {
         case .empty:
             emptyTabsBody
@@ -459,26 +484,7 @@ struct CenterPaneView: View {
                 calendar: appleCalendar,
                 onClose: { selection.closeAppleCalendarTab() }
             )
-        case .browser(let tabID):
-            if let tab = selection.browserTab(id: tabID) {
-                SafariBrowserView(
-                    tabID: tab.id,
-                    initialURLString: tab.urlString,
-                    defaultTitle: tab.title,
-                    onClose: { selection.closeBrowserTab(id: tabID) },
-                    onUpdate: { title, url in
-                        selection.updateBrowserTab(id: tabID, title: title, urlString: url)
-                    }
-                )
-                // Stable identity so title/URL bookkeeping never remounts WKWebView.
-                .id(tabID)
-            } else {
-                Color.clear
-                    .onAppear {
-                        openOrFocusChat()
-                    }
-            }
-        case .terminal:
+        case .browser, .terminal:
             // Hosted persistently above in `contentBody` so sessions survive tab switches.
             EmptyView()
         }

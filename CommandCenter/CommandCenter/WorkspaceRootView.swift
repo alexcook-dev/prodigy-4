@@ -147,6 +147,10 @@ struct WorkspaceRootView: View {
                 project.hasUnviewedActivity = true
             }
         }
+        // ⌘W / Navigate → Close Tab
+        .onReceive(NotificationCenter.default.publisher(for: .prodigyCloseActiveTab)) { _ in
+            _ = selection.closeActiveTab()
+        }
     }
 
     // MARK: - Main split
