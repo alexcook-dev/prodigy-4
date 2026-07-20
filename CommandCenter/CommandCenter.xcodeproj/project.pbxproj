@@ -447,14 +447,17 @@ A1000000000000000000000A /* Theme */ = {
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CommandCenter/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Prodigy Dev";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.alexcook.CommandCenter;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				/* Xcode / day-to-day builds: separate identity from production so
+				   Run in Xcode never overwrites ~/Applications/Prodigy.app. */
+				PRODUCT_BUNDLE_IDENTIFIER = dev.alexcook.Prodigy.dev;
+				PRODUCT_NAME = "Prodigy Dev";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -479,14 +482,16 @@ A1000000000000000000000A /* Theme */ = {
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CommandCenter/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Prodigy;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.alexcook.CommandCenter;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				/* Production DMG / GitHub Release only. Distinct from Debug. */
+				PRODUCT_BUNDLE_IDENTIFIER = dev.alexcook.Prodigy;
+				PRODUCT_NAME = Prodigy;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

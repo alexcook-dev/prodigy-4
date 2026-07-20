@@ -1,0 +1,94 @@
+name: Release Prodigy DMG
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without v prefix (e.g. 0.1.0). Empty = VERSION file."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          # Prefer latest installed Xcode on the runner
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [[ -n "${{ inputs.version }}" ]]; then
+            V="${{ inputs.version }}"
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            V="${GITHUB_REF_NAME#v}"
+          else
+            V="$(tr -d '[:space:]' < VERSION)"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "tag=v$V" >> "$GITHUB_OUTPUT"
+          echo "Packaging v$V"
+
+      - name: Package DMG
+        run: |
+          chmod +x scripts/package-dmg.sh
+          ./scripts/package-dmg.sh "${{ steps.ver.outputs.version }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Prodigy-${{ steps.ver.outputs.version }}-dmg
+          path: |
+            dist/Prodigy-*.dmg
+            dist/Prodigy-*.dmg.sha256
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.ver.outputs.tag }}"
+          VERSION="${{ steps.ver.outputs.version }}"
+          DMG="dist/Prodigy-${VERSION}.dmg"
+          NOTES="$(cat <<EOF
+          ## Prodigy ${TAG}
+
+          Production macOS app (separate from Xcode **Prodigy Dev** builds).
+
+          ### Install (terminal)
+
+          \`\`\`bash
+          bash <(gh api repos/alexcook-dev/prodigy-4/contents/scripts/install.sh --jq .content | base64 -d)
+          \`\`\`
+
+          Or from a clone: \`./scripts/install.sh\`
+
+          Installs to \`~/Applications/Prodigy.app\`.
+
+          ### Dev vs production
+
+          | | App | Bundle ID |
+          |---|---|---|
+          | Production | Prodigy | \`dev.alexcook.Prodigy\` |
+          | Development | Prodigy Dev | \`dev.alexcook.Prodigy.dev\` |
+          EOF
+          )"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$DMG" "${DMG}.sha256" --clobber
+            gh release edit "$TAG" --notes "$NOTES" --title "Prodigy ${TAG}"
+          else
+            gh release create "$TAG" "$DMG" "${DMG}.sha256" \
+              --title "Prodigy ${TAG}" \
+              --notes "$NOTES"
+          fi

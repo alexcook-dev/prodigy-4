@@ -24,6 +24,10 @@ open CommandCenter/CommandCenter.xcodeproj
 xcodebuild -project CommandCenter/CommandCenter.xcodeproj -scheme CommandCenter -configuration Debug build
 ```
 
+**Debug** builds **Prodigy Dev** (`dev.alexcook.Prodigy.dev`) — safe for Xcode Run.
+**Release** builds **Prodigy** (`dev.alexcook.Prodigy`) for DMG/GitHub production.
+They never overwrite each other. See root [README.md](../README.md) for install/release.
+
 SwiftTerm 1.15+ is pulled via SPM. Building Metal shaders requires the Xcode
 Metal toolchain (`xcodebuild -downloadComponent MetalToolchain` once if missing);
 the app forces the software renderer at runtime.
