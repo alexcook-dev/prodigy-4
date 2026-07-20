@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(AppStorageKey.appearance) private var appearanceRaw = AppAppearance.system.rawValue
+    @AppStorage(AppStorageKey.contentZoom) private var zoomLevel = ContentZoom.default
     @State private var claudeAuth = ClaudeAuthService.shared
     @State private var grokAuth = GrokAuthService.shared
     @ObservedObject private var usageMeter = UsageMeterService.shared
@@ -23,6 +24,7 @@ struct SettingsView: View {
             Form {
                 updatesSection
                 appearanceSection
+                zoomSection
                 usageSection
                 claudeSubscriptionSection
                 grokSection
@@ -151,7 +153,7 @@ struct SettingsView: View {
 
     private var updatesFooter: String {
         if appUpdates.isProductionBuild {
-            return "Checks GitHub Releases for a newer Prodigy-*.dmg. Uses `gh auth token` for this private repo. Install places the DMG and Prodigy.app in /Applications (or ~/Applications)."
+            return "Checks public GitHub Releases for a newer Prodigy-*.dmg. No GitHub login required. Install places the DMG and Prodigy.app in /Applications (or ~/Applications)."
         }
         return "You’re on Prodigy Dev (Xcode). Auto-update is for the production app only; you can still Check manually."
     }
@@ -171,6 +173,53 @@ struct SettingsView: View {
             Text("Appearance")
         } footer: {
             Text("System follows macOS. Light and Dark lock the app independently.")
+                .font(AppTypography.caption)
+        }
+    }
+
+    // MARK: - Zoom
+
+    private var zoomSection: some View {
+        Section {
+            HStack {
+                Text("Zoom")
+                Spacer()
+                Text(ContentZoom.percentLabel(zoomLevel))
+                    .foregroundStyle(Theme.textSecondary)
+                    .monospacedDigit()
+            }
+            HStack(spacing: 12) {
+                Button("−") {
+                    zoomLevel = ContentZoom.zoomOut(zoomLevel)
+                }
+                .disabled(zoomLevel <= ContentZoom.minimum + 0.001)
+                .help("Zoom Out (⌘-)")
+
+                Slider(
+                    value: Binding(
+                        get: { zoomLevel },
+                        set: { zoomLevel = ContentZoom.clamped($0) }
+                    ),
+                    in: ContentZoom.minimum...ContentZoom.maximum,
+                    step: ContentZoom.step
+                )
+
+                Button("+") {
+                    zoomLevel = ContentZoom.zoomIn(zoomLevel)
+                }
+                .disabled(zoomLevel >= ContentZoom.maximum - 0.001)
+                .help("Zoom In (⌘=)")
+
+                Button("100%") {
+                    zoomLevel = ContentZoom.default
+                }
+                .disabled(abs(zoomLevel - ContentZoom.default) < 0.001)
+                .help("Actual Size (⌘0)")
+            }
+        } header: {
+            Text("Zoom")
+        } footer: {
+            Text("⌘= / ⌘+ zoom in · ⌘- zoom out · ⌘0 actual size. Saved for next launch.")
                 .font(AppTypography.caption)
         }
     }
