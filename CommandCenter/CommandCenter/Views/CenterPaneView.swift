@@ -396,8 +396,49 @@ struct CenterPaneView: View {
 
     // MARK: - Body
 
+    /// True when the selected center tab is a terminal (any session).
+    private var isShowingTerminalSurface: Bool {
+        if case .terminal = selection.activeSurface { return true }
+        return false
+    }
+
     @ViewBuilder
     private var contentBody: some View {
+        // Terminals stay mounted (hidden) so switching Chat/Safari and back does
+        // not destroy the PTY / reset the shell.
+        ZStack {
+            ForEach(selection.terminalTabs) { tab in
+                let isActiveTerminal: Bool = {
+                    if case .terminal(let openID) = selection.activeSurface {
+                        return openID == tab.id
+                    }
+                    return false
+                }()
+                TerminalPaneView(
+                    isFocused: isFocused && isActiveTerminal,
+                    onPaneShortcut: { focus.focus($0) },
+                    initialWorkingDirectory: tab.workingDirectory,
+                    showsChromeHeader: false,
+                    onTitleChange: { title in
+                        selection.updateTerminalTab(id: tab.id, title: title)
+                    }
+                )
+                .id(tab.id)
+                .opacity(isActiveTerminal ? 1 : 0)
+                .allowsHitTesting(isActiveTerminal)
+                .accessibilityHidden(!isActiveTerminal)
+                .zIndex(isActiveTerminal ? 10 : 0)
+            }
+
+            if !isShowingTerminalSurface {
+                nonTerminalContentBody
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var nonTerminalContentBody: some View {
         switch selection.activeSurface {
         case .empty:
             emptyTabsBody
@@ -437,25 +478,9 @@ struct CenterPaneView: View {
                         openOrFocusChat()
                     }
             }
-        case .terminal(let tabID):
-            if let tab = selection.terminalTab(id: tabID) {
-                TerminalPaneView(
-                    isFocused: isFocused,
-                    onPaneShortcut: { focus.focus($0) },
-                    initialWorkingDirectory: tab.workingDirectory,
-                    showsChromeHeader: false,
-                    onTitleChange: { title in
-                        selection.updateTerminalTab(id: tabID, title: title)
-                    }
-                )
-                // Stable identity so each tab keeps its own PTY session.
-                .id(tabID)
-            } else {
-                Color.clear
-                    .onAppear {
-                        openOrFocusChat()
-                    }
-            }
+        case .terminal:
+            // Hosted persistently above in `contentBody` so sessions survive tab switches.
+            EmptyView()
         }
     }
 
