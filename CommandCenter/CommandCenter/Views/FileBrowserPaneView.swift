@@ -15,6 +15,8 @@ struct FileBrowserPaneView: View {
     /// Active project's working folder (optional shortcut in the location menu).
     var projectFolderURL: URL? = nil
     var isFocused: Bool = false
+    /// When false, omit the "All files" title bar (host provides Files | To-Do tabs).
+    var showsChromeHeader: Bool = true
 
     /// Keyboard focus for Space / Enter / arrows when the Files pane is active.
     @FocusState private var listKeyboardFocused: Bool
@@ -22,7 +24,9 @@ struct FileBrowserPaneView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            panelHeader
+            if showsChromeHeader {
+                panelHeader
+            }
             locationBar
             treeBody
         }

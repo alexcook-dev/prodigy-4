@@ -64,6 +64,8 @@ M9A10001B003 /* AppleMailCalendarViews.swift in Sources */ = {isa = PBXBuildFile
 M9A10001B004 /* AppleMailScriptBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = M9A10001F004 /* AppleMailScriptBuilderTests.swift */; };
 M9A10001B006 /* MailHTMLWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = M9A10001F006 /* MailHTMLWebView.swift */; };
 M9A10001B005 /* MailMIMEHTML.swift in Sources */ = {isa = PBXBuildFile; fileRef = M9A10001F005 /* MailMIMEHTML.swift */; };
+M9A10001B007 /* AppleRemindersService.swift in Sources */ = {isa = PBXBuildFile; fileRef = M9A10001F007 /* AppleRemindersService.swift */; };
+M9A10001B008 /* AppleRemindersPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = M9A10001F008 /* AppleRemindersPaneView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -126,6 +128,8 @@ M9A10001F003 /* AppleMailCalendarViews.swift */ = {isa = PBXFileReference; lastK
 M9A10001F004 /* AppleMailScriptBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleMailScriptBuilderTests.swift; sourceTree = "<group>"; };
 M9A10001F006 /* MailHTMLWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailHTMLWebView.swift; sourceTree = "<group>"; };
 M9A10001F005 /* MailMIMEHTML.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailMIMEHTML.swift; sourceTree = "<group>"; };
+M9A10001F007 /* AppleRemindersService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleRemindersService.swift; sourceTree = "<group>"; };
+M9A10001F008 /* AppleRemindersPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleRemindersPaneView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -195,6 +199,7 @@ M9A10001F005 /* MailMIMEHTML.swift */ = {isa = PBXFileReference; lastKnownFileTy
 				U1A10001F001 /* AppUpdateService.swift */,
 				M9A10001F001 /* AppleMailService.swift */,
 				M9A10001F002 /* AppleCalendarService.swift */,
+				M9A10001F007 /* AppleRemindersService.swift */,
 				M9A10001F004 /* AppleMailScriptBuilderTests.swift */,
 				M9A10001F005 /* MailMIMEHTML.swift */,
 				C5E10001F10001F10001F001 /* ChatController.swift */,
@@ -251,6 +256,7 @@ A1000000000000000000000A /* Theme */ = {
 				U1A10001F002 /* AppUpdateBanner.swift */,
 				M9A10001F003 /* AppleMailCalendarViews.swift */,
 				M9A10001F006 /* MailHTMLWebView.swift */,
+				M9A10001F008 /* AppleRemindersPaneView.swift */,
 				H9A10001F003 /* ResizableSplitStack.swift */,
 				10493A96EEDF4E96BA682C5A /* TerminalPaneView.swift */,
 				A3C10001F10001F10001F001 /* PersistableHSplitView.swift */,
@@ -361,10 +367,12 @@ A1000000000000000000000A /* Theme */ = {
 				U1A10001B002 /* AppUpdateBanner.swift in Sources */,
 				M9A10001B001 /* AppleMailService.swift in Sources */,
 				M9A10001B002 /* AppleCalendarService.swift in Sources */,
+				M9A10001B007 /* AppleRemindersService.swift in Sources */,
 				M9A10001B003 /* AppleMailCalendarViews.swift in Sources */,
 				M9A10001B004 /* AppleMailScriptBuilderTests.swift in Sources */,
 				M9A10001B006 /* MailHTMLWebView.swift in Sources */,
 				M9A10001B005 /* MailMIMEHTML.swift in Sources */,
+				M9A10001B008 /* AppleRemindersPaneView.swift in Sources */,
 				M2A10001B001 /* DashboardView.swift in Sources */,
 				M3A10001B001 /* SafariBrowserView.swift in Sources */,
 				M3A10001B002 /* OpenWithMenu.swift in Sources */,
