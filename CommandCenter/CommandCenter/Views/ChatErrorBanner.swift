@@ -21,12 +21,12 @@ struct ChatErrorBanner: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 10) {
                 Text("⚠︎")
-                    .font(.system(size: 14))
+                    .font(Font.body)
                     .foregroundStyle(Theme.errorText)
                     .accessibilityHidden(true)
 
                 Text(error.displayMessage)
-                    .font(.system(size: 12))
+                    .font(Font.subheadline)
                     .foregroundStyle(Theme.errorText)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -35,7 +35,7 @@ struct ChatErrorBanner: View {
                 if let cta = error.category.bannerCTA {
                     Button(action: onCTA) {
                         Text(cta)
-                            .font(.system(size: 11, weight: .medium))
+                            .font(Font.caption.weight(.medium))
                             .foregroundStyle(Theme.errorText)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 2)
@@ -57,7 +57,7 @@ struct ChatErrorBanner: View {
                         onDismiss?()
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(Font.caption2.weight(.semibold))
                             .foregroundStyle(Theme.errorText.opacity(0.8))
                     }
                     .buttonStyle(.plain)
@@ -67,7 +67,7 @@ struct ChatErrorBanner: View {
 
             if detailsExpanded, error.category == .billingError {
                 Text(error.message)
-                    .font(.system(size: 11))
+                    .font(Font.caption)
                     .foregroundStyle(Theme.errorText.opacity(0.9))
                     .fixedSize(horizontal: false, vertical: true)
             }

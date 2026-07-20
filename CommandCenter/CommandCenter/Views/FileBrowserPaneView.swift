@@ -61,16 +61,16 @@ struct FileBrowserPaneView: View {
         // sc1-style: "All files" chrome + utility icons.
         HStack(spacing: 10) {
             Text("All files")
-                .font(.system(size: 12, weight: .semibold))
+                .font(Font.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .help(model.rootURL?.path ?? headerTitle)
 
             Text("Changes")
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.textTertiary)
             Text("Checks")
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.textTertiary)
 
             Spacer(minLength: 4)
@@ -80,7 +80,7 @@ struct FileBrowserPaneView: View {
                     model.reloadRoot()
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(Font.caption.weight(.medium))
                         .foregroundStyle(Theme.textTertiary)
                         .frame(width: 22, height: 22)
                         .contentShape(Rectangle())
@@ -90,7 +90,7 @@ struct FileBrowserPaneView: View {
             }
 
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 11, weight: .medium))
+                .font(Font.caption.weight(.medium))
                 .foregroundStyle(Theme.textTertiary)
                 .help(headerTitle)
         }
@@ -131,10 +131,10 @@ struct FileBrowserPaneView: View {
     private var emptyNoProject: some View {
         VStack(spacing: 6) {
             Text("No project selected.")
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.textSecondary)
             Text("Files follow the active project's folder.")
-                .font(.system(size: 11))
+                .font(Font.caption)
                 .foregroundStyle(Theme.textTertiary)
                 .multilineTextAlignment(.center)
         }
@@ -147,7 +147,7 @@ struct FileBrowserPaneView: View {
             ProgressView()
                 .controlSize(.small)
             Text("Loading…")
-                .font(.system(size: 11))
+                .font(Font.caption)
                 .foregroundStyle(Theme.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -159,13 +159,13 @@ struct FileBrowserPaneView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(Theme.errorText)
                 Text(message)
-                    .font(.system(size: 12))
+                    .font(Font.subheadline)
                     .foregroundStyle(Theme.errorText)
             }
             Button("Retry") {
                 model.reloadRoot()
             }
-            .font(.system(size: 11))
+            .font(Font.caption)
             .buttonStyle(.plain)
             .foregroundStyle(Theme.accentText)
         }
@@ -176,7 +176,7 @@ struct FileBrowserPaneView: View {
 
     private var emptyFolderMessage: some View {
         Text("Empty folder")
-            .font(.system(size: 12))
+            .font(Font.subheadline)
             .foregroundStyle(Theme.textSecondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .padding(.horizontal, 12)
@@ -204,7 +204,7 @@ struct FileBrowserPaneView: View {
             entryRow(row)
         case .emptyFolder:
             Text("Empty folder")
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .padding(.leading, leadingInset(for: row.depth))
                 .padding(.trailing, 12)
@@ -212,10 +212,10 @@ struct FileBrowserPaneView: View {
         case .inlineError(let message):
             HStack(spacing: 6) {
                 Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 10))
+                    .font(Font.caption2)
                     .foregroundStyle(Theme.errorText)
                 Text(message)
-                    .font(.system(size: 12))
+                    .font(Font.subheadline)
                     .foregroundStyle(Theme.errorText)
                     .lineLimit(2)
             }
@@ -241,19 +241,19 @@ struct FileBrowserPaneView: View {
                             .controlSize(.mini)
                     } else {
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(Font.caption2.weight(.semibold))
                             .foregroundStyle(Theme.textSecondary)
                     }
                 } else {
                     Image(systemName: isSelected ? "diamond.fill" : "diamond")
-                        .font(.system(size: 10))
+                        .font(Font.caption2)
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
             .frame(width: 14, height: 14)
 
             Text(node.displayName)
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.textRow)
                 .lineLimit(1)
 

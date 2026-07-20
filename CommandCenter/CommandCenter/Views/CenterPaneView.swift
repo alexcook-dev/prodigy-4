@@ -150,7 +150,7 @@ struct CenterPaneView: View {
                 openFilePreviewPicker()
             } label: {
                 Image(systemName: "plus")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(Font.caption.weight(.medium))
                     .foregroundStyle(Theme.textSecondary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -275,7 +275,7 @@ struct CenterPaneView: View {
             HStack {
                 Spacer(minLength: 40)
                 Text(message.content)
-                    .font(.system(size: 13))
+                    .font(Font.callout)
                     .foregroundStyle(Theme.textPrimary)
                     .textSelection(.enabled)
                     .padding(.horizontal, 13)
@@ -313,13 +313,13 @@ struct CenterPaneView: View {
 
                 HStack(spacing: 8) {
                     Text(relativeTime(message.createdAt))
-                        .font(.system(size: 11))
+                        .font(Font.caption)
                         .foregroundStyle(Theme.textTertiary)
                     if let label = message.modelLabel, !label.isEmpty {
                         Text("·")
                             .foregroundStyle(Theme.textTertiary)
                         Text(label)
-                            .font(.system(size: 11))
+                            .font(Font.caption)
                             .foregroundStyle(Theme.textTertiary)
                     }
                     Spacer(minLength: 0)
@@ -328,7 +328,7 @@ struct CenterPaneView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         case .system:
             Text(message.content)
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.textSecondary)
         }
     }
@@ -349,7 +349,7 @@ struct CenterPaneView: View {
                 HStack(spacing: 10) {
                     ThinkingPulse()
                     Text("Thinking…")
-                        .font(.system(size: 12))
+                        .font(Font.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                     stopButton
                 }
@@ -375,7 +375,7 @@ struct CenterPaneView: View {
             }
         } label: {
             Text("Stop")
-                .font(.system(size: 11))
+                .font(Font.caption)
                 .foregroundStyle(Theme.textPrimary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 2)
@@ -413,7 +413,7 @@ struct CenterPaneView: View {
             HStack(alignment: .top, spacing: 8) {
                 TextField(composerPlaceholderText, text: $chat.composerText, axis: .vertical)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 14))
+                    .font(Font.body)
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2...10)
                     .focused($composerFocused)
@@ -424,7 +424,7 @@ struct CenterPaneView: View {
 
                 if chat.composerText.isEmpty && !composerFocused {
                     Text("⌘L to focus")
-                        .font(.system(size: 11))
+                        .font(Font.caption)
                         .foregroundStyle(Theme.textTertiary)
                         .padding(.top, 2)
                 }
@@ -445,7 +445,7 @@ struct CenterPaneView: View {
                     sendCurrentMessage()
                 } label: {
                     Image(systemName: "arrow.up")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(Font.subheadline.weight(.bold))
                         .foregroundStyle(canSend ? Theme.textOnAccent : Theme.textTertiary)
                         .frame(width: 28, height: 28)
                         .background(
@@ -458,7 +458,7 @@ struct CenterPaneView: View {
                 .keyboardShortcut(.return, modifiers: .command)
                 .help("Send (⌘⏎)")
             }
-            .font(.system(size: 11))
+            .font(Font.caption)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -644,7 +644,7 @@ private struct CenterTab: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Text(title)
-                    .font(.system(size: 12, weight: isActive ? .medium : .regular))
+                    .font((isActive ? Font.subheadline.weight(.medium) : Font.subheadline))
                     .foregroundStyle(isActive ? Theme.textPrimary : Theme.textSecondary)
                     .lineLimit(1)
 
@@ -653,7 +653,7 @@ private struct CenterTab: View {
                         onClose?()
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(Font.caption2.weight(.semibold))
                             .foregroundStyle(Theme.textTertiary)
                     }
                     .buttonStyle(.plain)

@@ -1,33 +1,30 @@
 import SwiftUI
 
-/// San Francisco type scale for Prodigy.
-///
-/// Uses the system font (SF Pro / SF Mono) via SwiftUI semantic text styles so
-/// Dynamic Type and platform metrics stay correct. Prefer these over ad-hoc
-/// point sizes so the UI matches Apple HIG.
+/// Native macOS type styles (San Francisco via system text styles).
+/// Prefer these over point sizes so Dynamic Type and HIG metrics apply.
 enum AppTypography {
-    /// Primary reading text (chat body, list rows).
+    /// Primary reading text.
     static let body = Font.body
 
-    /// Slightly tighter body for dense chrome.
+    /// Dense chrome / secondary body.
     static let callout = Font.callout
 
-    /// Section headers ("PROJECTS", "AGENTS", panel titles).
+    /// Section headers.
     static let section = Font.subheadline.weight(.semibold)
 
-    /// Secondary labels, captions under rows.
+    /// Secondary labels.
     static let secondary = Font.subheadline
 
-    /// Compact filters / chips / kbd hints.
+    /// Compact filters / chips.
     static let caption = Font.caption
 
-    /// Smallest chrome (status, tertiary hints).
+    /// Smallest chrome.
     static let caption2 = Font.caption2
 
-    /// Emphasized actions (primary buttons).
+    /// Emphasized actions.
     static let action = Font.body.weight(.semibold)
 
-    /// Monospaced SF Mono for paths / keycaps.
+    /// Monospaced system font (paths / keycaps / code).
     static let mono = Font.body.monospaced()
     static let monoCaption = Font.caption.monospaced()
 }

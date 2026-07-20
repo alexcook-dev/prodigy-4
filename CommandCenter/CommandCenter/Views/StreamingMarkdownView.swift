@@ -17,7 +17,7 @@ struct StreamingMarkdownView: View {
         // sc4: readable body on light/dark center well.
         VStack(alignment: .leading, spacing: 6) {
             Text(rendered)
-                .font(.system(size: 14))
+                .font(Font.body)
                 .foregroundStyle(Theme.textPrimary)
                 .tint(Theme.accentText)
                 .textSelection(.enabled)
@@ -26,7 +26,7 @@ struct StreamingMarkdownView: View {
 
             if isPartial {
                 Text("[partial — kept]")
-                    .font(.system(size: 12).italic())
+                    .font(Font.subheadline.italic())
                     .foregroundStyle(Theme.textSecondary)
             }
         }

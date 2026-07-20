@@ -11,20 +11,20 @@ struct FirstRunView: View {
     var body: some View {
         VStack(spacing: 14) {
             Image(systemName: "circle.circle")
-                .font(.system(size: 36, weight: .light))
+                .font(Font.largeTitle.weight(.light))
                 .foregroundStyle(Theme.textSecondary)
                 .opacity(0.9)
                 .accessibilityHidden(true)
 
             Text(greeting)
-                .font(.system(size: 22, weight: .semibold))
+                .font(Font.title2.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
                 .tracking(-0.2)
 
             Text(
                 "One place for the day's work: chat in the middle, your files and terminal on the right, projects on the left. Start by making a project — or just say something."
             )
-            .font(.system(size: 14))
+            .font(Font.body)
             .foregroundStyle(Theme.textSecondary)
             .multilineTextAlignment(.center)
             .frame(maxWidth: 420)
@@ -32,7 +32,7 @@ struct FirstRunView: View {
 
             Button(action: onCreateProject) {
                 Text("Create your first Project")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(Font.body.weight(.medium))
                     .foregroundStyle(Theme.textOnAccent)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 9)
@@ -46,7 +46,7 @@ struct FirstRunView: View {
 
             Button(action: onQuickChat) {
                 Text("or start a quick chat ⏎")
-                    .font(.system(size: 13))
+                    .font(Font.callout)
                     .foregroundStyle(Theme.accentText)
             }
             .buttonStyle(.plain)
@@ -85,10 +85,10 @@ struct FirstRunView: View {
     private func tipCard(title: String, body: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: 12, weight: .semibold))
+                .font(Font.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
             Text(body)
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(2)
