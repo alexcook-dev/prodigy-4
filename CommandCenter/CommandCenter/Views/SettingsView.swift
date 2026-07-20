@@ -153,9 +153,9 @@ struct SettingsView: View {
 
     private var updatesFooter: String {
         if appUpdates.isProductionBuild {
-            return "Checks public GitHub Releases for a newer Prodigy-*.dmg. No GitHub login required. Install places the DMG and Prodigy.app in /Applications (or ~/Applications)."
+            return "Checks private GitHub Releases for a newer Prodigy-*.dmg. Uses `gh auth token` (run `gh auth login` once). Install places the DMG and app in /Applications."
         }
-        return "You’re on Prodigy Dev (Xcode). Auto-update is for the production app only; you can still Check manually."
+        return "You’re on Prodigy Dev (Xcode). Auto-update toast is production-only; Check for Updates still works here."
     }
 
     // MARK: - Appearance
