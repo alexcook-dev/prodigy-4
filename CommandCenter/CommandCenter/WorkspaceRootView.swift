@@ -156,8 +156,8 @@ struct WorkspaceRootView: View {
             if isNarrow {
                 // 25% sidebar / 75% center when the right column is collapsed.
                 PersistableHSplitView(
-                    // v4: force fraction layout (v3 could keep bogus NSSplitView defaults).
-                    autosaveName: "CommandCenter.MainSplit.Narrow.v4-25-75",
+                    // v5: 15% | 85% narrow layout.
+                    autosaveName: "CommandCenter.MainSplit.Narrow.v5-15-85",
                     panes: [
                         .init(
                             minWidth: LayoutMetrics.sidebarMinWidth,
@@ -178,10 +178,10 @@ struct WorkspaceRootView: View {
                     ]
                 )
             } else {
-                // Display-relative defaults: 25% | 50% | 25% with 1pt hairline dividers.
+                // Display-relative defaults: 15% | 70% | 15% with 1pt hairline dividers.
                 PersistableHSplitView(
-                    // v4: force fraction layout (v3 could keep bogus NSSplitView defaults).
-                    autosaveName: "CommandCenter.MainSplit.Wide.v4-25-50-25",
+                    // v5: 15% | 70% | 15% (bumped so old 25/50/25 prefs don't stick).
+                    autosaveName: "CommandCenter.MainSplit.Wide.v5-15-70-15",
                     panes: [
                         .init(
                             minWidth: LayoutMetrics.sidebarMinWidth,
