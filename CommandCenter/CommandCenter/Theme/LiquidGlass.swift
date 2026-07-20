@@ -227,8 +227,10 @@ struct LiquidGlassWindowChrome: NSViewRepresentable {
             let bg = NSColor(named: "AppBackground") ?? .windowBackgroundColor
             window.isOpaque = true
             window.backgroundColor = bg
+            // No product name in the title bar ("Command Center" / target name).
+            window.title = ""
             window.titlebarAppearsTransparent = true
-            window.titleVisibility = .visible
+            window.titleVisibility = .hidden
             if !window.styleMask.contains(.fullSizeContentView) {
                 window.styleMask.insert(.fullSizeContentView)
             }

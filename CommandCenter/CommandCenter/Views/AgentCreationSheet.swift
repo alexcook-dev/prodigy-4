@@ -15,11 +15,11 @@ struct AgentCreationSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("New Agent")
-                .font(.system(size: 15, weight: .semibold))
+                .font(Font.headline.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
 
             Text("Reusable personas — an editor, a researcher, a planner. The system prompt is shared; each Project keeps its own conversation with this Agent.")
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -27,7 +27,7 @@ struct AgentCreationSheet: View {
                 fieldLabel("Name")
                 TextField("e.g. Research Assistant", text: $name)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 13))
+                    .font(Font.callout)
                     .foregroundStyle(Theme.textPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
@@ -37,7 +37,7 @@ struct AgentCreationSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 fieldLabel("System prompt")
                 TextEditor(text: $systemPrompt)
-                    .font(.system(size: 12))
+                    .font(Font.subheadline)
                     .foregroundStyle(Theme.textPrimary)
                     .scrollContentBackground(.hidden)
                     .frame(minHeight: 120, maxHeight: 200)
@@ -55,7 +55,7 @@ struct AgentCreationSheet: View {
 
                 Button("Create Agent") { create() }
                     .buttonStyle(.plain)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Font.callout.weight(.medium))
                     .foregroundStyle(Theme.textOnAccent)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
@@ -77,7 +77,7 @@ struct AgentCreationSheet: View {
 
     private func fieldLabel(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 11, weight: .semibold))
+            .font(Font.caption.weight(.semibold))
             .foregroundStyle(Theme.textSecondary)
             .textCase(.uppercase)
             .tracking(0.6)

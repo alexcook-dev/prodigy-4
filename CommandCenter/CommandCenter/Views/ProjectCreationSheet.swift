@@ -25,24 +25,24 @@ struct ProjectCreationSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("New Project")
-                .font(.system(size: 15, weight: .semibold))
+                .font(Font.headline.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
 
             Text("Group chats and files by what you're working on. Pick an existing folder, or start empty under ~/Projects.")
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Name")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(Font.caption.weight(.semibold))
                     .foregroundStyle(Theme.textSecondary)
                     .textCase(.uppercase)
                     .tracking(0.6)
 
                 TextField("Project name", text: $name)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 13))
+                    .font(Font.callout)
                     .foregroundStyle(Theme.textPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
@@ -58,7 +58,7 @@ struct ProjectCreationSheet: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Working folder")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(Font.caption.weight(.semibold))
                     .foregroundStyle(Theme.textSecondary)
                     .textCase(.uppercase)
                     .tracking(0.6)
@@ -81,14 +81,14 @@ struct ProjectCreationSheet: View {
                 }
 
                 Text(folderSummary)
-                    .font(.system(size: 11))
+                    .font(Font.caption)
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(2)
             }
 
             if let errorMessage {
                 Text(errorMessage)
-                    .font(.system(size: 12))
+                    .font(Font.subheadline)
                     .foregroundStyle(Theme.errorText)
                     .padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -112,7 +112,7 @@ struct ProjectCreationSheet: View {
 
                 Button("Create Project") { create() }
                     .buttonStyle(.plain)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Font.callout.weight(.medium))
                     .foregroundStyle(Theme.textOnAccent)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
@@ -160,7 +160,7 @@ struct ProjectCreationSheet: View {
     ) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 12, weight: isSelected ? .medium : .regular))
+                .font((isSelected ? Font.subheadline.weight(.medium) : Font.subheadline))
                 .foregroundStyle(isSelected ? Theme.accentText : Theme.textSecondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)

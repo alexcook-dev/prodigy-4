@@ -38,7 +38,7 @@ struct TerminalPaneView: View {
                 // Reserved for multi-terminal sessions later.
             } label: {
                 Image(systemName: "plus")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(Font.caption.weight(.medium))
                     .foregroundStyle(Theme.textTertiary)
                     .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
@@ -49,7 +49,7 @@ struct TerminalPaneView: View {
             Spacer(minLength: 8)
 
             Text(session.headerTitle)
-                .font(.system(size: 11))
+                .font(Font.caption)
                 .foregroundStyle(Theme.textTertiary)
                 .lineLimit(1)
         }
@@ -65,7 +65,7 @@ struct TerminalPaneView: View {
 
     private func terminalTab(title: String, selected: Bool) -> some View {
         Text(title)
-            .font(.system(size: 12, weight: selected ? .semibold : .regular))
+            .font((selected ? Font.subheadline.weight(.semibold) : Font.subheadline))
             .foregroundStyle(selected ? Theme.textPrimary : Theme.textSecondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
@@ -101,12 +101,12 @@ struct TerminalPaneView: View {
     private var processEndedBar: some View {
         HStack(spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .accessibilityHidden(true)
 
             Text(session.processEndedMessage)
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.textPrimary)
 
             Spacer(minLength: 8)
@@ -115,7 +115,7 @@ struct TerminalPaneView: View {
                 session.requestRestart()
             } label: {
                 Text("Restart shell ⏎")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(Font.caption.weight(.semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
             }

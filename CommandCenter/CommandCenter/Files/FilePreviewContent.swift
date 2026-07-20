@@ -200,7 +200,7 @@ struct FilePreviewView: View {
                     copyPathOrContents()
                 } label: {
                     Image(systemName: "doc.on.doc")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(Font.subheadline.weight(.medium))
                         .foregroundStyle(Theme.textTertiary)
                         .frame(width: 28, height: 28)
                         .contentShape(Rectangle())
@@ -222,11 +222,11 @@ struct FilePreviewView: View {
     private var pathChip: some View {
         HStack(spacing: 6) {
             Image(systemName: fileIconName)
-                .font(.system(size: 11, weight: .semibold))
+                .font(Font.caption.weight(.semibold))
                 .foregroundStyle(fileIconColor)
 
             Text(pathLabel)
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -288,7 +288,7 @@ struct FilePreviewView: View {
                 ProgressView()
                     .controlSize(.small)
                 Text("Loading preview…")
-                    .font(.system(size: 12))
+                    .font(Font.subheadline)
                     .foregroundStyle(Theme.textSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -322,10 +322,10 @@ struct FilePreviewView: View {
     private func placeholderMessage(_ message: String, isError: Bool = false) -> some View {
         VStack(spacing: 8) {
             Image(systemName: isError ? "exclamationmark.triangle" : "doc.questionmark")
-                .font(.system(size: 22))
+                .font(Font.title2)
                 .foregroundStyle(isError ? Theme.errorText : Theme.textSecondary)
             Text(message)
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(isError ? Theme.errorText : Theme.textSecondary)
                 .multilineTextAlignment(.center)
         }
@@ -338,7 +338,7 @@ struct FilePreviewView: View {
     private var chromeBar: some View {
         HStack(spacing: 10) {
             Text(statusLabel)
-                .font(.system(size: 11))
+                .font(Font.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .lineLimit(1)
 
@@ -347,7 +347,7 @@ struct FilePreviewView: View {
             HStack(spacing: 6) {
                 kbd("esc")
                 Text("back to chat")
-                    .font(.system(size: 11))
+                    .font(Font.caption)
                     .foregroundStyle(Theme.textSecondary)
 
                 Text("·")
@@ -355,7 +355,7 @@ struct FilePreviewView: View {
 
                 kbd("⌘⏎")
                 Text("discuss in chat")
-                    .font(.system(size: 11))
+                    .font(Font.caption)
                     .foregroundStyle(Theme.textSecondary)
             }
         }
@@ -380,7 +380,7 @@ struct FilePreviewView: View {
 
     private func kbd(_ label: String) -> some View {
         Text(label)
-            .font(.system(size: 10, design: .monospaced))
+            .font(Font.caption2.monospaced())
             .foregroundStyle(Theme.textTertiary)
             .padding(.horizontal, 4)
             .padding(.vertical, 1)
@@ -413,7 +413,7 @@ private struct TextEditorView: View {
     let text: String
     let lineCount: Int
 
-    private let mono = Font.system(size: 12, design: .monospaced)
+    private let mono = Font.caption.monospaced()
     private let lineSpacing: CGFloat = 3
 
     private var gutterText: String {

@@ -60,14 +60,14 @@ struct DashboardView: View {
     private var header: some View {
         HStack {
             Text("Dashboard")
-                .font(.system(size: 15, weight: .semibold))
+                .font(Font.headline.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
             Spacer()
             Button {
                 onCreateProject()
             } label: {
                 Label("New Project", systemImage: "plus")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(Font.subheadline.weight(.medium))
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -112,7 +112,7 @@ struct DashboardView: View {
 
     private func chip(_ title: String, selected: Bool) -> some View {
         Text(title)
-            .font(.system(size: 12, weight: selected ? .semibold : .regular))
+            .font((selected ? Font.subheadline.weight(.semibold) : Font.subheadline))
             .foregroundStyle(selected ? Theme.textPrimary : Theme.textSecondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
@@ -180,13 +180,13 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(Font.caption.weight(.semibold))
                     .foregroundStyle(tint)
                 Text(title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(Font.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                 Text("\(count)")
-                    .font(.system(size: 12))
+                    .font(Font.subheadline)
                     .foregroundStyle(Theme.textTertiary)
                 Spacer(minLength: 0)
             }
@@ -238,7 +238,7 @@ private struct DashboardCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top, spacing: 8) {
                     Text(slug)
-                        .font(.system(size: 11))
+                        .font(Font.caption)
                         .foregroundStyle(Theme.textTertiary)
                         .lineLimit(1)
                     Spacer(minLength: 4)
@@ -246,13 +246,13 @@ private struct DashboardCard: View {
                 }
 
                 Text(project.name)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(Font.body.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
 
                 Text(preview)
-                    .font(.system(size: 12))
+                    .font(Font.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(3)
                     .multilineTextAlignment(.leading)
@@ -260,7 +260,7 @@ private struct DashboardCard: View {
                 HStack {
                     Spacer()
                     Text(relativeTime(project.lastActiveAt))
-                        .font(.system(size: 11))
+                        .font(Font.caption)
                         .foregroundStyle(Theme.textTertiary)
                 }
             }
@@ -284,15 +284,15 @@ private struct DashboardCard: View {
     private var statusGlyph: some View {
         if project.hasUnviewedActivity {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.statusDone)
         } else if project.archived {
             Image(systemName: "checkmark.circle")
-                .font(.system(size: 12))
+                .font(Font.subheadline)
                 .foregroundStyle(Theme.textTertiary)
         } else {
             Image(systemName: "circle.fill")
-                .font(.system(size: 8))
+                .font(Font.caption2)
                 .foregroundStyle(Theme.statusBusy)
         }
     }

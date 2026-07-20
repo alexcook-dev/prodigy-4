@@ -117,13 +117,13 @@ struct SidebarView: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "square.grid.2x2")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Font.callout.weight(.medium))
                     .foregroundStyle(selected ? Theme.textPrimary : Theme.textSecondary)
                     .frame(width: 18)
                     .accessibilityHidden(true)
 
                 Text("Dashboard")
-                    .font(.system(size: 13, weight: selected ? .semibold : .regular))
+                    .font((selected ? Font.callout.weight(.semibold) : Font.callout))
                     .foregroundStyle(Theme.textPrimary)
 
                 Spacer(minLength: 0)
@@ -453,18 +453,18 @@ private struct RenameProjectSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(isQuickChat ? "Name this Project" : "Rename Project")
-                .font(.system(size: 15, weight: .semibold))
+                .font(Font.headline.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
 
             if isQuickChat {
                 Text("Quick Chat projects stay hidden until you give them a name.")
-                    .font(.system(size: 12))
+                    .font(Font.subheadline)
                     .foregroundStyle(Theme.textSecondary)
             }
 
             TextField("Project name", text: $name)
                 .textFieldStyle(.plain)
-                .font(.system(size: 13))
+                .font(Font.callout)
                 .foregroundStyle(Theme.textPrimary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
@@ -484,7 +484,7 @@ private struct RenameProjectSheet: View {
                     .foregroundStyle(Theme.textSecondary)
                 Button("Save", action: onSave)
                     .buttonStyle(.plain)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Font.callout.weight(.medium))
                     .foregroundStyle(Theme.textOnAccent)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
@@ -574,7 +574,7 @@ struct ProjectArchiveButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: isArchived ? "tray.and.arrow.up" : "archivebox")
-                .font(.system(size: 11, weight: .medium))
+                .font(Font.caption.weight(.medium))
                 .foregroundStyle(Theme.textSecondary)
                 .frame(width: 22, height: 22)
                 .contentShape(Rectangle())
