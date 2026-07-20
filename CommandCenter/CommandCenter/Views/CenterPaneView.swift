@@ -27,6 +27,10 @@ struct CenterPaneView: View {
 
     @FocusState private var composerFocused: Bool
     @State private var scrollAnchor = UUID()
+    @State private var showSettingsSheet = false
+    @ObservedObject private var appleMail = AppleMailService.shared
+    @ObservedObject private var appleCalendar = AppleCalendarService.shared
+    @ObservedObject private var usageMeter = UsageMeterService.shared
     /// Persist reasoning visibility across launches.
     @AppStorage("prodigy.chat.showReasoning") private var showReasoningStored = true
 
@@ -46,13 +50,21 @@ struct CenterPaneView: View {
         return agents.first { $0.id == id }
     }
 
-    /// Active chat thread: agent-scoped if an Agent is selected, else primary.
+    /// Active chat thread from the selected chat tab (multi-tab).
     private var activeThread: ChatThread? {
         guard let project = selectedProject else { return nil }
+        if case .chat(let threadID) = selection.activeSurface {
+            return project.threads.first { $0.id == threadID }
+        }
         if let agent = selectedAgent {
             return project.thread(for: agent)
         }
         return project.primaryThread
+    }
+
+    /// Persona for the active thread (tab), not only the sidebar selection.
+    private var activeThreadAgent: Agent? {
+        activeThread?.agent ?? selectedAgent
     }
 
     private var isStreamingHere: Bool {
@@ -94,8 +106,8 @@ struct CenterPaneView: View {
         // ⌘L focuses composer (sc4); ⌘⏎ discuss-in-chat stages a path ref.
         .onKeyPress(KeyEquivalent("l"), phases: .down) { press in
             guard press.modifiers.contains(.command) else { return .ignored }
-            selection.showChat()
-            focus.focus(.chat)
+            openOrFocusChat()
+            focus.activateChatTab()
             composerFocused = true
             return .handled
         }
@@ -103,22 +115,23 @@ struct CenterPaneView: View {
             guard let value else { return }
             chat.insertComposerText(value)
             selection.pendingComposerInsert = nil
-            selection.showChat()
-            focus.focus(.chat)
+            openOrFocusChat()
+            focus.activateChatTab()
             composerFocused = true
         }
         .onChange(of: chat.composerFocusToken) { _, _ in
             composerFocused = true
         }
-        // Opening the chat tab clears the green unread-activity dot for this Project.
+        // Opening a chat tab clears the green unread-activity dot for this Project.
         .onChange(of: selection.activeSurface) { _, surface in
             if case .chat = surface {
                 selectedProject?.hasUnviewedActivity = false
                 composerFocused = true
             }
         }
-        // ⌘2 / Navigate → Chat always returns caret to the composer (not terminal).
+        // ⌘2 / Navigate → Chat: focus last chat tab or create/open one.
         .onChange(of: focus.chatTabActivationToken) { _, _ in
+            openOrFocusChat()
             composerFocused = true
         }
         .onChange(of: isFocused) { _, focused in
@@ -132,22 +145,62 @@ struct CenterPaneView: View {
                 focus.focus(.chat)
                 composerFocused = true
             }
+            Task { await usageMeter.syncClaudeUsageFromCLI() }
         }
+        .sheet(isPresented: $showSettingsSheet) {
+            SettingsView()
+        }
+    }
+
+    /// Focus an open chat tab, or open primary / create a new chat when none exist.
+    private func openOrFocusChat() {
+        if let project = selectedProject {
+            _ = selection.showOrCreateChat(in: project, context: modelContext)
+            return
+        }
+        // No project yet: create a quick-chat project with a primary thread.
+        do {
+            let created = try ProjectFactory.createQuickChat(in: modelContext)
+            try modelContext.save()
+            selection.selectProject(created)
+            if let primary = created.primaryThread {
+                selection.openChatTab(thread: primary)
+            }
+        } catch {
+            onCreateProject()
+        }
+    }
+
+    private func openNewChat() {
+        if let project = selectedProject {
+            _ = selection.openNewChatTab(in: project, context: modelContext)
+            composerFocused = true
+            return
+        }
+        openOrFocusChat()
     }
 
     // MARK: - Tabs
 
     private var tabBar: some View {
         HStack(spacing: 4) {
-            // Single chat tab per Project (V1) — never multi-thread from the tab bar.
-            CenterTab(
-                title: chatTabTitle,
-                isActive: selection.activeSurface == .chat,
-                showsClose: false
-            ) {
-                selection.showChat()
-                focus.focus(.chat)
-                composerFocused = true
+            // Multiple chat tabs — each maps to a ChatThread.
+            ForEach(selection.chatTabs) { tab in
+                CenterTab(
+                    title: titleForChatTab(tab),
+                    isActive: {
+                        if case .chat(let openID) = selection.activeSurface {
+                            return openID == tab.id
+                        }
+                        return false
+                    }(),
+                    showsClose: true,
+                    onClose: { selection.closeChatTab(id: tab.id) }
+                ) {
+                    selection.selectChatTab(id: tab.id)
+                    focus.focus(.chat)
+                    composerFocused = true
+                }
             }
 
             ForEach(selection.filePreviewTabs) { tab in
@@ -160,9 +213,37 @@ struct CenterPaneView: View {
                         return false
                     }(),
                     showsClose: true,
-                    onClose: { selection.closeFilePreview(tab) }
+                    onClose: { selection.closeFilePreview(id: tab.id) }
                 ) {
                     selection.activeSurface = .filePreview(tab)
+                }
+            }
+
+            if selection.isAppleMailTabOpen {
+                CenterTab(
+                    title: "Mail",
+                    isActive: {
+                        if case .appleMail = selection.activeSurface { return true }
+                        return false
+                    }(),
+                    showsClose: true,
+                    onClose: { selection.closeAppleMailTab() }
+                ) {
+                    selection.openAppleMailTab()
+                }
+            }
+
+            if selection.isAppleCalendarTabOpen {
+                CenterTab(
+                    title: "Calendar",
+                    isActive: {
+                        if case .appleCalendar = selection.activeSurface { return true }
+                        return false
+                    }(),
+                    showsClose: true,
+                    onClose: { selection.closeAppleCalendarTab() }
+                ) {
+                    selection.openAppleCalendarTab()
                 }
             }
 
@@ -170,23 +251,47 @@ struct CenterPaneView: View {
                 CenterTab(
                     title: tab.title,
                     isActive: {
-                        if case .browser(let open) = selection.activeSurface {
-                            return open.id == tab.id
+                        if case .browser(let openID) = selection.activeSurface {
+                            return openID == tab.id
                         }
                         return false
                     }(),
                     showsClose: true,
-                    onClose: { selection.closeBrowserTab(tab) }
+                    onClose: { selection.closeBrowserTab(id: tab.id) }
                 ) {
-                    selection.activeSurface = .browser(tab)
+                    selection.selectBrowserTab(tab)
                 }
             }
 
-            // "+" : file preview or Safari tab.
+            // "+" : New Chat, file, Safari, Apple Mail, Apple Calendar.
             Menu {
+                Button("New Chat") {
+                    openNewChat()
+                    focus.focus(.chat)
+                }
+                if !selection.hasOpenChatTabs {
+                    Button("Open Chat") {
+                        openOrFocusChat()
+                        focus.activateChatTab()
+                        composerFocused = true
+                    }
+                }
                 Button("Open File…") { openFilePreviewPicker() }
-                Button("Safari") {
+                Divider()
+                Button {
                     selection.openSafariTab()
+                } label: {
+                    Label("Safari", systemImage: "safari")
+                }
+                Button {
+                    selection.openAppleMailTab()
+                } label: {
+                    Label("Mail", systemImage: "envelope.fill")
+                }
+                Button {
+                    selection.openAppleCalendarTab()
+                } label: {
+                    Label("Calendar", systemImage: "calendar")
                 }
             } label: {
                 Image(systemName: "plus")
@@ -196,7 +301,7 @@ struct CenterPaneView: View {
                     .padding(.vertical, 6)
             }
             .menuStyle(.borderlessButton)
-            .help("Open file or Safari tab")
+            .help("Open New Chat, file, Safari, Mail, or Calendar")
 
             Spacer()
 
@@ -215,11 +320,13 @@ struct CenterPaneView: View {
             .help(showReasoningStored ? "Hide reasoning" : "Show reasoning")
             .foregroundStyle(showReasoningStored ? Theme.accent : Theme.textSecondary)
 
-            // sc8 open-with dropdown (Finder, VS Code, Safari…).
+            // sc8 open-with dropdown (Finder, VS Code, Safari, Mail, Calendar…).
             Menu {
                 OpenWithMenuContent(
                     workspacePath: selection.workspacePath(from: Array(allProjects)),
-                    onOpenSafari: { selection.openSafariTab() }
+                    onOpenSafari: { selection.openSafariTab() },
+                    onOpenMail: { selection.openAppleMailTab() },
+                    onOpenCalendar: { selection.openAppleCalendarTab() }
                 )
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -242,14 +349,14 @@ struct CenterPaneView: View {
         }
     }
 
-    private var chatTabTitle: String {
-        if let agent = selectedAgent {
-            return "Chat — \(agent.name)"
+    private func titleForChatTab(_ tab: ChatTab) -> String {
+        if let project = selectedProject,
+           let thread = project.threads.first(where: { $0.id == tab.id }) {
+            let t = thread.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !t.isEmpty { return t }
+            if let name = thread.agent?.name, !name.isEmpty { return name }
         }
-        if let project = selectedProject {
-            return "Chat — \(project.name)"
-        }
-        return "Chat"
+        return tab.title
     }
 
     /// Real file open for preview tabs (T11: never a second chat thread).
@@ -271,21 +378,87 @@ struct CenterPaneView: View {
     @ViewBuilder
     private var contentBody: some View {
         switch selection.activeSurface {
-        case .chat:
+        case .empty:
+            emptyTabsBody
+        case .chat(let threadID):
             chatBody
+                .id(threadID) // Keep scroll/composer identity per thread tab.
         case .dashboard:
             EmptyView() // Hosted as full-pane body above.
         case .filePreview(let tab):
             filePreviewBody(tab)
-        case .browser(let tab):
-            SafariBrowserView(
-                tab: tab,
-                onClose: { selection.closeBrowserTab(tab) },
-                onUpdate: { title, url in
-                    selection.updateBrowserTab(tab, title: title, urlString: url)
-                }
+        case .appleMail:
+            AppleMailView(
+                mail: appleMail,
+                onClose: { selection.closeAppleMailTab() }
             )
+        case .appleCalendar:
+            AppleCalendarView(
+                calendar: appleCalendar,
+                onClose: { selection.closeAppleCalendarTab() }
+            )
+        case .browser(let tabID):
+            if let tab = selection.browserTab(id: tabID) {
+                SafariBrowserView(
+                    tabID: tab.id,
+                    initialURLString: tab.urlString,
+                    defaultTitle: tab.title,
+                    onClose: { selection.closeBrowserTab(id: tabID) },
+                    onUpdate: { title, url in
+                        selection.updateBrowserTab(id: tabID, title: title, urlString: url)
+                    }
+                )
+                // Stable identity so title/URL bookkeeping never remounts WKWebView.
+                .id(tabID)
+            } else {
+                Color.clear
+                    .onAppear {
+                        openOrFocusChat()
+                    }
+            }
         }
+    }
+
+    /// Shown when every center tab was closed — invite re-open Chat or Safari.
+    private var emptyTabsBody: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "square.on.square")
+                .font(.system(size: 36, weight: .light))
+                .foregroundStyle(Theme.textTertiary)
+            Text("No tabs open")
+                .font(Font.title3.weight(.medium))
+                .foregroundStyle(Theme.textPrimary)
+            Text("Open Chat, Safari, Mail, or Calendar to continue.")
+                .font(Font.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+            HStack(spacing: 12) {
+                Button("New Chat") {
+                    openNewChat()
+                    focus.activateChatTab()
+                    composerFocused = true
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut("2", modifiers: .command)
+
+                Button("Safari") {
+                    selection.openSafariTab()
+                }
+                .buttonStyle(.bordered)
+
+                Button("Mail") {
+                    selection.openAppleMailTab()
+                }
+                .buttonStyle(.bordered)
+
+                Button("Calendar") {
+                    selection.openAppleCalendarTab()
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.centerBackground)
     }
 
     /// Same structure whether empty or populated: scrollable thread + (via
@@ -511,7 +684,7 @@ struct CenterPaneView: View {
                 // ⌘⏎: go to chat + insert file reference into the composer
                 // (PLAN.md Responsive & Accessibility / Next Step 4).
                 selection.discussInChat(request)
-                focus.focus(.chat)
+                focus.activateChatTab()
             }
         )
     }
@@ -550,6 +723,9 @@ struct CenterPaneView: View {
                 }
 
                 Spacer(minLength: 8)
+
+                // Live usage for the model currently selected in the picker.
+                UsageGaugePill(model: chat.selectedModel, meter: usageMeter)
 
                 Button {
                     sendCurrentMessage()
@@ -719,7 +895,7 @@ struct CenterPaneView: View {
         chat.send(
             project: project,
             thread: thread,
-            agent: selectedAgent,
+            agent: activeThreadAgent,
             context: modelContext,
             isBackground: false
         )
@@ -731,7 +907,7 @@ struct CenterPaneView: View {
             action,
             project: selectedProject,
             thread: activeThread,
-            agent: selectedAgent,
+            agent: activeThreadAgent,
             context: modelContext,
             focusTerminal: {
                 focus.focus(.terminal)
@@ -808,6 +984,10 @@ private struct ReasoningDisclosure: View {
 
 // MARK: - Tab chrome
 
+/// Tab chip with optional close control.
+///
+/// Close must be a **sibling** of the select control — never a Button nested
+/// inside another Button (SwiftUI swallows the inner click on macOS).
 private struct CenterTab: View {
     let title: String
     let isActive: Bool
@@ -816,33 +996,39 @@ private struct CenterTab: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
+        HStack(spacing: 2) {
+            Button(action: action) {
                 Text(title)
-                    .font((isActive ? Font.subheadline.weight(.medium) : Font.subheadline))
+                    .font(isActive ? Font.subheadline.weight(.medium) : Font.subheadline)
                     .foregroundStyle(isActive ? Theme.textPrimary : Theme.textSecondary)
                     .lineLimit(1)
-
-                if showsClose {
-                    Button {
-                        onClose?()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(Font.caption2.weight(.semibold))
-                            .foregroundStyle(Theme.textTertiary)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Close preview")
-                }
+                    .padding(.leading, 12)
+                    .padding(.trailing, showsClose ? 4 : 12)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .glassEffect(
-                isActive ? .regular.interactive() : .clear,
-                in: Capsule(style: .continuous)
-            )
+            .buttonStyle(.plain)
+            .help(title)
+
+            if showsClose {
+                Button {
+                    onClose?()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(Font.caption2.weight(.semibold))
+                        .foregroundStyle(Theme.textSecondary)
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .help("Close tab")
+                .padding(.trailing, 6)
+            }
         }
-        .buttonStyle(.plain)
+        .glassEffect(
+            isActive ? .regular.interactive() : .clear,
+            in: Capsule(style: .continuous)
+        )
     }
 }
 

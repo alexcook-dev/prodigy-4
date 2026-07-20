@@ -117,6 +117,8 @@ final class ChatController {
     private(set) var streamingModelLabel: String?
     private(set) var streamingProjectID: UUID?
     private(set) var streamingThreadID: UUID?
+    /// User text for the in-flight turn (usage meter input-size estimate).
+    private var streamingUserText: String = ""
     /// When true, show reasoning blocks on assistant messages / live stream.
     /// Bound from the chat top-bar toggle (persisted via AppStorage in the view).
     var showReasoning: Bool = true
@@ -337,6 +339,7 @@ final class ChatController {
 
         thread.updatedAt = .now
         project.lastActiveAt = .now
+        streamingUserText = userText
         // Promote quick-chat once it has real content.
         if project.isQuickChat {
             ProjectFactory.promoteToSidebar(project)
@@ -462,11 +465,15 @@ final class ChatController {
             streamPhase = .streaming
             streamingText += delta
 
-        case .rateLimitInfo:
-            // Advisory only — usage display is Step 10 / T8 (deferred).
-            break
+        case .rateLimitInfo(let utilization, let resetsAt, let status, let rateLimitType):
+            UsageMeterService.shared.updateFromRateLimitEvent(
+                utilization: utilization,
+                resetsAt: resetsAt,
+                status: status,
+                rateLimitType: rateLimitType
+            )
 
-        case .completed(let text, let sessionID, let modelLabel):
+        case .completed(let text, let sessionID, let modelLabel, let usage):
             if let sessionID {
                 thread.cliSessionID = sessionID
             }
@@ -491,6 +498,15 @@ final class ChatController {
                 project.hasUnviewedActivity = true
             }
             try? context.save()
+            recordUsage(
+                modelLabel: modelLabel,
+                finalText: finalText,
+                usage: usage
+            )
+            // Refresh authoritative Claude Max/Pro windows after each turn.
+            if selectedModel.family == .claude {
+                Task { await UsageMeterService.shared.syncClaudeUsageFromCLI() }
+            }
             lastFailedUserText = nil
             finishIdle()
 
@@ -533,6 +549,8 @@ final class ChatController {
             thread.messages.append(assistant)
             thread.updatedAt = .now
             try? context.save()
+            // Count partial replies too so Stop still contributes to the gauge.
+            recordUsage(modelLabel: nil, finalText: partial, usage: nil)
         }
 
         // Intentional Stop: keep partial, no scary banner.
@@ -554,6 +572,23 @@ final class ChatController {
         _ = project // keep project referenced for future activity flags
     }
 
+    private func recordUsage(
+        modelLabel: String?,
+        finalText: String,
+        usage: TurnUsageMetrics?
+    ) {
+        let model = ChatModelOption.fromCLILabel(modelLabel)
+            ?? ChatModelOption.fromCLILabel(streamingModelLabel)
+            ?? selectedModel
+        UsageMeterService.shared.recordTurn(
+            model: model,
+            inputTokens: usage.flatMap { $0.inputTokens > 0 ? $0.inputTokens : nil },
+            outputTokens: usage.flatMap { $0.outputTokens > 0 ? $0.outputTokens : nil },
+            inputChars: streamingUserText.count,
+            outputChars: finalText.count
+        )
+    }
+
     private func finishIdle() {
         streamPhase = .idle
         streamingText = ""
@@ -561,6 +596,7 @@ final class ChatController {
         streamingModelLabel = nil
         streamingProjectID = nil
         streamingThreadID = nil
+        streamingUserText = ""
         streamTask = nil
     }
 
