@@ -66,6 +66,66 @@ final class FileBrowserModel: ObservableObject {
         reloadRoot()
     }
 
+    /// Copy dropped / imported files into `directory` (or root / selection).
+    /// Returns destination URLs that were written.
+    @discardableResult
+    func importFiles(_ urls: [URL], into directory: URL? = nil) throws -> [URL] {
+        let destDir: URL
+        if let directory {
+            destDir = directory
+        } else if let selected = selectedURL {
+            var isDir: ObjCBool = false
+            if FileManager.default.fileExists(atPath: selected.path, isDirectory: &isDir), isDir.boolValue {
+                destDir = selected
+            } else {
+                destDir = selected.deletingLastPathComponent()
+            }
+        } else if let rootURL {
+            destDir = rootURL
+        } else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+
+        try FileManager.default.createDirectory(at: destDir, withIntermediateDirectories: true)
+        var written: [URL] = []
+        for src in urls {
+            let name = src.lastPathComponent
+            var dest = destDir.appendingPathComponent(name)
+            if FileManager.default.fileExists(atPath: dest.path) {
+                let base = dest.deletingPathExtension().lastPathComponent
+                let ext = dest.pathExtension
+                var i = 2
+                repeat {
+                    let n = ext.isEmpty ? "\(base)-\(i)" : "\(base)-\(i).\(ext)"
+                    dest = destDir.appendingPathComponent(n)
+                    i += 1
+                } while FileManager.default.fileExists(atPath: dest.path)
+            }
+            do {
+                try FileManager.default.copyItem(at: src, to: dest)
+            } catch {
+                try FileManager.default.moveItem(at: src, to: dest)
+            }
+            written.append(dest)
+        }
+        // Refresh tree so new files appear.
+        childrenByPath.removeValue(forKey: destDir.path)
+        if destDir.path == rootURL?.path {
+            reloadRoot()
+        } else if expandedPaths.contains(destDir.path) {
+            let node = FileNode(
+                url: destDir,
+                name: destDir.lastPathComponent,
+                isDirectory: true,
+                isSymbolicLink: false
+            )
+            refresh(node)
+        } else {
+            reloadRoot()
+        }
+        return written
+    }
+
     /// Re-enumerate the root's immediate children only.
     func reloadRoot() {
         guard let rootURL else { return }

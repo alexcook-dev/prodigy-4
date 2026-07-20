@@ -170,6 +170,7 @@ struct FilePreviewView: View {
         }
         .onDisappear { content.cancel() }
         .focusable()
+        .focusEffectDisabled()
         .onKeyPress(.escape) {
             onClose()
             return .handled

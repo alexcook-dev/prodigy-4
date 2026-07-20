@@ -24,5 +24,13 @@
 	<string>Copyright © 2026. Personal use only.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<!-- Apple Calendar (EventKit) -->
+	<key>NSCalendarsUsageDescription</key>
+	<string>Prodigy shows your upcoming events from Apple Calendar inside the app.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Prodigy shows your upcoming events from Apple Calendar inside the app.</string>
+	<!-- Apple Mail scripting (Automation) -->
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Prodigy reads your Mail inbox so you can view messages inside the app.</string>
 </dict>
 </plist>

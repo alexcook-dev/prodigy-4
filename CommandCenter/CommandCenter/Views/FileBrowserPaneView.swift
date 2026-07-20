@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Top-right file browser: FileManager tree with lazy per-directory loading.
 ///
@@ -15,6 +16,7 @@ struct FileBrowserPaneView: View {
 
     /// Keyboard focus for Space / Enter / arrows when the Files pane is active.
     @FocusState private var listKeyboardFocused: Bool
+    @State private var isDropTargeted = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,7 +25,22 @@ struct FileBrowserPaneView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.centerBackground)
+        .overlay {
+            if isDropTargeted {
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(Theme.accent, style: StrokeStyle(lineWidth: 2, dash: [6]))
+                    .padding(4)
+                    .allowsHitTesting(false)
+            }
+        }
+        // Accept files dragged from Mail attachments (or Finder).
+        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+            handleDrop(providers)
+        }
+        // Keep keyboard arrows / Space without the system blue focus ring
+        // around the whole top-right Files pane when clicked.
         .focusable()
+        .focusEffectDisabled()
         .focused($listKeyboardFocused)
         .onChange(of: isFocused) { _, focused in
             // When the workspace focuses Files (click / ⌘3), capture keyboard.
@@ -340,6 +357,32 @@ struct FileBrowserPaneView: View {
         let request = FilePreviewRequest(url: node.url)
         // Wave 3 wiring: WorkspaceSelection flips the center pane to a preview tab.
         previewPresenter?.presentFilePreview(request)
+    }
+
+    /// Drop files (e.g. dragged from Mail attachments) into the project folder tree.
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        var any = false
+        for provider in providers {
+            guard provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) else { continue }
+            any = true
+            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                let url: URL?
+                if let data = item as? Data {
+                    url = URL(dataRepresentation: data, relativeTo: nil)
+                } else {
+                    url = item as? URL
+                }
+                guard let url else { return }
+                DispatchQueue.main.async {
+                    do {
+                        _ = try model.importFiles([url])
+                    } catch {
+                        // Silent fail — Files pane has no toast; drop target feedback is enough.
+                    }
+                }
+            }
+        }
+        return any
     }
 }
 
