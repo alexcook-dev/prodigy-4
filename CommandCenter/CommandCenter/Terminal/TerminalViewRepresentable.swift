@@ -18,8 +18,20 @@ struct TerminalViewRepresentable: NSViewRepresentable {
         context.coordinator.terminal = terminal
         context.coordinator.attach(to: terminal)
         context.coordinator.applyAppearance(to: terminal)
-        context.coordinator.startShell(on: terminal)
+        // Start shell only once per representable lifetime.
+        if !context.coordinator.hasStartedOnce {
+            context.coordinator.startShell(on: terminal)
+        }
         return terminal
+    }
+
+    static func dismantleNSView(_ terminal: KeyPassthroughTerminalView, coordinator: Coordinator) {
+        // Tab closed (or view truly disposed) — kill the PTY so we don't leak shells.
+        if terminal.process.running {
+            terminal.terminate()
+        }
+        coordinator.hasStartedOnce = false
+        coordinator.terminal = nil
     }
 
     func updateNSView(_ terminal: KeyPassthroughTerminalView, context: Context) {
@@ -29,8 +41,8 @@ struct TerminalViewRepresentable: NSViewRepresentable {
             onPaneShortcut?(pane)
         }
 
-        // Focus: only grab the caret when Terminal is the focused pane.
-        // When Chat is focused, resign so the composer keeps first responder.
+        // Focus: only grab the caret when this terminal is the active surface.
+        // When another center tab is selected, resign so Chat can own the keyboard.
         DispatchQueue.main.async {
             guard let window = terminal.window else { return }
             if isFocused {
@@ -42,7 +54,7 @@ struct TerminalViewRepresentable: NSViewRepresentable {
             }
         }
 
-        // Restart after process-ended "Restart shell".
+        // Restart after process-ended "Restart shell" only — never on tab re-select.
         if context.coordinator.lastRestartToken != session.restartToken {
             context.coordinator.lastRestartToken = session.restartToken
             if context.coordinator.hasStartedOnce {

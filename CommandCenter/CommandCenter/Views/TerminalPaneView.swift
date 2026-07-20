@@ -34,7 +34,8 @@ struct TerminalPaneView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.terminalBackground)
         .onAppear {
-            if let initialWorkingDirectory {
+            // Only seed cwd before first shell start — never reset on tab re-select.
+            if !session.isProcessRunning, let initialWorkingDirectory {
                 session.setInitialWorkingDirectory(initialWorkingDirectory)
             }
         }
