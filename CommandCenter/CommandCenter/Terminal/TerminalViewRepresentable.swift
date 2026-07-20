@@ -43,14 +43,24 @@ struct TerminalViewRepresentable: NSViewRepresentable {
 
         // Focus: only grab the caret when this terminal is the active surface.
         // When another center tab is selected, resign so Chat can own the keyboard.
+        // Use async + a second pass so we win over SwiftUI focus (composer) after
+        // the terminal tab is selected.
+        let shouldFocus = isFocused
         DispatchQueue.main.async {
             guard let window = terminal.window else { return }
-            if isFocused {
+            if shouldFocus {
                 if window.firstResponder !== terminal {
-                    window.makeFirstResponder(terminal)
+                    _ = window.makeFirstResponder(terminal)
+                }
+                // One more tick — tab bar buttons can re-steal first responder.
+                DispatchQueue.main.async {
+                    guard shouldFocus, let window = terminal.window else { return }
+                    if window.firstResponder !== terminal {
+                        _ = window.makeFirstResponder(terminal)
+                    }
                 }
             } else if window.firstResponder === terminal {
-                window.makeFirstResponder(nil)
+                _ = window.makeFirstResponder(nil)
             }
         }
 

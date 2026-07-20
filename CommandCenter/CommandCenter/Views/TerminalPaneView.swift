@@ -46,6 +46,16 @@ struct TerminalPaneView: View {
         BottomRightTab(rawValue: bottomTabRaw) ?? .terminal
     }
 
+    /// Whether this instance's terminal should accept keyboard/mouse.
+    /// Center-column tabs (`showsChromeHeader == false`) must ignore the
+    /// bottom-right TextEdit/Setup selection stored in AppStorage.
+    private var terminalAcceptsInput: Bool {
+        if showsChromeHeader {
+            return isFocused && bottomTab == .terminal
+        }
+        return isFocused
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if showsChromeHeader {
@@ -55,7 +65,7 @@ struct TerminalPaneView: View {
                 ZStack {
                     terminalStack
                         .opacity(bottomTab == .terminal ? 1 : 0)
-                        .allowsHitTesting(bottomTab == .terminal && isFocused)
+                        .allowsHitTesting(terminalAcceptsInput)
                         .accessibilityHidden(bottomTab != .terminal)
 
                     TextEditPaneView(
@@ -74,6 +84,7 @@ struct TerminalPaneView: View {
             } else {
                 centerSessionHeader
                 terminalStack
+                    .allowsHitTesting(terminalAcceptsInput)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -239,14 +250,15 @@ struct TerminalPaneView: View {
     private var terminalBody: some View {
         TerminalViewRepresentable(
             session: session,
-            isFocused: isFocused && bottomTab == .terminal,
+            isFocused: terminalAcceptsInput,
             onPaneShortcut: onPaneShortcut
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Dim the buffer when the shell has exited so the dead state is obvious
         // even before the eye hits the process-ended bar (wf-3 #5).
         .opacity(session.isProcessRunning ? 1.0 : 0.55)
-        .allowsHitTesting(session.isProcessRunning)
+        // Allow clicks even while restarting so the user can focus after shell start.
+        .allowsHitTesting(session.isProcessRunning || terminalAcceptsInput)
         .accessibilityLabel("Terminal")
         .accessibilityValue(session.isProcessRunning ? "Shell running" : session.processEndedMessage)
     }

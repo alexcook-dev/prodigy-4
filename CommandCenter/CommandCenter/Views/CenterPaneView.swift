@@ -287,7 +287,9 @@ struct CenterPaneView: View {
                     onClose: { selection.closeTerminalTab(id: tab.id) }
                 ) {
                     selection.selectTerminalTab(tab)
+                    // Center pane focus (not composer) so the PTY can take first responder.
                     focus.focus(.chat)
+                    composerFocused = false
                 }
             }
 
@@ -475,8 +477,11 @@ struct CenterPaneView: View {
     private var ephemeralLayer: some View {
         if isShowingPersistentSurface {
             // Active terminal/browser is drawn in `persistentSurfacesLayer`
-            // (same content area, under the tab bar).
+            // (same content area, under the tab bar). Must NOT hit-test —
+            // a clear overlay was eating clicks so the center Terminal
+            // never became first responder (could not type).
             Color.clear
+                .allowsHitTesting(false)
         } else {
             ephemeralContentBody
         }
@@ -515,6 +520,7 @@ struct CenterPaneView: View {
             ?? FileManager.default.homeDirectoryForCurrentUser.path
         _ = selection.openTerminalTab(workingDirectory: cwd)
         focus.focus(.chat)
+        composerFocused = false
     }
 
     /// Shown when every center tab was closed — invite re-open Chat, Safari, or Terminal.
