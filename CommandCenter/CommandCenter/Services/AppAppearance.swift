@@ -46,6 +46,24 @@ enum AppStorageKey {
     static let contentZoom = "prodigy.contentZoom"
     /// Full Mac agent mode: tools on + permission bypass (OpenClaw-style). Default off.
     static let fullMacAccess = "prodigy.access.fullMac"
+
+    // MARK: General — tools & safety
+
+    /// Load connector/tools on demand in new conversations (default true).
+    static let loadToolsWhenNeeded = "prodigy.general.loadToolsWhenNeeded"
+    /// Let the model search the connector/skill directory for relevant tools.
+    static let connectorSearch = "prodigy.general.connectorSearch"
+    /// Auto-switch models when a message is safety-flagged (vs pause the chat).
+    static let switchModelsWhenFlagged = "prodigy.general.switchModelsWhenFlagged"
+
+    // MARK: Visuals
+
+    /// Generate artifacts in a dedicated side surface.
+    static let artifactsEnabled = "prodigy.visuals.artifacts"
+    /// Artifacts may embed model calls / interactive apps.
+    static let aiPoweredArtifacts = "prodigy.visuals.aiPoweredArtifacts"
+    /// Charts / diagrams / interactive viz inline in chat.
+    static let inlineVisualizations = "prodigy.visuals.inlineVisualizations"
 }
 
 /// Window content zoom (like browser zoom). Persisted across launches.

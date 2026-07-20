@@ -301,6 +301,13 @@ final class GrokCLIProvider: ModelProvider, @unchecked Sendable {
 
     private func buildArguments(request: ModelTurnRequest, prompt: String) -> [String] {
         let fullAccess = UserDefaults.standard.bool(forKey: AppStorageKey.fullMacAccess)
+        let loadTools: Bool = {
+            if fullAccess { return true }
+            if UserDefaults.standard.object(forKey: AppStorageKey.loadToolsWhenNeeded) == nil {
+                return true
+            }
+            return UserDefaults.standard.bool(forKey: AppStorageKey.loadToolsWhenNeeded)
+        }()
         var args: [String] = [
             "-p", prompt,
             "--output-format", "streaming-json",
@@ -311,6 +318,11 @@ final class GrokCLIProvider: ModelProvider, @unchecked Sendable {
             // OpenClaw-style: all tools, auto-approve, web enabled.
             args += [
                 "--permission-mode", "bypassPermissions",
+            ]
+        } else if loadTools {
+            // Tools when needed — allow tools with edit auto-accept, keep web.
+            args += [
+                "--permission-mode", "acceptEdits",
             ]
         } else {
             // Restricted chat: no terminal/write/search tools.

@@ -625,19 +625,100 @@ final class ChatController {
         return "\(modelPart) · \(selectedEffort.messageSuffix)"
     }
 
-    /// Base persona (agent or access-mode default) + shared skills catalog.
+    /// Base persona (agent or access-mode default) + shared skills catalog + visuals prefs.
     /// Skills are injected for **both** Claude and Grok so they stay in sync.
     static func composeSystemPrompt(agent: Agent?) -> String {
+        let defaults = UserDefaults.standard
+        let fullAccess = defaults.bool(forKey: AppStorageKey.fullMacAccess)
+        let loadTools: Bool = {
+            if fullAccess { return true }
+            if defaults.object(forKey: AppStorageKey.loadToolsWhenNeeded) == nil { return true }
+            return defaults.bool(forKey: AppStorageKey.loadToolsWhenNeeded)
+        }()
+
         let base: String
         if let agent, !agent.systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             base = agent.systemPrompt
-        } else if UserDefaults.standard.bool(forKey: AppStorageKey.fullMacAccess) {
+        } else if fullAccess {
             base = ProdigyAccessSettings.fullAccessSystemPrompt
+        } else if loadTools {
+            base = """
+            You are a helpful personal assistant in Prodigy with tools available when needed. \
+            Prefer the lightest tool for the job. Use skills when they match. Be clear and concise.
+            """
         } else {
             base = ProdigyAccessSettings.restrictedSystemPrompt
         }
+
+        var extras: [String] = []
+        if ProdigyPrefs.bool(.connectorSearch, default: true) {
+            extras.append(
+                "Connector search is on: when relevant, search installed skills/connectors " +
+                "(~/.prodigy/skills, ~/.claude/skills, ~/.grok/skills) and surface matching ones."
+            )
+        }
+        if ProdigyPrefs.bool(.artifactsEnabled, default: true) {
+            extras.append(
+                "Artifacts are on: for substantial code, documents, or designs, produce a clear " +
+                "self-contained artifact block the user can keep alongside chat."
+            )
+        }
+        if ProdigyPrefs.bool(.aiPoweredArtifacts, default: true) {
+            extras.append(
+                "AI-powered artifacts are on: interactive apps/docs inside artifacts may call the model."
+            )
+        }
+        if ProdigyPrefs.bool(.inlineVisualizations, default: true) {
+            extras.append(
+                "Inline visualizations are on: prefer mermaid/ASCII charts or structured tables " +
+                "for interactive charts and diagrams in the conversation."
+            )
+        }
+        if ProdigyPrefs.bool(.switchModelsWhenFlagged, default: true) {
+            extras.append(
+                "If a response would be blocked by safety policy, say so briefly so the app can " +
+                "offer a model switch — do not refuse silently."
+            )
+        }
+
         let skills = ProdigySkillsService.shared.systemPromptSkillsBlock()
-        if skills.isEmpty { return base }
-        return base + "\n" + skills
+        var result = base
+        if !extras.isEmpty {
+            result += "\n\n## Prodigy preferences\n" + extras.map { "- \($0)" }.joined(separator: "\n")
+        }
+        if !skills.isEmpty {
+            result += "\n" + skills
+        }
+        return result
+    }
+}
+
+/// Typed UserDefaults helpers for Settings toggles with explicit defaults.
+enum ProdigyPrefs {
+    enum Key {
+        case connectorSearch
+        case switchModelsWhenFlagged
+        case artifactsEnabled
+        case aiPoweredArtifacts
+        case inlineVisualizations
+        case loadToolsWhenNeeded
+
+        var storageKey: String {
+            switch self {
+            case .connectorSearch: return AppStorageKey.connectorSearch
+            case .switchModelsWhenFlagged: return AppStorageKey.switchModelsWhenFlagged
+            case .artifactsEnabled: return AppStorageKey.artifactsEnabled
+            case .aiPoweredArtifacts: return AppStorageKey.aiPoweredArtifacts
+            case .inlineVisualizations: return AppStorageKey.inlineVisualizations
+            case .loadToolsWhenNeeded: return AppStorageKey.loadToolsWhenNeeded
+            }
+        }
+    }
+
+    static func bool(_ key: Key, default defaultValue: Bool) -> Bool {
+        if UserDefaults.standard.object(forKey: key.storageKey) == nil {
+            return defaultValue
+        }
+        return UserDefaults.standard.bool(forKey: key.storageKey)
     }
 }

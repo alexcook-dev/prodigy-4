@@ -98,19 +98,22 @@ enum Theme {
 enum LayoutMetrics {
     // MARK: Main column fractions (of window width after hairline dividers)
 
-    /// Left sidebar default share of the split.
-    static let sidebarDefaultFraction: CGFloat = 0.15
-    /// Center (chat / browser) default share.
-    static let centerDefaultFraction: CGFloat = 0.70
-    /// Right files/terminal default share.
-    static let rightColumnDefaultFraction: CGFloat = 0.15
+    /// Left sidebar default share of the split (20%).
+    static let sidebarDefaultFraction: CGFloat = 0.20
+    /// Center (chat / browser) default share (60%).
+    static let centerDefaultFraction: CGFloat = 0.60
+    /// Right files/terminal default share (20%).
+    static let rightColumnDefaultFraction: CGFloat = 0.20
 
     /// Narrow (2-pane) layout: sidebar / center when right column collapses.
-    static let sidebarNarrowDefaultFraction: CGFloat = 0.15
-    static let centerNarrowDefaultFraction: CGFloat = 0.85
+    static let sidebarNarrowDefaultFraction: CGFloat = 0.20
+    static let centerNarrowDefaultFraction: CGFloat = 0.80
 
     /// How far a side pane can grow when dragged (still leaves room for center).
     static let sidePaneMaxFraction: CGFloat = 0.40
+
+    /// Settings sheet width as a fraction of the active display.
+    static let settingsWindowScreenFraction: CGFloat = 0.60
 
     // MARK: Absolute mins (floor so columns stay usable on small displays)
 
