@@ -306,16 +306,26 @@ final class ClaudeCLIProvider: ModelProvider, @unchecked Sendable {
         for request: ModelTurnRequest,
         forceNoResume: Bool = false
     ) throws -> ClaudeCLISession {
+        let fullAccess = Self.isFullMacAccessEnabled()
         lock.lock()
         if let existing = sessions[request.projectID], existing.isAlive {
-            touchLRU_locked(request.projectID)
+            // Access mode change requires a new process (tools/permissions flags).
+            if existing.fullMacAccess == fullAccess {
+                touchLRU_locked(request.projectID)
+                cancelIdleTimer_locked(request.projectID)
+                lock.unlock()
+                return existing
+            }
+            sessions.removeValue(forKey: request.projectID)
+            lruOrder.removeAll { $0 == request.projectID }
             cancelIdleTimer_locked(request.projectID)
             lock.unlock()
-            return existing
+            existing.terminate()
+        } else {
+            // Drop dead entry if any.
+            sessions.removeValue(forKey: request.projectID)
+            lock.unlock()
         }
-        // Drop dead entry if any.
-        sessions.removeValue(forKey: request.projectID)
-        lock.unlock()
 
         // Evict before spawning so we stay ≤ cap.
         enforceCap(reserving: request.projectID)
@@ -330,7 +340,8 @@ final class ClaudeCLIProvider: ModelProvider, @unchecked Sendable {
             effort: request.effort,
             resumeSessionID: resumeID,
             executableURL: executable,
-            queue: ioQueue
+            queue: ioQueue,
+            fullMacAccess: fullAccess
         )
 
         do {
@@ -346,7 +357,8 @@ final class ClaudeCLIProvider: ModelProvider, @unchecked Sendable {
                     effort: request.effort,
                     resumeSessionID: nil,
                     executableURL: executable,
-                    queue: ioQueue
+                    queue: ioQueue,
+                    fullMacAccess: fullAccess
                 )
                 try fresh.startPersistent()
                 fresh.markNeedsRehydrate()
@@ -378,6 +390,7 @@ final class ClaudeCLIProvider: ModelProvider, @unchecked Sendable {
         var attemptResume = request.sessionID != nil
         var usedRehydrate = false
 
+        let fullAccess = Self.isFullMacAccessEnabled()
         for _ in 0..<2 {
             let session = ClaudeCLISession(
                 projectID: request.projectID,
@@ -387,7 +400,8 @@ final class ClaudeCLIProvider: ModelProvider, @unchecked Sendable {
                 effort: request.effort,
                 resumeSessionID: attemptResume ? request.sessionID : nil,
                 executableURL: executable,
-                queue: ioQueue
+                queue: ioQueue,
+                fullMacAccess: fullAccess
             )
 
             let prompt: String
@@ -540,6 +554,8 @@ final class ClaudeCLISession: @unchecked Sendable {
     let effort: String?
     let resumeSessionID: String?
     let executableURL: URL
+    /// When true, enable tools + bypass permission prompts (full Mac access).
+    let fullMacAccess: Bool
 
     private let queue: DispatchQueue
     private var process: Process?
@@ -594,7 +610,8 @@ final class ClaudeCLISession: @unchecked Sendable {
         effort: String?,
         resumeSessionID: String?,
         executableURL: URL,
-        queue: DispatchQueue
+        queue: DispatchQueue,
+        fullMacAccess: Bool = false
     ) {
         self.projectID = projectID
         self.workingDirectory = workingDirectory
@@ -604,6 +621,7 @@ final class ClaudeCLISession: @unchecked Sendable {
         self.resumeSessionID = resumeSessionID
         self.executableURL = executableURL
         self.queue = queue
+        self.fullMacAccess = fullMacAccess
     }
 
     // MARK: Persistent start
@@ -967,14 +985,35 @@ final class ClaudeCLISession: @unchecked Sendable {
             ]
         }
 
-        // D5.1 chat defaults — requirements, not options.
-        args += [
-            "--system-prompt", systemPrompt,
-            "--tools", "",
-            "--setting-sources", "",
-            "--strict-mcp-config",
-            "--disable-slash-commands",
-        ]
+        // System prompt always applied as full replace.
+        args += ["--system-prompt", systemPrompt]
+
+        if fullMacAccess {
+            // OpenClaw-style: full tools, skip permission prompts, load user
+            // skills from ~/.claude/skills (mirrored from ~/.prodigy/skills).
+            args += [
+                "--tools", "default",
+                "--allow-dangerously-skip-permissions",
+                "--dangerously-skip-permissions",
+                "--permission-mode", "bypassPermissions",
+                "--setting-sources", "user",
+                // Whole home + project cwd (cwd already set on Process).
+                "--add-dir", NSHomeDirectory(),
+            ]
+            let skillsDir = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".prodigy/skills", isDirectory: true).path
+            if FileManager.default.fileExists(atPath: skillsDir) {
+                args += ["--add-dir", skillsDir]
+            }
+        } else {
+            // D5.1 chat defaults — tools off, no global config/skills contamination.
+            args += [
+                "--tools", "",
+                "--setting-sources", "",
+                "--strict-mcp-config",
+                "--disable-slash-commands",
+            ]
+        }
 
         // Raise transcript retention so resume survives longer (D5.3).
         // CLI accepts --settings as JSON string.
@@ -1183,6 +1222,13 @@ final class ClaudeCLISession: @unchecked Sendable {
         return lower.contains("no conversation found")
             || (lower.contains("session") && lower.contains("not found"))
             || lower.contains("could not find session")
+    }
+}
+
+extension ClaudeCLIProvider {
+    /// Thread-safe read of the full-Mac-access toggle (UserDefaults).
+    nonisolated static func isFullMacAccessEnabled() -> Bool {
+        UserDefaults.standard.bool(forKey: AppStorageKey.fullMacAccess)
     }
 }
 

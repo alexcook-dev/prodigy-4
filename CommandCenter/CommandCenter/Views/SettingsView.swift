@@ -1,16 +1,23 @@
+import AppKit
 import SwiftUI
 
-/// Settings — appearance + Claude + Grok authentication + usage.
+/// Settings — appearance, access, skills, Claude + Grok authentication + usage.
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(AppStorageKey.appearance) private var appearanceRaw = AppAppearance.system.rawValue
     @AppStorage(AppStorageKey.contentZoom) private var zoomLevel = ContentZoom.default
+    @AppStorage(AppStorageKey.fullMacAccess) private var fullMacAccess = false
     @State private var claudeAuth = ClaudeAuthService.shared
     @State private var grokAuth = GrokAuthService.shared
     @ObservedObject private var usageMeter = UsageMeterService.shared
     @ObservedObject private var appUpdates = AppUpdateService.shared
+    @ObservedObject private var skills = ProdigySkillsService.shared
+    @ObservedObject private var access = ProdigyAccessSettings.shared
     @State private var isRefreshingClaude = false
     @State private var isRefreshingGrok = false
+    @State private var showNewSkillSheet = false
+    @State private var editingSkill: ProdigySkill?
+    @State private var skillError: String?
 
     private var appearance: Binding<AppAppearance> {
         Binding(
@@ -23,6 +30,8 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 updatesSection
+                accessSection
+                skillsSection
                 appearanceSection
                 zoomSection
                 usageSection
@@ -39,11 +48,176 @@ struct SettingsView: View {
                 }
             }
             .task {
+                skills.reload()
                 await refreshAll()
                 await usageMeter.syncClaudeUsageFromCLI()
             }
+            .sheet(isPresented: $showNewSkillSheet) {
+                SkillEditorSheet(mode: .create) { name, description, body in
+                    do {
+                        _ = try skills.addSkill(name: name, description: description, body: body)
+                        showNewSkillSheet = false
+                        skillError = nil
+                    } catch {
+                        skillError = error.localizedDescription
+                    }
+                } onCancel: {
+                    showNewSkillSheet = false
+                }
+            }
+            .sheet(item: $editingSkill) { skill in
+                SkillEditorSheet(mode: .edit(skill)) { name, description, body in
+                    var updated = skill
+                    updated.name = name
+                    updated.description = description
+                    updated.body = body
+                    do {
+                        try skills.updateSkill(updated)
+                        editingSkill = nil
+                        skillError = nil
+                    } catch {
+                        skillError = error.localizedDescription
+                    }
+                } onCancel: {
+                    editingSkill = nil
+                }
+            }
         }
-        .frame(minWidth: 460, minHeight: 560)
+        .frame(minWidth: 480, minHeight: 620)
+    }
+
+    // MARK: - Full Mac access
+
+    private var accessSection: some View {
+        Section {
+            Toggle(isOn: Binding(
+                get: { fullMacAccess },
+                set: { newValue in
+                    fullMacAccess = newValue
+                    access.setFullMacAccess(newValue)
+                    // Rebuild CLI sessions so tools/permission flags take effect.
+                    RoutingModelProvider.shared.teardownAll()
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Full Mac access")
+                        .font(AppTypography.body.weight(.medium))
+                    Text("Unrestricted tools — terminal, files, network (OpenClaw-style). Applies to Claude and Grok.")
+                        .font(AppTypography.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .tint(Theme.accent)
+        } header: {
+            Text("Access")
+        } footer: {
+            Text(
+                fullMacAccess
+                    ? "ON: models can run shell commands, edit files, and use skills across your Mac. Permission prompts are auto-approved. Destructive actions still deserve care."
+                    : "OFF (default): chat-only mode with tools disabled — safer for everyday conversation."
+            )
+            .font(AppTypography.caption)
+        }
+    }
+
+    // MARK: - Skills
+
+    private var skillsSection: some View {
+        Section {
+            if skills.skills.isEmpty {
+                Text("No skills yet. Add one to share procedures across Claude and Grok.")
+                    .font(AppTypography.caption)
+                    .foregroundStyle(Theme.textSecondary)
+            } else {
+                ForEach(skills.skills) { skill in
+                    HStack(alignment: .top, spacing: 10) {
+                        Toggle(isOn: Binding(
+                            get: { skill.enabled },
+                            set: { enabled in
+                                try? skills.setEnabled(slug: skill.slug, enabled: enabled)
+                            }
+                        )) {
+                            EmptyView()
+                        }
+                        .labelsHidden()
+                        .toggleStyle(.checkbox)
+                        .help(skill.enabled ? "Disable skill" : "Enable skill")
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(skill.name)
+                                .font(AppTypography.body.weight(.medium))
+                            Text("/\(skill.slug)")
+                                .font(AppTypography.caption)
+                                .foregroundStyle(Theme.textTertiary)
+                            if !skill.description.isEmpty {
+                                Text(skill.description)
+                                    .font(AppTypography.caption)
+                                    .foregroundStyle(Theme.textSecondary)
+                                    .lineLimit(2)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                        Button("Edit") { editingSkill = skill }
+                            .buttonStyle(.borderless)
+                        Button(role: .destructive) {
+                            try? skills.deleteSkill(slug: skill.slug)
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Delete skill")
+                    }
+                }
+            }
+
+            HStack {
+                Button {
+                    showNewSkillSheet = true
+                } label: {
+                    Label("Add Skill", systemImage: "plus")
+                }
+                Spacer()
+                Button("Import…") {
+                    importSkill()
+                }
+                Button("Reveal in Finder") {
+                    NSWorkspace.shared.open(skills.skillsRoot)
+                }
+            }
+
+            if let skillError {
+                Text(skillError)
+                    .font(AppTypography.caption)
+                    .foregroundStyle(Theme.errorText)
+            }
+            if let last = skills.lastError {
+                Text(last)
+                    .font(AppTypography.caption)
+                    .foregroundStyle(Theme.errorText)
+            }
+        } header: {
+            Text("Skills")
+        } footer: {
+            Text("Skills live in ~/.prodigy/skills and sync to ~/.claude/skills and ~/.grok/skills so every model sees the same set. Enabled skills are also injected into the chat system prompt.")
+                .font(AppTypography.caption)
+        }
+    }
+
+    private func importSkill() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Import"
+        panel.message = "Choose a skill folder (with SKILL.md) or a SKILL.md file"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            _ = try skills.importFromURL(url)
+            skillError = nil
+        } catch {
+            skillError = error.localizedDescription
+        }
     }
 
     // MARK: - Updates
@@ -455,6 +629,123 @@ struct SettingsView: View {
         isRefreshingGrok = true
         await grokAuth.refresh()
         isRefreshingGrok = false
+    }
+}
+
+// MARK: - Skill editor
+
+private enum SkillEditorMode {
+    case create
+    case edit(ProdigySkill)
+}
+
+private struct SkillEditorSheet: View {
+    let mode: SkillEditorMode
+    var onSave: (_ name: String, _ description: String, _ body: String) -> Void
+    var onCancel: () -> Void
+
+    @State private var name: String = ""
+    @State private var description: String = ""
+    @State private var bodyText: String = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(title)
+                .font(Font.headline.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+
+            field(label: "Name", placeholder: "e.g. Weekly retro") {
+                TextField("Name", text: $name)
+                    .textFieldStyle(.plain)
+            }
+
+            field(label: "Description", placeholder: "When should this skill run?") {
+                TextField("Description", text: $description, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(2...4)
+            }
+
+            field(label: "Instructions (SKILL.md body)", placeholder: "Step-by-step…") {
+                TextEditor(text: $bodyText)
+                    .font(Font.system(.body, design: .monospaced))
+                    .frame(minHeight: 160, maxHeight: 240)
+                    .scrollContentBackground(.hidden)
+            }
+
+            HStack {
+                Spacer()
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.textSecondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                Button("Save") {
+                    onSave(name, description, bodyText)
+                }
+                .buttonStyle(.plain)
+                .font(Font.callout.weight(.medium))
+                .foregroundStyle(Theme.textOnAccent)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(Theme.accent)
+                )
+                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .opacity(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 440)
+        .background(Theme.appBackground)
+        .onAppear {
+            switch mode {
+            case .create:
+                name = ""
+                description = ""
+                bodyText = "# Instructions\n\nDescribe what this skill should do.\n"
+            case .edit(let skill):
+                name = skill.name
+                description = skill.description
+                bodyText = skill.body
+            }
+        }
+    }
+
+    private var title: String {
+        switch mode {
+        case .create: return "New Skill"
+        case .edit: return "Edit Skill"
+        }
+    }
+
+    private func field<Content: View>(
+        label: String,
+        placeholder: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(Font.caption.weight(.semibold))
+                .foregroundStyle(Theme.textSecondary)
+                .textCase(.uppercase)
+                .tracking(0.6)
+            content()
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Theme.elevatedSurface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .strokeBorder(Theme.borderStructural, lineWidth: 1)
+                        )
+                )
+                .help(placeholder)
+        }
     }
 }
 

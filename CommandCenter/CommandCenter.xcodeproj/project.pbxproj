@@ -66,6 +66,8 @@ M9A10001B006 /* MailHTMLWebView.swift in Sources */ = {isa = PBXBuildFile; fileR
 M9A10001B005 /* MailMIMEHTML.swift in Sources */ = {isa = PBXBuildFile; fileRef = M9A10001F005 /* MailMIMEHTML.swift */; };
 M9A10001B007 /* AppleRemindersService.swift in Sources */ = {isa = PBXBuildFile; fileRef = M9A10001F007 /* AppleRemindersService.swift */; };
 M9A10001B008 /* AppleRemindersPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = M9A10001F008 /* AppleRemindersPaneView.swift */; };
+M9A10001B009 /* ProdigyAccessSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = M9A10001F009 /* ProdigyAccessSettings.swift */; };
+M9A10001B00A /* ProdigySkillsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = M9A10001F00A /* ProdigySkillsService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -129,6 +131,8 @@ M9A10001F004 /* AppleMailScriptBuilderTests.swift */ = {isa = PBXFileReference; 
 M9A10001F006 /* MailHTMLWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailHTMLWebView.swift; sourceTree = "<group>"; };
 M9A10001F005 /* MailMIMEHTML.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailMIMEHTML.swift; sourceTree = "<group>"; };
 M9A10001F007 /* AppleRemindersService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleRemindersService.swift; sourceTree = "<group>"; };
+M9A10001F009 /* ProdigyAccessSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProdigyAccessSettings.swift; sourceTree = "<group>"; };
+M9A10001F00A /* ProdigySkillsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProdigySkillsService.swift; sourceTree = "<group>"; };
 M9A10001F008 /* AppleRemindersPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleRemindersPaneView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -200,6 +204,8 @@ M9A10001F008 /* AppleRemindersPaneView.swift */ = {isa = PBXFileReference; lastK
 				M9A10001F001 /* AppleMailService.swift */,
 				M9A10001F002 /* AppleCalendarService.swift */,
 				M9A10001F007 /* AppleRemindersService.swift */,
+				M9A10001F009 /* ProdigyAccessSettings.swift */,
+				M9A10001F00A /* ProdigySkillsService.swift */,
 				M9A10001F004 /* AppleMailScriptBuilderTests.swift */,
 				M9A10001F005 /* MailMIMEHTML.swift */,
 				C5E10001F10001F10001F001 /* ChatController.swift */,
@@ -368,6 +374,8 @@ A1000000000000000000000A /* Theme */ = {
 				M9A10001B001 /* AppleMailService.swift in Sources */,
 				M9A10001B002 /* AppleCalendarService.swift in Sources */,
 				M9A10001B007 /* AppleRemindersService.swift in Sources */,
+				M9A10001B009 /* ProdigyAccessSettings.swift in Sources */,
+				M9A10001B00A /* ProdigySkillsService.swift in Sources */,
 				M9A10001B003 /* AppleMailCalendarViews.swift in Sources */,
 				M9A10001B004 /* AppleMailScriptBuilderTests.swift in Sources */,
 				M9A10001B006 /* MailHTMLWebView.swift in Sources */,

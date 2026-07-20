@@ -44,6 +44,8 @@ enum AppStorageKey {
     static let appearance = "prodigy.appAppearance"
     /// Content zoom factor (1.0 = actual size). Driven by ⌘+/⌘-/⌘0.
     static let contentZoom = "prodigy.contentZoom"
+    /// Full Mac agent mode: tools on + permission bypass (OpenClaw-style). Default off.
+    static let fullMacAccess = "prodigy.access.fullMac"
 }
 
 /// Window content zoom (like browser zoom). Persisted across launches.

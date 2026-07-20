@@ -300,16 +300,27 @@ final class GrokCLIProvider: ModelProvider, @unchecked Sendable {
     }
 
     private func buildArguments(request: ModelTurnRequest, prompt: String) -> [String] {
+        let fullAccess = UserDefaults.standard.bool(forKey: AppStorageKey.fullMacAccess)
         var args: [String] = [
             "-p", prompt,
             "--output-format", "streaming-json",
-            "--disable-web-search",
-            "--disallowed-tools",
-            "run_terminal_cmd,search_replace,write,web_search,web_fetch,Agent",
-            "--permission-mode", "dontAsk",
             "--verbatim",
             "--system-prompt-override", request.systemPrompt,
         ]
+        if fullAccess {
+            // OpenClaw-style: all tools, auto-approve, web enabled.
+            args += [
+                "--permission-mode", "bypassPermissions",
+            ]
+        } else {
+            // Restricted chat: no terminal/write/search tools.
+            args += [
+                "--disable-web-search",
+                "--disallowed-tools",
+                "run_terminal_cmd,search_replace,write,web_search,web_fetch,Agent",
+                "--permission-mode", "dontAsk",
+            ]
+        }
         if let model = request.model, !model.isEmpty {
             args += ["--model", model]
         }
