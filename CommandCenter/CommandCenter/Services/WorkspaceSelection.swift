@@ -2,19 +2,32 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-/// Center-pane surface: chat, file preview, in-app browser, or Dashboard (sc3).
+/// Center-pane surface: chat thread(s), file preview, in-app browser, or Dashboard.
+///
+/// Chat and browser surfaces use **only a UUID** so title/metadata updates do not
+/// remount content or flip selection mid-interaction.
 enum CenterSurface: Hashable, Identifiable {
-    case chat
+    /// No center tabs open.
+    case empty
+    /// A specific open chat thread (tab id == `ChatThread.id`).
+    case chat(UUID)
     case dashboard
     case filePreview(FilePreviewTab)
-    case browser(BrowserTab)
+    case browser(UUID)
+    /// Apple Mail inbox viewer (via Mail.app scripting) — in-app.
+    case appleMail
+    /// Apple Calendar events (EventKit) — in-app.
+    case appleCalendar
 
     var id: String {
         switch self {
-        case .chat: "chat"
+        case .empty: "empty"
+        case .chat(let threadID): "chat-\(threadID.uuidString)"
         case .dashboard: "dashboard"
         case .filePreview(let tab): tab.id.uuidString
-        case .browser(let tab): tab.id.uuidString
+        case .browser(let tabID): tabID.uuidString
+        case .appleMail: "apple-mail"
+        case .appleCalendar: "apple-calendar"
         }
     }
 }
@@ -33,7 +46,19 @@ struct FilePreviewTab: Hashable, Identifiable {
     var url: URL { URL(fileURLWithPath: filePath) }
 }
 
-/// In-app browser tab (Safari-style WKWebView — sc8 / user request).
+/// Open chat tab in the center tab bar (one per `ChatThread`).
+struct ChatTab: Hashable, Identifiable {
+    /// Same as `ChatThread.id`.
+    let id: UUID
+    var title: String
+
+    init(id: UUID, title: String = "Chat") {
+        self.id = id
+        self.title = title
+    }
+}
+
+/// In-app browser tab (WKWebView — Safari-style).
 struct BrowserTab: Hashable, Identifiable {
     let id: UUID
     var title: String
@@ -46,6 +71,31 @@ struct BrowserTab: Hashable, Identifiable {
     }
 }
 
+/// Preset destinations for in-app web tabs (+ menu / Open With).
+enum WebTabPreset: String, CaseIterable, Identifiable {
+    case safari
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .safari: return "Safari"
+        }
+    }
+
+    var urlString: String {
+        switch self {
+        case .safari: return "https://www.apple.com"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .safari: return "safari"
+        }
+    }
+}
+
 /// Shared selection state for sidebar + center pane.
 /// Held by `WorkspaceRootView` and passed down as bindings / environment.
 /// Also hosts file-preview presentation for the file browser (T6 + Wave 3 wiring).
@@ -54,12 +104,18 @@ struct BrowserTab: Hashable, Identifiable {
 final class WorkspaceSelection: FilePreviewPresenting {
     var selectedProjectID: UUID?
     var selectedAgentID: UUID?
-    /// Active center surface (chat or a file-preview tab).
-    var activeSurface: CenterSurface = .chat
-    /// Open file-preview tabs only — never extra chat threads (T11).
+    /// Active center surface (chat thread, Safari, file preview, or empty).
+    var activeSurface: CenterSurface = .empty
+    /// Open chat tabs (multiple threads). Closable; re-open / new via + menu / ⌘2.
+    var chatTabs: [ChatTab] = []
+    /// Open file-preview tabs.
     var filePreviewTabs: [FilePreviewTab] = []
     /// In-app Safari browser tabs.
     var browserTabs: [BrowserTab] = []
+    /// Whether the Apple Mail tab is open.
+    var isAppleMailTabOpen: Bool = false
+    /// Whether the Apple Calendar tab is open.
+    var isAppleCalendarTabOpen: Bool = false
     /// Set once launch auto-resume (T14) has run for this session.
     private(set) var didPerformLaunchResume = false
 
@@ -69,12 +125,25 @@ final class WorkspaceSelection: FilePreviewPresenting {
     /// Staged by ⌘⏎ "Discuss in chat"; `CenterPaneView` drains into the composer.
     var pendingComposerInsert: String?
 
+    var hasOpenChatTabs: Bool { !chatTabs.isEmpty }
+
+    var activeChatThreadID: UUID? {
+        if case .chat(let id) = activeSurface { return id }
+        return nil
+    }
+
     func selectProject(_ project: WorkspaceProject) {
         selectedProjectID = project.id
         selectedAgentID = nil
         project.lastActiveAt = .now
         project.hasUnviewedActivity = false
-        activeSurface = .chat
+        // Chat tabs are project-scoped — reset when switching projects.
+        chatTabs = []
+        if let thread = project.primaryThread ?? project.threads.first {
+            openChatTab(thread: thread)
+        } else if browserTabs.isEmpty && filePreviewTabs.isEmpty {
+            activeSurface = .empty
+        }
     }
 
     func selectAgent(_ agent: Agent, in project: WorkspaceProject?, context: ModelContext) {
@@ -85,11 +154,32 @@ final class WorkspaceSelection: FilePreviewPresenting {
         // Conversation history is still scoped to the active Project.
         if let project {
             project.lastActiveAt = .now
-            _ = AgentFactory.thread(for: agent, in: project, context: context)
+            let thread = AgentFactory.thread(for: agent, in: project, context: context)
+            openChatTab(thread: thread)
+        } else {
+            showChat()
         }
-        activeSurface = .chat
     }
 
+    /// Pick the best surface after closing a tab (or empty if none remain).
+    private func fallBackSurfaceAfterClose() -> CenterSurface {
+        if let chat = chatTabs.last {
+            return .chat(chat.id)
+        }
+        if isAppleMailTabOpen {
+            return .appleMail
+        }
+        if isAppleCalendarTabOpen {
+            return .appleCalendar
+        }
+        if let browser = browserTabs.last {
+            return .browser(browser.id)
+        }
+        if let preview = filePreviewTabs.last {
+            return .filePreview(preview)
+        }
+        return .empty
+    }
 
     // MARK: - Launch resume (T14 / design review D6)
 
@@ -101,17 +191,21 @@ final class WorkspaceSelection: FilePreviewPresenting {
         guard !projects.isEmpty else {
             selectedProjectID = nil
             selectedAgentID = nil
+            chatTabs = []
+            activeSurface = .empty
             return nil
         }
         let project = projects.first(where: { !$0.archived }) ?? projects[0]
         let thread = Self.mostRecentThread(in: project)
         selectProject(project)
-        if let thread, let agent = thread.agent {
-            selectedAgentID = agent.id
-            agent.lastActiveAt = .now
-            agent.hasUnviewedActivity = false
+        if let thread {
+            if let agent = thread.agent {
+                selectedAgentID = agent.id
+                agent.lastActiveAt = .now
+                agent.hasUnviewedActivity = false
+            }
+            openChatTab(thread: thread)
         }
-        showChat()
         didPerformLaunchResume = true
         return (project, thread)
     }
@@ -155,7 +249,126 @@ final class WorkspaceSelection: FilePreviewPresenting {
         )
     }
 
-    /// Tab bar "+" — file previews only. Never creates a second chat thread.
+    // MARK: - Chat tabs (multiple)
+
+    /// Focus the active/last chat tab if any are open (does not create threads).
+    func showChat() {
+        if case .chat(let id) = activeSurface, chatTabs.contains(where: { $0.id == id }) {
+            return
+        }
+        if let last = chatTabs.last {
+            activeSurface = .chat(last.id)
+        }
+    }
+
+    /// Open an existing thread as a tab (or focus it if already open).
+    @discardableResult
+    func openChatTab(thread: ChatThread) -> ChatTab {
+        let title = Self.displayTitle(for: thread)
+        if let idx = chatTabs.firstIndex(where: { $0.id == thread.id }) {
+            if chatTabs[idx].title != title {
+                chatTabs[idx].title = title
+            }
+            activeSurface = .chat(thread.id)
+            if thread.agent == nil {
+                selectedAgentID = nil
+            } else if let agentID = thread.agent?.id {
+                selectedAgentID = agentID
+            }
+            return chatTabs[idx]
+        }
+        let tab = ChatTab(id: thread.id, title: title)
+        chatTabs.append(tab)
+        if thread.agent == nil {
+            selectedAgentID = nil
+        } else if let agentID = thread.agent?.id {
+            selectedAgentID = agentID
+        }
+        activeSurface = .chat(thread.id)
+        return tab
+    }
+
+    func selectChatTab(id: UUID) {
+        guard chatTabs.contains(where: { $0.id == id }) else { return }
+        activeSurface = .chat(id)
+    }
+
+    /// Close one chat tab. Thread + history stay in SwiftData.
+    func closeChatTab(id: UUID) {
+        chatTabs.removeAll { $0.id == id }
+        if case .chat(let openID) = activeSurface, openID == id {
+            activeSurface = fallBackSurfaceAfterClose()
+        }
+    }
+
+    /// Create a brand-new general (non-agent) chat thread and open it as a tab.
+    @discardableResult
+    func openNewChatTab(
+        in project: WorkspaceProject,
+        context: ModelContext
+    ) -> ChatThread {
+        let thread = Self.makeGeneralChatThread(in: project, context: context)
+        openChatTab(thread: thread)
+        return thread
+    }
+
+    /// Focus last chat tab, or open primary / create one if none are open.
+    @discardableResult
+    func showOrCreateChat(
+        in project: WorkspaceProject?,
+        context: ModelContext
+    ) -> ChatThread? {
+        if let last = chatTabs.last {
+            activeSurface = .chat(last.id)
+            if let project,
+               let thread = project.threads.first(where: { $0.id == last.id }) {
+                return thread
+            }
+            return nil
+        }
+        guard let project else { return nil }
+        if let primary = project.primaryThread {
+            openChatTab(thread: primary)
+            return primary
+        }
+        if let any = project.threads.first {
+            openChatTab(thread: any)
+            return any
+        }
+        return openNewChatTab(in: project, context: context)
+    }
+
+    func updateChatTabTitle(id: UUID, title: String) {
+        guard let idx = chatTabs.firstIndex(where: { $0.id == id }) else { return }
+        if chatTabs[idx].title != title {
+            chatTabs[idx].title = title
+        }
+    }
+
+    private static func displayTitle(for thread: ChatThread) -> String {
+        let t = thread.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !t.isEmpty { return t }
+        if let agentName = thread.agent?.name, !agentName.isEmpty {
+            return agentName
+        }
+        return "Chat"
+    }
+
+    /// Insert a new agent-less chat thread on the project.
+    private static func makeGeneralChatThread(
+        in project: WorkspaceProject,
+        context: ModelContext
+    ) -> ChatThread {
+        let generalCount = project.threads.filter { $0.agent == nil }.count
+        let title = generalCount == 0 ? "Chat" : "Chat \(generalCount + 1)"
+        let thread = ChatThread(title: title, project: project)
+        context.insert(thread)
+        try? context.save()
+        return thread
+    }
+
+    // MARK: - File preview
+
     func openFilePreview(fileName: String, filePath: String) {
         if let existing = filePreviewTabs.first(where: { $0.filePath == filePath }) {
             activeSurface = .filePreview(existing)
@@ -167,15 +380,26 @@ final class WorkspaceSelection: FilePreviewPresenting {
     }
 
     func closeFilePreview(_ tab: FilePreviewTab) {
-        filePreviewTabs.removeAll { $0.id == tab.id }
-        if case .filePreview(let open) = activeSurface, open.id == tab.id {
-            activeSurface = .chat
-        }
+        closeFilePreview(id: tab.id)
     }
 
-    /// Unconditional "go to Chat tab" (⌘2). Preview tabs stay open in the background.
-    func showChat() {
-        activeSurface = .chat
+    func closeFilePreview(id: UUID) {
+        filePreviewTabs.removeAll { $0.id == id }
+        if case .filePreview(let open) = activeSurface, open.id == id {
+            if let next = filePreviewTabs.last {
+                activeSurface = .filePreview(next)
+            } else if let chat = chatTabs.last {
+                activeSurface = .chat(chat.id)
+            } else if isAppleMailTabOpen {
+                activeSurface = .appleMail
+            } else if isAppleCalendarTabOpen {
+                activeSurface = .appleCalendar
+            } else if let browser = browserTabs.last {
+                activeSurface = .browser(browser.id)
+            } else {
+                activeSurface = .empty
+            }
+        }
     }
 
     /// sc3 Dashboard — project board over the center column (files/terminal stay).
@@ -185,29 +409,95 @@ final class WorkspaceSelection: FilePreviewPresenting {
         activeSurface = .dashboard
     }
 
-    /// Open a new in-app Safari tab (WKWebView) in the center column.
+    // MARK: - Browser
+
+    /// Open a new in-app web tab (WKWebView) in the center column.
     @discardableResult
-    func openSafariTab(urlString: String = "https://www.apple.com") -> BrowserTab {
-        let tab = BrowserTab(title: "Safari", urlString: urlString)
+    func openWebTab(title: String, urlString: String) -> BrowserTab {
+        let tab = BrowserTab(title: title, urlString: urlString)
         browserTabs.append(tab)
-        activeSurface = .browser(tab)
+        activeSurface = .browser(tab.id)
         return tab
     }
 
-    func closeBrowserTab(_ tab: BrowserTab) {
-        browserTabs.removeAll { $0.id == tab.id }
-        if case .browser(let open) = activeSurface, open.id == tab.id {
-            activeSurface = .chat
+    /// Open a preset web destination (Safari home, etc.).
+    @discardableResult
+    func openWebTab(_ preset: WebTabPreset) -> BrowserTab {
+        openWebTab(title: preset.title, urlString: preset.urlString)
+    }
+
+    /// Open a new in-app Safari-style browser tab.
+    @discardableResult
+    func openSafariTab(urlString: String = WebTabPreset.safari.urlString) -> BrowserTab {
+        openWebTab(title: "Safari", urlString: urlString)
+    }
+
+    // MARK: - Apple Mail / Calendar (in-app)
+
+    func openAppleMailTab() {
+        isAppleMailTabOpen = true
+        activeSurface = .appleMail
+    }
+
+    func closeAppleMailTab() {
+        isAppleMailTabOpen = false
+        if case .appleMail = activeSurface {
+            activeSurface = fallBackSurfaceAfterClose()
         }
     }
 
-    func updateBrowserTab(_ tab: BrowserTab, title: String? = nil, urlString: String? = nil) {
-        guard let idx = browserTabs.firstIndex(where: { $0.id == tab.id }) else { return }
-        if let title { browserTabs[idx].title = title }
-        if let urlString { browserTabs[idx].urlString = urlString }
-        if case .browser(let open) = activeSurface, open.id == tab.id {
-            activeSurface = .browser(browserTabs[idx])
+    func openAppleCalendarTab() {
+        isAppleCalendarTabOpen = true
+        activeSurface = .appleCalendar
+    }
+
+    func closeAppleCalendarTab() {
+        isAppleCalendarTabOpen = false
+        if case .appleCalendar = activeSurface {
+            activeSurface = fallBackSurfaceAfterClose()
         }
+    }
+
+    func selectBrowserTab(_ tab: BrowserTab) {
+        activeSurface = .browser(tab.id)
+    }
+
+    func closeBrowserTab(_ tab: BrowserTab) {
+        closeBrowserTab(id: tab.id)
+    }
+
+    func closeBrowserTab(id: UUID) {
+        browserTabs.removeAll { $0.id == id }
+        if case .browser(let openID) = activeSurface, openID == id {
+            if let next = browserTabs.last {
+                activeSurface = .browser(next.id)
+            } else if let chat = chatTabs.last {
+                activeSurface = .chat(chat.id)
+            } else if isAppleMailTabOpen {
+                activeSurface = .appleMail
+            } else if isAppleCalendarTabOpen {
+                activeSurface = .appleCalendar
+            } else if let preview = filePreviewTabs.last {
+                activeSurface = .filePreview(preview)
+            } else {
+                activeSurface = .empty
+            }
+        }
+    }
+
+    /// Update title/URL for a browser tab **without** changing `activeSurface`.
+    func updateBrowserTab(id: UUID, title: String? = nil, urlString: String? = nil) {
+        guard let idx = browserTabs.firstIndex(where: { $0.id == id }) else { return }
+        if let title, browserTabs[idx].title != title {
+            browserTabs[idx].title = title
+        }
+        if let urlString, browserTabs[idx].urlString != urlString {
+            browserTabs[idx].urlString = urlString
+        }
+    }
+
+    func browserTab(id: UUID) -> BrowserTab? {
+        browserTabs.first { $0.id == id }
     }
 
     /// Absolute path for "open with" / copy path — project folder or home.
@@ -222,7 +512,6 @@ final class WorkspaceSelection: FilePreviewPresenting {
 
     // MARK: FilePreviewPresenting (file browser → center pane)
 
-    /// File-tree selection flips the center pane into preview mode (Next Step 4).
     func presentFilePreview(_ request: FilePreviewRequest) {
         openFilePreview(fileName: request.fileName, filePath: request.url.path)
     }

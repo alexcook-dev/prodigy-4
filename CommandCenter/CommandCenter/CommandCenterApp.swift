@@ -77,7 +77,12 @@ struct CommandCenterApp: App {
             CommandMenu("Navigate") {
                 ForEach(WorkspacePane.allCases, id: \.self) { pane in
                     Button(pane.menuTitle) {
-                        focus.focus(pane)
+                        // Chat menu item = go to Chat tab (not just pane focus).
+                        if pane == .chat {
+                            focus.activateChatTab()
+                        } else {
+                            focus.focus(pane)
+                        }
                     }
                     .keyboardShortcut(
                         KeyEquivalent(pane.shortcutDigit),

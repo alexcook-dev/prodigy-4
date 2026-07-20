@@ -72,13 +72,14 @@ struct WorkspaceRootView: View {
             }
         }
         .focusable()
+        .focusEffectDisabled()
         .onKeyPress(keys: [.init("1"), .init("2"), .init("3"), .init("4")]) { press in
             guard press.modifiers.contains(.command) else { return .ignored }
             switch press.key {
             case "1": focus.focus(.sidebar)
             case "2":
-                focus.focus(.chat)
-                selection.showChat()
+                // Explicit Chat-tab activation (not mere center-pane focus).
+                focus.activateChatTab()
             case "3":
                 focus.focus(.files)
                 openRightColumnIfCollapsed()
@@ -109,9 +110,10 @@ struct WorkspaceRootView: View {
             RoutingModelProvider.shared.setFocusedProject(newID)
             chat.focusedProjectID = newID
         }
-        // ⌘2 / Navigate → Chat: always flip the center surface to the Chat tab
-        // (PLAN.md Responsive & Accessibility). Works even when the AppKit
-        // TerminalView is first responder (menu key-equivalent path).
+        // Only `activateChatTab()` bumps this token (⌘2 / Navigate → Chat).
+        // Plain center-pane focus must NOT call showChat — that was ejecting
+        // the Safari tab when the user clicked Google result links.
+        // CenterPaneView also observes this token and creates a chat if needed.
         .onChange(of: focus.chatTabActivationToken) { _, _ in
             selection.showChat()
         }
@@ -206,6 +208,8 @@ struct WorkspaceRootView: View {
             onCreateProject: { showProjectSheet = true },
             onQuickChat: startQuickChat
         )
+        // Focus the center *pane* only — never force the Chat *tab*.
+        // Safari/file-preview clicks must stay on their surface.
         .contentShape(Rectangle())
         .onTapGesture { focus.focus(.chat) }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

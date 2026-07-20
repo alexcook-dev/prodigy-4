@@ -1,10 +1,12 @@
 import AppKit
 import SwiftUI
 
-/// sc8-style “open with” menu: launch external apps or open in-app Safari.
+/// sc8-style “open with” menu: launch external apps or open in-app surfaces.
 struct OpenWithMenuContent: View {
     let workspacePath: String
     var onOpenSafari: () -> Void
+    var onOpenMail: () -> Void = {}
+    var onOpenCalendar: () -> Void = {}
 
     var body: some View {
         Button {
@@ -57,6 +59,18 @@ struct OpenWithMenuContent: View {
             onOpenSafari()
         } label: {
             Label("Safari", systemImage: "safari")
+        }
+
+        Button {
+            onOpenMail()
+        } label: {
+            Label("Mail", systemImage: "envelope.fill")
+        }
+
+        Button {
+            onOpenCalendar()
+        } label: {
+            Label("Calendar", systemImage: "calendar")
         }
 
         Divider()

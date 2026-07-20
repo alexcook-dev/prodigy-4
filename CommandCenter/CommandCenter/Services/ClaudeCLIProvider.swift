@@ -1038,11 +1038,12 @@ final class ClaudeCLISession: @unchecked Sendable {
             assembledText += text
             cont?.yield(.textDelta(text))
 
-        case .rateLimit(let utilization, let resetsAt, let status):
+        case .rateLimit(let utilization, let resetsAt, let status, let rateLimitType):
             cont?.yield(.rateLimitInfo(
                 utilization: utilization,
                 resetsAt: resetsAt,
-                status: status
+                status: status,
+                rateLimitType: rateLimitType
             ))
 
         case .apiRetry(let category, let message, let resetsAt):
@@ -1057,7 +1058,7 @@ final class ClaudeCLISession: @unchecked Sendable {
                 )
             )
 
-        case .result(let text, let sessionID, let isError, let modelLabel):
+        case .result(let text, let sessionID, let isError, let modelLabel, let usage):
             if let sessionID { currentSessionID = sessionID }
             if let modelLabel { currentModelLabel = modelLabel }
             let finalText = text.isEmpty ? assembledText : text
@@ -1082,7 +1083,8 @@ final class ClaudeCLISession: @unchecked Sendable {
                 cont?.yield(.completed(
                     text: finalText,
                     sessionID: currentSessionID,
-                    modelLabel: currentModelLabel
+                    modelLabel: currentModelLabel,
+                    usage: usage
                 ))
                 lastTurnSucceeded = true
                 finishTurn(outcome: .success, error: nil)

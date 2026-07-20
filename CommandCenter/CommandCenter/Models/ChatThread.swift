@@ -4,9 +4,9 @@ import SwiftData
 /// A conversation thread. PLAN.md calls this "Thread"; the type is `ChatThread`
 /// to avoid colliding with Foundation's `Thread`.
 ///
-/// Data model allows multiple threads per Project. V1 ships one primary
-/// (agent-less) thread per Project; the tab bar "+" never creates another.
-/// Agent conversations are separate threads scoped to (Project, Agent).
+/// Multiple general (agent-less) threads per Project are allowed — each can be
+/// an open center-pane chat tab. Agent conversations are separate threads
+/// scoped to (Project, Agent).
 @Model
 final class ChatThread {
     var id: UUID

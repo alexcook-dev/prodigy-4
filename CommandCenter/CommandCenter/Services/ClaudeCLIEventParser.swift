@@ -13,9 +13,20 @@ enum ClaudeCLIEventParser {
         case thinking
         case thinkingDelta(String)
         case textDelta(String)
-        case rateLimit(utilization: Double?, resetsAt: Date?, status: String?)
+        case rateLimit(
+            utilization: Double?,
+            resetsAt: Date?,
+            status: String?,
+            rateLimitType: String?
+        )
         case apiRetry(category: ProviderErrorCategory, message: String?, resetsAt: Date?)
-        case result(text: String, sessionID: String?, isError: Bool, modelLabel: String?)
+        case result(
+            text: String,
+            sessionID: String?,
+            isError: Bool,
+            modelLabel: String?,
+            usage: TurnUsageMetrics?
+        )
         case assistantTextSnapshot(String)
     }
 
@@ -151,11 +162,24 @@ enum ClaudeCLIEventParser {
     // MARK: rate_limit_event
 
     private static func parseRateLimit(_ obj: [String: Any]) -> Parsed {
-        let info = obj["rate_limit_info"] as? [String: Any]
-        let utilization = info?["utilization"] as? Double
-        let status = info?["status"] as? String
-        let resetsAt = parseTimestamp(info?["resetsAt"])
-        return .rateLimit(utilization: utilization, resetsAt: resetsAt, status: status)
+        let info = obj["rate_limit_info"] as? [String: Any] ?? obj
+        let utilization =
+            (info["utilization"] as? Double)
+            ?? (info["utilization"] as? Int).map(Double.init)
+        let status = info["status"] as? String
+        let resetsAt = parseTimestamp(
+            info["resetsAt"] ?? info["resets_at"] ?? info["resetAt"]
+        )
+        let rateLimitType =
+            (info["rateLimitType"] as? String)
+            ?? (info["rate_limit_type"] as? String)
+            ?? (obj["rateLimitType"] as? String)
+        return .rateLimit(
+            utilization: utilization,
+            resetsAt: resetsAt,
+            status: status,
+            rateLimitType: rateLimitType
+        )
     }
 
     // MARK: result
@@ -166,12 +190,52 @@ enum ClaudeCLIEventParser {
         let isError = (obj["is_error"] as? Bool) ?? false
         // Prefer modelUsage keys; fall back to nothing — session init already carried model.
         var modelLabel: String?
+        var usageMetrics: TurnUsageMetrics?
         if let usage = obj["modelUsage"] as? [String: Any] {
             // Pick the non-haiku helper model if present, else first key.
             let keys = usage.keys.sorted()
             modelLabel = keys.first { !$0.contains("haiku") } ?? keys.first
+            usageMetrics = sumModelUsage(usage)
         }
-        return .result(text: text, sessionID: sessionID, isError: isError, modelLabel: modelLabel)
+        // Top-level usage object (some CLI builds).
+        if usageMetrics == nil || usageMetrics?.isEmpty == true {
+            if let top = obj["usage"] as? [String: Any] {
+                let input = intValue(top["input_tokens"] ?? top["inputTokens"])
+                let output = intValue(top["output_tokens"] ?? top["outputTokens"])
+                if input + output > 0 {
+                    usageMetrics = TurnUsageMetrics(inputTokens: input, outputTokens: output)
+                }
+            }
+        }
+        return .result(
+            text: text,
+            sessionID: sessionID,
+            isError: isError,
+            modelLabel: modelLabel,
+            usage: usageMetrics
+        )
+    }
+
+    private static func sumModelUsage(_ usage: [String: Any]) -> TurnUsageMetrics {
+        var input = 0
+        var output = 0
+        for (_, value) in usage {
+            guard let block = value as? [String: Any] else { continue }
+            input += intValue(
+                block["inputTokens"] ?? block["input_tokens"] ?? block["inputTokenCount"]
+            )
+            output += intValue(
+                block["outputTokens"] ?? block["output_tokens"] ?? block["outputTokenCount"]
+            )
+        }
+        return TurnUsageMetrics(inputTokens: input, outputTokens: output)
+    }
+
+    private static func intValue(_ any: Any?) -> Int {
+        if let i = any as? Int { return i }
+        if let d = any as? Double { return Int(d) }
+        if let s = any as? String, let i = Int(s) { return i }
+        return 0
     }
 
     // MARK: assistant (full message snapshots — useful if partials are off)

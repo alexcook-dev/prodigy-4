@@ -106,11 +106,34 @@ enum ModelStreamEvent: Sendable, Equatable {
     /// Visible assistant text delta (`event.delta.type == "text_delta"`).
     case textDelta(String)
     /// Advisory rate-window signal (D5.4 / Step 10); not a hard failure.
-    case rateLimitInfo(utilization: Double?, resetsAt: Date?, status: String?)
+    case rateLimitInfo(
+        utilization: Double?,
+        resetsAt: Date?,
+        status: String?,
+        rateLimitType: String? = nil
+    )
     /// Successful end of turn. `text` is the full assembled reply.
-    case completed(text: String, sessionID: String?, modelLabel: String?)
+    case completed(
+        text: String,
+        sessionID: String?,
+        modelLabel: String?,
+        usage: TurnUsageMetrics? = nil
+    )
     /// Typed failure. Partial text (if any) is on `error.partialText`.
     case failed(ProviderError)
+}
+
+/// Optional token accounting from a provider result (Claude `modelUsage`, etc.).
+struct TurnUsageMetrics: Sendable, Equatable {
+    var inputTokens: Int
+    var outputTokens: Int
+
+    init(inputTokens: Int = 0, outputTokens: Int = 0) {
+        self.inputTokens = max(0, inputTokens)
+        self.outputTokens = max(0, outputTokens)
+    }
+
+    var isEmpty: Bool { inputTokens == 0 && outputTokens == 0 }
 }
 
 // MARK: - Errors (D5 / design review)

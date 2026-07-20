@@ -1,11 +1,12 @@
 import SwiftUI
 
-/// Settings — appearance + Claude + Grok authentication.
+/// Settings — appearance + Claude + Grok authentication + usage.
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(AppStorageKey.appearance) private var appearanceRaw = AppAppearance.system.rawValue
     @State private var claudeAuth = ClaudeAuthService.shared
     @State private var grokAuth = GrokAuthService.shared
+    @ObservedObject private var usageMeter = UsageMeterService.shared
     @State private var isRefreshingClaude = false
     @State private var isRefreshingGrok = false
 
@@ -20,6 +21,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 appearanceSection
+                usageSection
                 claudeSubscriptionSection
                 grokSection
             }
@@ -34,9 +36,10 @@ struct SettingsView: View {
             }
             .task {
                 await refreshAll()
+                await usageMeter.syncClaudeUsageFromCLI()
             }
         }
-        .frame(minWidth: 460, minHeight: 520)
+        .frame(minWidth: 460, minHeight: 560)
     }
 
     // MARK: - Appearance
@@ -56,6 +59,12 @@ struct SettingsView: View {
             Text("System follows macOS. Light and Dark lock the app independently.")
                 .font(AppTypography.caption)
         }
+    }
+
+    // MARK: - Usage
+
+    private var usageSection: some View {
+        UsageSettingsSection(meter: usageMeter)
     }
 
     // MARK: - Claude
