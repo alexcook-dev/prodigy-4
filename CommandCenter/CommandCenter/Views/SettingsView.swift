@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var claudeAuth = ClaudeAuthService.shared
     @State private var grokAuth = GrokAuthService.shared
     @ObservedObject private var usageMeter = UsageMeterService.shared
+    @ObservedObject private var appUpdates = AppUpdateService.shared
     @State private var isRefreshingClaude = false
     @State private var isRefreshingGrok = false
 
@@ -20,6 +21,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                updatesSection
                 appearanceSection
                 usageSection
                 claudeSubscriptionSection
@@ -40,6 +42,118 @@ struct SettingsView: View {
             }
         }
         .frame(minWidth: 460, minHeight: 560)
+    }
+
+    // MARK: - Updates
+
+    private var updatesSection: some View {
+        Section {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Installed version")
+                        .font(AppTypography.body)
+                    Text(appUpdates.currentVersion)
+                        .font(AppTypography.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                Spacer()
+                updateStatusLabel
+            }
+
+            HStack {
+                Button {
+                    Task { await appUpdates.checkForUpdates(userInitiated: true) }
+                } label: {
+                    if case .checking = appUpdates.phase {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Text("Check for Updates")
+                    }
+                }
+                .disabled({
+                    if case .checking = appUpdates.phase { return true }
+                    if case .downloading = appUpdates.phase { return true }
+                    if case .installing = appUpdates.phase { return true }
+                    return false
+                }())
+
+                Spacer()
+
+                if case .available = appUpdates.phase {
+                    Button("Install Update") {
+                        Task { await appUpdates.installAvailableUpdate() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled({
+                        if case .downloading = appUpdates.phase { return true }
+                        if case .installing = appUpdates.phase { return true }
+                        return false
+                    }())
+                }
+            }
+
+            if case .available(let u) = appUpdates.phase, !u.notes.isEmpty {
+                Text(u.notes)
+                    .font(AppTypography.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(6)
+                    .textSelection(.enabled)
+            }
+        } header: {
+            Text("Updates")
+        } footer: {
+            Text(updatesFooter)
+                .font(AppTypography.caption)
+        }
+    }
+
+    @ViewBuilder
+    private var updateStatusLabel: some View {
+        switch appUpdates.phase {
+        case .idle:
+            Text(appUpdates.isProductionBuild ? "Not checked yet" : "Dev build")
+                .font(AppTypography.caption)
+                .foregroundStyle(Theme.textTertiary)
+        case .checking:
+            Text("Checking…")
+                .font(AppTypography.caption)
+                .foregroundStyle(Theme.textSecondary)
+        case .upToDate:
+            Text("Up to date")
+                .font(AppTypography.caption)
+                .foregroundStyle(Theme.statusDone)
+        case .available(let u):
+            Text("\(u.version) available")
+                .font(AppTypography.caption)
+                .foregroundStyle(Theme.accent)
+        case .downloading(let fraction):
+            if let fraction {
+                Text("Downloading \(Int(fraction * 100))%")
+                    .font(AppTypography.caption)
+                    .foregroundStyle(Theme.textSecondary)
+            } else {
+                Text("Downloading…")
+                    .font(AppTypography.caption)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        case .installing:
+            Text("Installing…")
+                .font(AppTypography.caption)
+                .foregroundStyle(Theme.textSecondary)
+        case .failed(let message):
+            Text(message)
+                .font(AppTypography.caption)
+                .foregroundStyle(Theme.errorText)
+                .lineLimit(3)
+                .frame(maxWidth: 220, alignment: .trailing)
+        }
+    }
+
+    private var updatesFooter: String {
+        if appUpdates.isProductionBuild {
+            return "Checks GitHub Releases for a newer Prodigy-*.dmg. Uses `gh auth token` for this private repo. Install replaces ~/Applications/Prodigy.app."
+        }
+        return "You’re on Prodigy Dev (Xcode). Auto-update is for the production app only; you can still Check manually."
     }
 
     // MARK: - Appearance

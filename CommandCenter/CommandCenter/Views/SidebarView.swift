@@ -89,6 +89,10 @@ struct SidebarView: View {
         .onReceive(NotificationCenter.default.publisher(for: .prodigyOpenSettings)) { _ in
             showSettings = true
         }
+        .onReceive(NotificationCenter.default.publisher(for: .prodigyCheckForUpdates)) { _ in
+            showSettings = true
+            Task { await AppUpdateService.shared.checkForUpdates(userInitiated: true) }
+        }
         .sheet(item: $renameTarget) { project in
             RenameProjectSheet(
                 name: $renameText,

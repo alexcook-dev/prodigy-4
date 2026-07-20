@@ -3,6 +3,7 @@ import SwiftUI
 
 extension Notification.Name {
     static let prodigyOpenSettings = Notification.Name("prodigy.openSettings")
+    static let prodigyCheckForUpdates = Notification.Name("prodigy.checkForUpdates")
 }
 
 /// Personal Mac command center — shell (T2) + colors (T15) + SwiftData (T3/T11/T12)
@@ -66,6 +67,11 @@ struct CommandCenterApp: App {
         // Xcode project (CODE_SIGN_IDENTITY="-", ENABLE_APP_SANDBOX=NO).
         .commands {
             CommandGroup(replacing: .newItem) {}
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    NotificationCenter.default.post(name: .prodigyCheckForUpdates, object: nil)
+                }
+            }
             CommandGroup(replacing: .appSettings) {
                 Button("Settings…") {
                     NotificationCenter.default.post(name: .prodigyOpenSettings, object: nil)

@@ -13,6 +13,7 @@ struct WorkspaceRootView: View {
     @State private var chat = ChatController()
     @State private var showProjectSheet = false
     @StateObject private var fileBrowser = FileBrowserModel()
+    @ObservedObject private var appUpdates = AppUpdateService.shared
 
     /// Overlay drawer for Files/Terminal when the window is below the collapse breakpoint.
     @State private var isRightColumnDrawerPresented = false
@@ -28,16 +29,25 @@ struct WorkspaceRootView: View {
 
     var body: some View {
         // sc1 shell: flush edge-to-edge columns, no outer window padding.
-        ZStack(alignment: .trailing) {
-            mainSplit
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(spacing: 0) {
+            AppUpdateBanner(updates: appUpdates)
 
-            if isNarrow && isRightColumnDrawerPresented {
-                rightColumnDrawer
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            ZStack(alignment: .trailing) {
+                mainSplit
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                if isNarrow && isRightColumnDrawerPresented {
+                    rightColumnDrawer
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
         }
         .background(Theme.appBackground)
+        .task {
+            // Quiet production-only check a moment after launch.
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            await appUpdates.checkOnLaunchIfNeeded()
+        }
         .background(
             GeometryReader { geo in
                 Color.clear

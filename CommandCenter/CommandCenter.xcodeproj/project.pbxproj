@@ -56,6 +56,8 @@ M5A10001B002 /* GrokAuthService.swift in Sources */ = {isa = PBXBuildFile; fileR
 M5A10001B003 /* RoutingModelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = M5A10001F003 /* RoutingModelProvider.swift */; };
 M7A10001B001 /* UsageMeterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = M7A10001F001 /* UsageMeterService.swift */; };
 M7A10001B002 /* UsageGaugeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = M7A10001F002 /* UsageGaugeView.swift */; };
+U1A10001B001 /* AppUpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = U1A10001F001 /* AppUpdateService.swift */; };
+U1A10001B002 /* AppUpdateBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = U1A10001F002 /* AppUpdateBanner.swift */; };
 M9A10001B001 /* AppleMailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = M9A10001F001 /* AppleMailService.swift */; };
 M9A10001B002 /* AppleCalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = M9A10001F002 /* AppleCalendarService.swift */; };
 M9A10001B003 /* AppleMailCalendarViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = M9A10001F003 /* AppleMailCalendarViews.swift */; };
@@ -116,6 +118,8 @@ M5A10001F002 /* GrokAuthService.swift */ = {isa = PBXFileReference; lastKnownFil
 M5A10001F003 /* RoutingModelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutingModelProvider.swift; sourceTree = "<group>"; };
 M7A10001F001 /* UsageMeterService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageMeterService.swift; sourceTree = "<group>"; };
 M7A10001F002 /* UsageGaugeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageGaugeView.swift; sourceTree = "<group>"; };
+U1A10001F001 /* AppUpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdateService.swift; sourceTree = "<group>"; };
+U1A10001F002 /* AppUpdateBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdateBanner.swift; sourceTree = "<group>"; };
 M9A10001F001 /* AppleMailService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleMailService.swift; sourceTree = "<group>"; };
 M9A10001F002 /* AppleCalendarService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleCalendarService.swift; sourceTree = "<group>"; };
 M9A10001F003 /* AppleMailCalendarViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleMailCalendarViews.swift; sourceTree = "<group>"; };
@@ -188,6 +192,7 @@ M9A10001F005 /* MailMIMEHTML.swift */ = {isa = PBXFileReference; lastKnownFileTy
 				M5A10001F002 /* GrokAuthService.swift */,
 				M5A10001F003 /* RoutingModelProvider.swift */,
 				M7A10001F001 /* UsageMeterService.swift */,
+				U1A10001F001 /* AppUpdateService.swift */,
 				M9A10001F001 /* AppleMailService.swift */,
 				M9A10001F002 /* AppleCalendarService.swift */,
 				M9A10001F004 /* AppleMailScriptBuilderTests.swift */,
@@ -243,6 +248,7 @@ A1000000000000000000000A /* Theme */ = {
 				M3A10001F002 /* OpenWithMenu.swift */,
 				M4A10001F001 /* SpellCheckedTextEditor.swift */,
 				M7A10001F002 /* UsageGaugeView.swift */,
+				U1A10001F002 /* AppUpdateBanner.swift */,
 				M9A10001F003 /* AppleMailCalendarViews.swift */,
 				M9A10001F006 /* MailHTMLWebView.swift */,
 				H9A10001F003 /* ResizableSplitStack.swift */,
@@ -351,6 +357,8 @@ A1000000000000000000000A /* Theme */ = {
 				M5A10001B003 /* RoutingModelProvider.swift in Sources */,
 				M7A10001B001 /* UsageMeterService.swift in Sources */,
 				M7A10001B002 /* UsageGaugeView.swift in Sources */,
+				U1A10001B001 /* AppUpdateService.swift in Sources */,
+				U1A10001B002 /* AppUpdateBanner.swift in Sources */,
 				M9A10001B001 /* AppleMailService.swift in Sources */,
 				M9A10001B002 /* AppleCalendarService.swift in Sources */,
 				M9A10001B003 /* AppleMailCalendarViews.swift in Sources */,
