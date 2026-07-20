@@ -64,25 +64,39 @@ struct CenterPaneView: View {
     }
 
     var body: some View {
-        // Ordinary chat panel: tab bar + scrollable thread + bottom composer.
-        // Empty == same layout with zero messages (no marketing empty state).
-        VStack(spacing: 0) {
-            tabBar
+        Group {
+            if selection.activeSurface == .dashboard {
+                DashboardView(
+                    selection: selection,
+                    onCreateProject: onCreateProject
+                )
+            } else {
+                // sc2 empty / sc4 active chat: tab bar + thread + composer.
+                VStack(spacing: 0) {
+                    tabBar
 
-            contentBody
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    contentBody
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if case .chat = selection.activeSurface {
-                composerBar
+                    if case .chat = selection.activeSurface {
+                        composerBar
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Reading well stays clear; glass lives on the outer card + controls.
-        .background(Color.clear)
-        // T16: cap chat reading width on large displays (~900–1000px).
+        .background(Theme.centerBackground)
+        // Cap chat reading width on large displays; column still fills.
         .frame(maxWidth: LayoutMetrics.maxReadingWidth)
-        .frame(maxWidth: .infinity) // stay centered in the pane
-        // ⌘⏎ discuss-in-chat: selection stages plain-text reference → composer.
+        .frame(maxWidth: .infinity)
+        // ⌘L focuses composer (sc4); ⌘⏎ discuss-in-chat stages a path ref.
+        .onKeyPress(KeyEquivalent("l"), phases: .down) { press in
+            guard press.modifiers.contains(.command) else { return .ignored }
+            selection.showChat()
+            focus.focus(.chat)
+            composerFocused = true
+            return .handled
+        }
         .onChange(of: selection.pendingComposerInsert) { _, value in
             guard let value else { return }
             chat.insertComposerText(value)
@@ -141,27 +155,19 @@ struct CenterPaneView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
             }
-            .buttonStyle(.glass)
+            .buttonStyle(.plain)
             .help("Open file preview (never a second chat thread)")
 
             Spacer()
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        // Top panel: native bar material (titlebar/toolbar language), not accent blue.
-        .background {
-            UnevenRoundedRectangle(
-                topLeadingRadius: LiquidGlassMetrics.paneCorner - 2,
-                bottomLeadingRadius: 0,
-                bottomTrailingRadius: 0,
-                topTrailingRadius: LiquidGlassMetrics.paneCorner - 2,
-                style: .continuous
-            )
-            .fill(.bar)
-        }
+        .padding(.vertical, 6)
+        // Flush top bar — matches center well in both sc1 (dark) and sc2 (light).
+        .background(Theme.centerBackground)
         .overlay(alignment: .bottom) {
-            Divider()
-                .opacity(0.55)
+            Rectangle()
+                .fill(Theme.borderHairline)
+                .frame(height: 1)
         }
     }
 
@@ -196,6 +202,8 @@ struct CenterPaneView: View {
         switch selection.activeSurface {
         case .chat:
             chatBody
+        case .dashboard:
+            EmptyView() // Hosted as full-pane body above.
         case .filePreview(let tab):
             filePreviewBody(tab)
         }
@@ -295,17 +303,29 @@ struct CenterPaneView: View {
                     .frame(maxWidth: 480, alignment: .trailing)
             }
         case .assistant:
-            VStack(alignment: .leading, spacing: 4) {
-                Text(message.modelLabel ?? "Assistant")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Theme.textSecondary)
-
+            // sc4: full-width markdown reply + compact meta footer.
+            VStack(alignment: .leading, spacing: 8) {
                 StreamingMarkdownView(
                     text: message.content,
                     isStreaming: false,
                     isPartial: message.isPartial
                 )
+
+                HStack(spacing: 8) {
+                    Text(relativeTime(message.createdAt))
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textTertiary)
+                    if let label = message.modelLabel, !label.isEmpty {
+                        Text("·")
+                            .foregroundStyle(Theme.textTertiary)
+                        Text(label)
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    Spacer(minLength: 0)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         case .system:
             Text(message.content)
                 .font(.system(size: 12))
@@ -313,13 +333,17 @@ struct CenterPaneView: View {
         }
     }
 
+    private func relativeTime(_ date: Date) -> String {
+        let seconds = max(0, Int(-date.timeIntervalSinceNow))
+        if seconds < 60 { return "\(max(seconds, 1))s" }
+        if seconds < 3600 { return "\(seconds / 60)m" }
+        if seconds < 86_400 { return "\(seconds / 3600)h" }
+        return "\(seconds / 86_400)d"
+    }
+
     @ViewBuilder
     private var streamingBubble: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(chat.streamingModelLabel ?? chat.selectedModel.messageLabel)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Theme.textSecondary)
-
+        VStack(alignment: .leading, spacing: 8) {
             if chat.streamPhase == .thinking && chat.streamingText.isEmpty {
                 // wf-3 #1: pulsing dot + "Thinking…" + Stop
                 HStack(spacing: 10) {
@@ -341,6 +365,7 @@ struct CenterPaneView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var stopButton: some View {
@@ -381,67 +406,98 @@ struct CenterPaneView: View {
         )
     }
 
-    // MARK: - Composer (T5 — no usage meter in V1)
+    // MARK: - Composer (sc2 idle / sc4 focused rainbow border)
 
     private var composerBar: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .bottom, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 8) {
                 TextField(composerPlaceholderText, text: $chat.composerText, axis: .vertical)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 13))
+                    .font(.system(size: 14))
                     .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(1...8)
+                    .lineLimit(2...10)
                     .focused($composerFocused)
                     .onSubmit {
                         // Return sends; shift-return is newline via TextField axis.
                         sendCurrentMessage()
                     }
 
-                if chat.isBusy && isStreamingHere {
-                    // Busy indicator on the right of the field while streaming.
-                    ProgressView()
-                        .controlSize(.small)
-                        .padding(.bottom, 2)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .liquidGlassControl(cornerRadius: LiquidGlassMetrics.controlCorner)
-            .overlay(alignment: .trailing) {
-                if chat.composerText.isEmpty {
-                    Text("⏎ send · ⇧⏎ newline")
+                if chat.composerText.isEmpty && !composerFocused {
+                    Text("⌘L to focus")
                         .font(.system(size: 11))
                         .foregroundStyle(Theme.textTertiary)
-                        .padding(.trailing, 12)
-                        .allowsHitTesting(false)
+                        .padding(.top, 2)
                 }
             }
 
             HStack(spacing: 8) {
                 modelPicker
                 effortPicker
-                Spacer()
-                // Usage meter intentionally omitted in V1 (PLAN.md NOT in Scope / Pass 7 #18).
+
+                if chat.isBusy && isStreamingHere {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+
+                Spacer(minLength: 8)
+
                 Button {
                     sendCurrentMessage()
                 } label: {
-                    Text("Send")
-                        .font(.system(size: 12, weight: .semibold))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(canSend ? Theme.textOnAccent : Theme.textTertiary)
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(canSend ? Theme.accent : Theme.chipBackground)
+                        )
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.plain)
                 .disabled(!canSend)
                 .keyboardShortcut(.return, modifiers: .command)
+                .help("Send (⌘⏎)")
             }
             .font(.system(size: 11))
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Theme.elevatedSurface)
+        )
+        .overlay {
+            // sc4: rainbow focus ring when the field is active.
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(
+                    composerFocused
+                        ? AnyShapeStyle(composerRainbow)
+                        : AnyShapeStyle(Theme.borderHairline),
+                    lineWidth: composerFocused ? 1.5 : 1
+                )
+        }
         .padding(.horizontal, 16)
-        .padding(.top, 10)
-        .padding(.bottom, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 14)
+        .background(Theme.centerBackground)
         .onAppear {
             if isFocused { composerFocused = true }
         }
+    }
+
+    /// sc4 multi-stop accent gradient along the composer edge.
+    private var composerRainbow: AngularGradient {
+        AngularGradient(
+            gradient: Gradient(colors: [
+                Color(red: 1.0, green: 0.35, blue: 0.35),
+                Color(red: 1.0, green: 0.75, blue: 0.2),
+                Color(red: 0.35, green: 0.85, blue: 0.4),
+                Color(red: 0.3, green: 0.7, blue: 1.0),
+                Color(red: 0.7, green: 0.4, blue: 1.0),
+                Color(red: 1.0, green: 0.35, blue: 0.35),
+            ]),
+            center: .center
+        )
     }
 
     private var canSend: Bool {
@@ -450,13 +506,8 @@ struct CenterPaneView: View {
     }
 
     private var composerPlaceholderText: String {
-        if let agent = selectedAgent {
-            return "Message \(agent.name)…"
-        }
-        if let project = selectedProject {
-            return "Message \(project.name)…"
-        }
-        return "Message…"
+        // sc2 / sc4 placeholder language.
+        "Ask to make changes, @mention files, run /commands"
     }
 
     private var modelPicker: some View {
@@ -506,7 +557,10 @@ struct CenterPaneView: View {
             .foregroundStyle(Theme.textSecondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
-            .liquidGlassCapsule()
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Theme.chipBackground)
+            )
     }
 
     // MARK: - Actions

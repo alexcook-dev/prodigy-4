@@ -509,40 +509,12 @@ final class ClaudeCLIProvider: ModelProvider, @unchecked Sendable {
 
     private func resolveClaudeExecutable() -> URL {
         if let claudeExecutableURL { return claudeExecutableURL }
-        if let path = Self.which("claude") {
-            return URL(fileURLWithPath: path)
+        // Shared resolver: PATH + common installs (GUI apps often lack login PATH).
+        if let url = ClaudeCLIPath.resolveClaudeExecutable() {
+            return url
         }
-        // Common install locations (npm / local bin).
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let candidates = [
-            "\(home)/.local/bin/claude",
-            "/usr/local/bin/claude",
-            "/opt/homebrew/bin/claude",
-        ]
-        for c in candidates where FileManager.default.isExecutableFile(atPath: c) {
-            return URL(fileURLWithPath: c)
-        }
-        return URL(fileURLWithPath: "/usr/bin/env") // last resort; args will include "claude"
-    }
-
-    private static func which(_ name: String) -> String? {
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        proc.arguments = [name]
-        let pipe = Pipe()
-        proc.standardOutput = pipe
-        proc.standardError = FileHandle.nullDevice
-        do {
-            try proc.run()
-            proc.waitUntilExit()
-        } catch {
-            return nil
-        }
-        guard proc.terminationStatus == 0 else { return nil }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let path = String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return (path?.isEmpty == false) ? path : nil
+        // Last resort: /usr/bin/env claude (may still fail if PATH is empty).
+        return URL(fileURLWithPath: "/usr/bin/env")
     }
 }
 
@@ -850,12 +822,12 @@ final class ClaudeCLISession: @unchecked Sendable {
         }
         proc.currentDirectoryURL = URL(fileURLWithPath: workingDirectory)
 
-        // Preserve user environment so keychain/oauth from the login shell work.
-        // Never inject ANTHROPIC_API_KEY forcing — subscription auth is intentional.
-        var env = ProcessInfo.processInfo.environment
-        // Guard against accidental --bare via wrapper scripts is in buildArguments.
-        env.removeValue(forKey: "CLAUDE_CODE_SIMPLE")
-        proc.environment = env
+        // Max/Pro subscription path: expand PATH for GUI launches, use Claude
+        // Code OAuth/keychain, and strip ANTHROPIC_API_KEY so we never silently
+        // fall into pay-per-token Console billing (PLAN.md D5.1 — never --bare).
+        proc.environment = ClaudeCLIPath.subscriptionEnvironment(
+            base: ProcessInfo.processInfo.environment
+        )
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()

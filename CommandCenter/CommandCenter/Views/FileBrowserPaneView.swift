@@ -22,12 +22,7 @@ struct FileBrowserPaneView: View {
             treeBody
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.clear)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Theme.borderHairline.opacity(0.55))
-                .frame(height: 1)
-        }
+        .background(Theme.centerBackground)
         .focusable()
         .focused($listKeyboardFocused)
         .onChange(of: isFocused) { _, focused in
@@ -63,35 +58,45 @@ struct FileBrowserPaneView: View {
     // MARK: - Header
 
     private var panelHeader: some View {
-        HStack {
-            Text(headerTitle)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Theme.textSecondary)
-                .textCase(.uppercase)
-                .tracking(0.6)
+        // sc1-style: "All files" chrome + utility icons.
+        HStack(spacing: 10) {
+            Text("All files")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
-                .help(model.rootURL?.path ?? "No folder")
+                .help(model.rootURL?.path ?? headerTitle)
 
-            Spacer()
+            Text("Changes")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+            Text("Checks")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+
+            Spacer(minLength: 4)
 
             if model.rootURL != nil {
                 Button {
                     model.reloadRoot()
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Theme.textTertiary)
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help("Reload folder")
             }
 
-            Image(systemName: "chevron.up")
-                .font(.system(size: 10, weight: .semibold))
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Theme.textTertiary)
+                .help(headerTitle)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        .background(Theme.centerBackground)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(Theme.borderHairline)

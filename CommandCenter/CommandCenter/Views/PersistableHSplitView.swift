@@ -175,51 +175,137 @@ struct PersistableHSplitView: NSViewRepresentable {
 
         // MARK: NSSplitViewDelegate
 
+        func splitView(_ splitView: NSSplitView, canCollapse subview: NSView) -> Bool {
+            // Never collapse a column — collapse is what lets neighbors overlap.
+            false
+        }
+
+        /// Leftmost legal divider position (see `dividerLimits`).
         func splitView(
             _ splitView: NSSplitView,
             constrainMinCoordinate proposedMinimumPosition: CGFloat,
             ofSubviewAt dividerIndex: Int
         ) -> CGFloat {
-            var minX: CGFloat = 0
-            for i in 0...dividerIndex where i < paneSpecs.count {
-                minX += paneSpecs[i].minWidth
-                if i < dividerIndex {
-                    minX += splitView.dividerThickness
-                }
-            }
-            return max(proposedMinimumPosition, minX)
+            let limits = dividerLimits(splitView, dividerIndex: dividerIndex)
+            return max(proposedMinimumPosition, limits.min)
         }
 
+        /// Rightmost legal divider position (see `dividerLimits`).
         func splitView(
             _ splitView: NSSplitView,
             constrainMaxCoordinate proposedMaximumPosition: CGFloat,
             ofSubviewAt dividerIndex: Int
         ) -> CGFloat {
-            var reserved: CGFloat = 0
-            let start = dividerIndex + 1
-            if start < paneSpecs.count {
-                for i in start..<paneSpecs.count {
-                    reserved += paneSpecs[i].minWidth
-                    if i > start {
-                        reserved += splitView.dividerThickness
+            let limits = dividerLimits(splitView, dividerIndex: dividerIndex)
+            return min(proposedMaximumPosition, limits.max)
+        }
+
+        /// Legal [min, max] range for a divider so panes never overlap or exceed
+        /// max widths. When mins don't fit the window, range collapses to a
+        /// single point (no room to drag) instead of min > max.
+        private func dividerLimits(
+            _ splitView: NSSplitView,
+            dividerIndex: Int
+        ) -> (min: CGFloat, max: CGFloat) {
+            let divider = splitView.dividerThickness
+            let count = paneSpecs.count
+            let width = splitView.bounds.width
+            guard count > 0, dividerIndex >= 0, dividerIndex < count - 1, width > 0 else {
+                return (0, width)
+            }
+
+            // Left group mins (panes 0…dividerIndex).
+            var leftMins: CGFloat = 0
+            for i in 0...dividerIndex {
+                leftMins += paneSpecs[i].minWidth
+                if i < dividerIndex { leftMins += divider }
+            }
+
+            // Right group mins (panes after divider).
+            var rightMins: CGFloat = 0
+            let rightStart = dividerIndex + 1
+            for i in rightStart..<count {
+                rightMins += paneSpecs[i].minWidth
+                if i > rightStart { rightMins += divider }
+            }
+
+            // Divider cannot enter the right-min reserved zone.
+            var lo = leftMins
+            var hi = width - divider - rightMins
+
+            // Right-group max widths: divider cannot go left of (width - div - rightMaxes).
+            if rightStart < count {
+                var rightMaxSum: CGFloat = 0
+                var allHaveMax = true
+                for i in rightStart..<count {
+                    guard let maxW = paneSpecs[i].maxWidth else {
+                        allHaveMax = false
+                        break
+                    }
+                    rightMaxSum += maxW
+                    if i > rightStart { rightMaxSum += divider }
+                }
+                if allHaveMax {
+                    let fromRightMax = width - divider - rightMaxSum
+                    // Only apply if it doesn't invert the range past left mins.
+                    if fromRightMax <= hi {
+                        lo = max(lo, fromRightMax)
                     }
                 }
-                reserved += splitView.dividerThickness
-            }
-            let maxX = splitView.bounds.width - reserved
-
-            if dividerIndex < paneSpecs.count, let maxWidth = paneSpecs[dividerIndex].maxWidth {
-                let leftEdge = dividerIndex == 0
-                    ? 0
-                    : splitView.arrangedSubviews[dividerIndex].frame.minX
-                return min(proposedMaximumPosition, min(maxX, leftEdge + maxWidth))
             }
 
-            return min(proposedMaximumPosition, maxX)
+            // Left-group max: pane at dividerIndex.
+            if dividerIndex < splitView.arrangedSubviews.count,
+               let maxWidth = paneSpecs[dividerIndex].maxWidth {
+                let leftEdge = splitView.arrangedSubviews[dividerIndex].frame.minX
+                let fromLeftMax = leftEdge + maxWidth
+                if fromLeftMax >= lo {
+                    hi = min(hi, fromLeftMax)
+                }
+            }
+
+            // If all left panes publish a max, also cap by their sum.
+            var leftMaxSum: CGFloat = 0
+            var allLeftHaveMax = true
+            for i in 0...dividerIndex {
+                guard let maxW = paneSpecs[i].maxWidth else {
+                    allLeftHaveMax = false
+                    break
+                }
+                leftMaxSum += maxW
+                if i < dividerIndex { leftMaxSum += divider }
+            }
+            if allLeftHaveMax, leftMaxSum >= lo {
+                hi = min(hi, leftMaxSum)
+            }
+
+            // Conflict (window narrower than sum of mins): collapse to a point
+            // so NSSplitView never gets min > max (which enables free overlap).
+            if lo > hi {
+                // Prefer keeping left mins when possible.
+                let preferred = min(leftMins, max(width - divider - rightMins, 0))
+                let x = min(max(preferred, 0), max(width - divider, 0))
+                return (x, x)
+            }
+
+            return (lo, hi)
+        }
+
+        func splitViewDidResizeSubviews(_ notification: Notification) {
+            guard let splitView = notification.object as? NSSplitView else { return }
+            // After a live drag, re-clamp so a pane never sits past maxWidth or
+            // stacks on its neighbor (NSSplitView can leave illegal frames when
+            // min/max fight under a tight window).
+            applyNonOverlappingLayout(to: splitView)
         }
 
         func splitView(_ splitView: NSSplitView, resizeSubviewsWithOldSize oldSize: NSSize) {
-            // Keep fixed-intent panes at their widths; flexible pane absorbs delta.
+            applyNonOverlappingLayout(to: splitView)
+        }
+
+        /// Assign non-overlapping frames that honor min/max and never sum past
+        /// the split bounds (fixes window-shrink and drag-past-max overlap).
+        private func applyNonOverlappingLayout(to splitView: NSSplitView) {
             guard !splitView.arrangedSubviews.isEmpty, !paneSpecs.isEmpty else { return }
 
             let count = splitView.arrangedSubviews.count
@@ -233,40 +319,15 @@ struct PersistableHSplitView: NSViewRepresentable {
             let available = max(splitView.bounds.width - totalDividers, 0)
 
             var widths = splitView.arrangedSubviews.map(\.frame.width)
-            // First layout can report zeros — seed ideals.
             if widths.allSatisfy({ $0 < 1 }) {
                 widths = paneSpecs.map { max($0.minWidth, $0.idealWidth ?? $0.minWidth) }
             }
 
-            for i in 0..<count {
-                widths[i] = max(paneSpecs[i].minWidth, widths[i])
-                if let maxW = paneSpecs[i].maxWidth {
-                    widths[i] = min(maxW, widths[i])
-                }
-            }
-
-            var flexibleIndex = 0
-            var lowest = paneSpecs[0].holdingPriority
-            for i in 1..<count {
-                if paneSpecs[i].holdingPriority < lowest {
-                    lowest = paneSpecs[i].holdingPriority
-                    flexibleIndex = i
-                }
-            }
-
-            let fixedSum = widths.enumerated()
-                .filter { $0.offset != flexibleIndex }
-                .map(\.element)
-                .reduce(CGFloat(0), +)
-            widths[flexibleIndex] = max(paneSpecs[flexibleIndex].minWidth, available - fixedSum)
-
-            let total = widths.reduce(0, +)
-            if total > available {
-                widths[flexibleIndex] = max(
-                    paneSpecs[flexibleIndex].minWidth,
-                    widths[flexibleIndex] - (total - available)
-                )
-            }
+            widths = Self.clampWidths(
+                widths,
+                specs: paneSpecs,
+                available: available
+            )
 
             var x: CGFloat = 0
             let height = splitView.bounds.height
@@ -279,6 +340,114 @@ struct PersistableHSplitView: NSViewRepresentable {
                 )
                 x += widths[i] + divider
             }
+        }
+
+        /// Fit `widths` into `available` without overlap.
+        /// Prefer shrinking the flexible (lowest holding priority) pane; if mins
+        /// still don't fit, scale everything proportionally so frames never stack.
+        static func clampWidths(
+            _ input: [CGFloat],
+            specs: [Pane],
+            available: CGFloat
+        ) -> [CGFloat] {
+            let count = specs.count
+            guard count > 0, available > 0 else {
+                return specs.map(\.minWidth)
+            }
+
+            var widths = input
+            if widths.count != count {
+                widths = specs.map { max($0.minWidth, $0.idealWidth ?? $0.minWidth) }
+            }
+
+            // Hard clamp each pane into [min, max].
+            for i in 0..<count {
+                widths[i] = max(specs[i].minWidth, widths[i])
+                if let maxW = specs[i].maxWidth {
+                    widths[i] = min(maxW, widths[i])
+                }
+            }
+
+            var flexibleIndex = 0
+            var lowest = specs[0].holdingPriority
+            for i in 1..<count {
+                if specs[i].holdingPriority < lowest {
+                    lowest = specs[i].holdingPriority
+                    flexibleIndex = i
+                }
+            }
+
+            let fixedSum = widths.enumerated()
+                .filter { $0.offset != flexibleIndex }
+                .map(\.element)
+                .reduce(CGFloat(0), +)
+
+            // Flexible pane takes the remainder (within its own min/max).
+            var flex = available - fixedSum
+            flex = max(specs[flexibleIndex].minWidth, flex)
+            if let maxW = specs[flexibleIndex].maxWidth {
+                flex = min(maxW, flex)
+            }
+            widths[flexibleIndex] = flex
+
+            var total = widths.reduce(0, +)
+            if total <= available + 0.5 {
+                // Absorb tiny slack into flexible pane if under and room under max.
+                let slack = available - total
+                if slack > 0.5 {
+                    var room = slack
+                    if let maxW = specs[flexibleIndex].maxWidth {
+                        room = min(room, maxW - widths[flexibleIndex])
+                    }
+                    if room > 0 {
+                        widths[flexibleIndex] += room
+                    }
+                }
+                return widths
+            }
+
+            // Still over: shrink panes that are above their min, flexible first,
+            // then others with surplus, never below minWidth.
+            var deficit = total - available
+            // Pass 1 — flexible
+            let flexSurplus = widths[flexibleIndex] - specs[flexibleIndex].minWidth
+            if flexSurplus > 0 {
+                let cut = min(flexSurplus, deficit)
+                widths[flexibleIndex] -= cut
+                deficit -= cut
+            }
+            // Pass 2 — other panes above min (prefer higher holding-priority sides
+            // that the user grew large, i.e. anything with surplus).
+            if deficit > 0.5 {
+                for i in 0..<count where i != flexibleIndex {
+                    let surplus = widths[i] - specs[i].minWidth
+                    guard surplus > 0 else { continue }
+                    let cut = min(surplus, deficit)
+                    widths[i] -= cut
+                    deficit -= cut
+                    if deficit <= 0.5 { break }
+                }
+            }
+
+            // Pass 3 — absolute emergency: available < sum(mins). Scale mins so
+            // frames still tile without overlapping (rare tiny windows).
+            total = widths.reduce(0, +)
+            if total > available + 0.5 {
+                let minSum = specs.map(\.minWidth).reduce(CGFloat(0), +)
+                if minSum > 0 {
+                    let scale = available / max(minSum, total)
+                    for i in 0..<count {
+                        widths[i] = max(1, widths[i] * scale)
+                    }
+                    // Fix rounding so sum == available.
+                    let sum = widths.reduce(0, +)
+                    if abs(sum - available) > 0.5, !widths.isEmpty {
+                        widths[flexibleIndex] = max(1, widths[flexibleIndex] + (available - sum))
+                    }
+                }
+            }
+
+            return widths
         }
     }
 }
@@ -293,7 +462,10 @@ private final class HostingSlot: NSView {
         super.init(frame: frameRect)
         autoresizingMask = [.width, .height]
         wantsLayer = true
+        // Clip so a pane never paints over its neighbor when the split is tight.
+        clipsToBounds = true
         layer?.backgroundColor = NSColor.clear.cgColor
+        layer?.masksToBounds = true
     }
 
     @available(*, unavailable)
@@ -322,23 +494,29 @@ private final class HostingSlot: NSView {
 
 // MARK: - Transparent split view subclass
 
-/// Flexible split with **invisible wide dividers** so neighboring Liquid Glass
-/// cards float with a real gap (NSSplitView otherwise draws edge-to-edge).
-/// Divider rects stay clear so the window’s Liquid Glass ambient fill shows
-/// through in windowed **and** fullscreen.
+/// Flush multi-column shell (sc1 / Cursor-style): **1pt hairline dividers**
+/// between edge-to-edge panes — no floating card gaps.
 private final class WorkspaceNSSplitView: NSSplitView {
     override var intrinsicContentSize: NSSize {
         NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric)
     }
 
-    /// Wide enough to read as spacing between floating glass panes.
+    /// Thin column separator (not a wide glass gap).
     override var dividerThickness: CGFloat {
-        LiquidGlassMetrics.interPaneGap
+        LiquidGlassMetrics.columnDividerWidth
     }
 
     override func drawDivider(in rect: NSRect) {
-        // Fully transparent — ambient Liquid Glass behind the split shows through
-        // (windowed wallpaper / fullscreen frosted backdrop).
+        // sc1/sc2 hairline — asset color adapts with Light/Dark appearance.
+        let color = NSColor(named: "BorderHairline") ?? NSColor.separatorColor
+        color.setFill()
+        let hairline = NSRect(
+            x: floor(rect.midX),
+            y: rect.minY,
+            width: 1,
+            height: rect.height
+        )
+        hairline.fill()
     }
 
     override func viewDidMoveToWindow() {

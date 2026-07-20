@@ -10,19 +10,22 @@ import SwiftUI
 /// - Gap regions (between cards) must stay **Liquid Glass** in windowed **and**
 ///   fullscreen — never a solid opaque fill.
 enum LiquidGlassMetrics {
-    /// Outer rounded card radius for major panes (center shell).
-    static let paneCorner: CGFloat = 12
-    /// Nested cards (Projects, Agents, Files, Terminal, Settings).
-    static let nestedCorner: CGFloat = 10
+    /// Outer pane radius — 0 for flush Cursor-style columns (sc1).
+    static let paneCorner: CGFloat = 0
+    /// Nested section radius (composer / chips only).
+    static let nestedCorner: CGFloat = 8
     /// Composer field / dense controls.
     static let controlCorner: CGFloat = 10
-    /// **Single spacing token** used between every glass card in the app
-    /// (sidebar stack, right column, main split gap, window padding rhythm).
-    static let interPaneGap: CGFloat = 8
-    /// Inset from the window edge — matches inter-card gap for even rhythm.
-    static let windowInset: CGFloat = 8
-    /// Inset of a glass card inside a split slot.
+    /// Gap between major columns — hairline only (sc1 / Cursor shell).
+    /// Main columns use NSSplitView dividers; nested stacks use this as the
+    /// drag handle thickness.
+    static let interPaneGap: CGFloat = 1
+    /// No outer window padding — panels go edge-to-edge (sc1).
+    static let windowInset: CGFloat = 0
+    /// Inset of content inside a split slot.
     static let slotInset: CGFloat = 0
+    /// Visible hairline divider color lives on Theme.borderHairline.
+    static let columnDividerWidth: CGFloat = 1
 }
 
 // MARK: - View modifiers
@@ -220,28 +223,23 @@ struct LiquidGlassWindowChrome: NSViewRepresentable {
         }
 
         static func apply(to window: NSWindow) {
-            window.isOpaque = false
-            window.backgroundColor = .clear
+            // Flush sc1/sc2 shell: solid chrome that tracks Light/Dark assets.
+            let bg = NSColor(named: "AppBackground") ?? .windowBackgroundColor
+            window.isOpaque = true
+            window.backgroundColor = bg
             window.titlebarAppearsTransparent = true
             window.titleVisibility = .visible
             if !window.styleMask.contains(.fullSizeContentView) {
                 window.styleMask.insert(.fullSizeContentView)
             }
 
-            // Fullscreen spaces sometimes install an opaque black backdrop view.
-            // Force every layer in the content chain clear so interstitial glass shows.
             window.contentView?.wantsLayer = true
-            window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
-            window.contentView?.layer?.isOpaque = false
+            window.contentView?.layer?.backgroundColor = bg.cgColor
+            window.contentView?.layer?.isOpaque = true
 
-            if let contentView = window.contentView {
-                clearOpaqueBackgrounds(in: contentView)
-            }
-
-            // Titlebar container can paint solid black in fullscreen.
             if let titlebar = window.standardWindowButton(.closeButton)?.superview?.superview {
                 titlebar.wantsLayer = true
-                titlebar.layer?.backgroundColor = NSColor.clear.cgColor
+                titlebar.layer?.backgroundColor = bg.cgColor
             }
         }
 

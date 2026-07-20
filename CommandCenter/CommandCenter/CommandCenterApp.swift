@@ -49,24 +49,18 @@ struct CommandCenterApp: App {
                     minWidth: LayoutMetrics.minWindowWidth,
                     minHeight: LayoutMetrics.minWindowHeight
                 )
-                // Full-window Liquid Glass backdrop — gaps between cards sample this
-                // in windowed **and** fullscreen (solid fills go black in FS spaces).
+                // sc1: solid app chrome (flush columns), not floating glass cards.
                 .containerBackground(for: .window) {
-                    LiquidGlassAmbientBackground()
+                    Theme.appBackground
                 }
-                .background {
-                    // Also paint glass inside the content hierarchy so FS transitions
-                    // that ignore containerBackground still show frosted interstitials.
-                    LiquidGlassAmbientBackground()
-                        .ignoresSafeArea()
-                }
+                .background(Theme.appBackground)
                 .background(LiquidGlassWindowChrome())
         }
         .defaultSize(
             width: LayoutMetrics.defaultWindowWidth,
             height: LayoutMetrics.defaultWindowHeight
         )
-        // Unified titlebar composites with glass content.
+        // Titlebar over content so columns reach the top edge (Cursor-style).
         .windowStyle(.hiddenTitleBar)
         .modelContainer(sharedModelContainer)
         // Unsandboxed personal build; ad-hoc signing is configured in the

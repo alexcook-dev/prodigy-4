@@ -128,7 +128,7 @@ enum ProviderErrorCategory: String, Sendable, Equatable, CaseIterable {
     var bannerMessage: String {
         switch self {
         case .authenticationFailed:
-            return "You're logged out of Claude Code."
+            return "You're logged out of Claude. Sign in with your Claude Max or Pro subscription."
         case .billingError:
             return "Billing issue with your Claude subscription."
         case .rateLimit:
@@ -146,7 +146,7 @@ enum ProviderErrorCategory: String, Sendable, Equatable, CaseIterable {
     var bannerCTA: String? {
         switch self {
         case .authenticationFailed:
-            return "Open Terminal to re-auth"
+            return "Sign in with Claude"
         case .billingError:
             return "Details"
         case .rateLimit, .overloaded:

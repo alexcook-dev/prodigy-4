@@ -3,7 +3,7 @@ import SwiftUI
 /// One banner shape, dynamic text/CTA per `api_retry` category (T13 / PLAN.md D5).
 ///
 /// Categories + copy:
-/// - authentication_failed → "You're logged out of Claude Code." / "Open Terminal to re-auth"
+/// - authentication_failed → Max/Pro sign-in prompt / "Sign in with Claude"
 /// - billing_error → "Billing issue with your Claude subscription." / "Details"
 /// - rate_limit → "Claude hit its usage window (resets {time})." / "Retry"
 /// - overloaded → "Claude is temporarily overloaded." / "Retry"
